@@ -170,3 +170,6 @@ altmttest/prolog_tests/c_calls_xsb.exe svn_mime_002dtype=application%2Foctet-str
 altmttest/prolog_tests/ccx.exe svn_mime_002dtype=application%2Foctet-stream
 altmttest/test_concurrent.xwam svn_mime_002dtype=application%2Foctet-stream
 mttests/benches/answer_completion_benches/generate_anscmp_examples.xwam svn_mime_002dtype=application%2Foctet-stream
+
+# Linguist override
+*.P linguist-language=Prolog
