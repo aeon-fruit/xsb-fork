@@ -10,7 +10,6 @@ REGMATCH_LIB_DIR=
 CPP=cl.exe
 OUTDIR=.
 INTDIR=.
-ARCHDIR    =$(XSBDIR)\config\x86-pc-windows
 
 ALL : "$(OUTDIR)\$(MYPROGRAM).dll"
 
@@ -20,14 +19,15 @@ CLEAN :
 	-@erase "$(INTDIR)\$(MYPROGRAM).exp"
 
 
-CPP_PROJ=/nologo /MD /W3 /EHsc /O2 /I "$(XSBDIR)\config\x86-pc-windows" \
+CPP_PROJ=/nologo /MT /W3 /EHsc /O2 /I "$(XSBDIR)\config\x86-pc-windows" \
 		 /I "$(XSBDIR)\emu" /I "$(XSBDIR)\prolog_includes" \
 		 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" \
 		 /Fo"$(INTDIR)\\" /Fd"$(INTDIR)\\" /c 
 	
 
 SOURCE=$(MYPROGRAM).c
-"$(INTDIR)\$(MYPROGRAM).obj" : $(SOURCE) "$(INTDIR)" $(ARCHDIR)\xsb_config.h
+
+"$(INTDIR)\$(MYPROGRAM).obj" : $(SOURCE) "$(INTDIR)"
 	$(CPP) $(CPP_PROJ) $(SOURCE)
 
 LINK32=link.exe

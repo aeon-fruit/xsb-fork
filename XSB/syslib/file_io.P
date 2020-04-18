@@ -35,26 +35,21 @@
 	       /*  Formatted I/O    	       */
 	       /********************************/
 
-:- mode fmt_write(+,?).
 fmt_write(Fmt, Args) :-
        stat_flag(CURRENT_OUTPUT, IOport),   % Current output
 	fmt_write(IOport, Fmt, Args).
 
-:- mode fmt_write(+,+,?).
 fmt_write(S_or_A, Fmt, Args) :-
 	check_open_stream_or_alias(S_or_A,fmt_write/3,1,output,Stream),
 	formatted_io(FMT_WRITE, Stream, Fmt, Args, _Ret).
 
-:- mode fmt_write_string(?,+,?).
 fmt_write_string(Str, Fmt, Args) :-
 	formatted_io(FMT_WRITE_STRING, Str, Fmt, Args, _Ret).
 
-:- mode fmt_read(+,?,?).
 fmt_read(Fmt,Result,Status) :-
         stat_flag(CURRENT_INPUT, IOport),  % Current input
 	fmt_read(IOport, Fmt,Result,Status).
 
-:- mode fmt_read(+,+,?,?).
 fmt_read(S_or_A, Fmt, Result, Status) :-
 	check_open_stream_or_alias(S_or_A,fmt_read/4,1,input,Stream),
 	formatted_io(FMT_READ, Stream, Fmt, Result, Status).
@@ -66,88 +61,49 @@ fmt_read(S_or_A, Fmt, Result, Status) :-
 /*    	      	      	      	      	      	      	       */
 /***************************************************************/
 
-:- mode file_flush(+,?).
 file_flush(IOport, Ret) :-
 	file_function(FILE_FLUSH, IOport, Ret).
-
-:- mode file_seek(+,+,?,?).
 file_seek(IOport, Offset, Place, Ret) :-
 	file_function(FILE_SEEK, IOport, Offset, Place, Ret, _,_).
-
-:- mode file_truncate(+,+,?).
 file_truncate(S_or_A, Length, Ret) :-
 	check_open_stream_or_alias(S_or_A,fmt_truncate/3,1,output,Stream),
 	file_function(FILE_TRUNCATE, Stream, Length, Ret, _E, _,_).
-
-:- mode file_pos(+,?).
 file_pos(IOport, Pos) :-
 	file_function(FILE_POS, IOport, Pos_1),
 	(Pos_1 < 0 -> Pos = end_of_file ; Pos = Pos_1).
-
-:- mode file_open(+,+,?).
 file_open(FileName, Mode_in, IOport) :-
 	file_open(FileName, Mode_in, 0, IOport).
-
-:- mode file_open(+,+,+,?).
 file_open(FileName, Mode_in, OpenNew, IOport) :-
 	preserve_numeric_calls(Mode_in,Mode),
 	file_function(XSB_FILE_OPEN, FileName, Mode, OpenNew, IOport, _,_).
-
 /* TLS: file_close/1 is obsolescent */
-:- mode file_close(+).
 file_close(IOport) :-
 	file_function(FILE_CLOSE,IOport,NOFORCE_FILE_CLOSE).
-
-:- mode file_close(+,+).
 file_close(IOport,Force) :-
 	file_function(FILE_CLOSE,IOport,Force).
-
 % obsolete -- specify byte or code
-:- mode file_get(+,?).
 file_get(IOport,Char) :-
 	file_function(FILE_GET_BYTE, IOport, Char).
-
-:- mode file_get_byte(+,?).
 file_get_byte(IOport,Char) :-
 	file_function(FILE_GET_BYTE, IOport, Char).
-
-:- mode file_get_code(+,?).
 file_get_code(IOport,Char) :-
 	file_function(FILE_GET_CODE, IOport, Char).
-
-:- mode file_get_char(+,?).
 file_get_char(IOport,Char) :-
 	file_function(FILE_GET_CHAR, IOport, Char).
-
-:- mode file_put(+,+).
 file_put(IOport,Char) :-
 	file_function(FILE_PUT_BYTE, IOport, Char).
-
-:- mode file_put_code(+,+).
 file_put_code(IOport,Char) :-
 	file_function(FILE_PUT_CODE, IOport, Char).
-
-:- mode file_put_char(+,+).
 file_put_char(IOport,Char) :-
 	file_function(FILE_PUT_CHAR, IOport, Char).
-
-:- mode file_clearerr(+).
 file_clearerr(IOport) :-
 	file_function(FILE_CLEARERR, IOport, _).
-
-:- mode tmpfile_open(?).
 tmpfile_open(IOport) :-
 	file_function(TMPFILE_OPEN, IOport, _).
-
-:- mode xsb_stream_lock(+).
 xsb_stream_lock(IOport):- 
 	file_function(XSB_STREAM_LOCK_B, IOport, _).
-
-:- mode xsb_stream_unlock(+).
 xsb_stream_unlock(IOport):- 
 	file_function(XSB_STREAM_UNLOCK_B, IOport, _).
-
-:- mode file_set_character_set(+,+).
 file_set_character_set(S_or_A,CharSet) :-
 	check_open_stream_or_alias(S_or_A,file_set_character_set/2,1,_any,Stream),
 	file_function(FILE_SET_CHARACTER_SET, Stream, CharSet).
@@ -160,7 +116,6 @@ preserve_numeric_calls(X,X).
 
 %----------------------------------------------------------------------------------------------------
 
-:- mode file_getbuf(+,+,-,-).
 file_getbuf(IOport, ByteCount, ToAtom, BytesRead) :-
 	(var(ToAtom), var(BytesRead) ->
 	    file_function(FILE_GETBUF, IOport,ByteCount,ToAtom,BytesRead,_,_)
@@ -168,14 +123,12 @@ file_getbuf(IOport, ByteCount, ToAtom, BytesRead) :-
         ).
 
 %% same as file_getbuf
-:- mode file_getbuf_atom(+,+,-,-).
 file_getbuf_atom(IOport, ByteCount, ToAtom, BytesRead) :-
 	(var(ToAtom), var(BytesRead) ->
 	    file_function(FILE_GETBUF, IOport,ByteCount,ToAtom,BytesRead,_,_)
 	; abort('Usage: file_getbuf_atom([+IOport,] +ByteCount, -ToAtom, -BytesRead)')
         ).
 
-:- mode file_getbuf_atom(+,-,-).
 file_getbuf_atom(ByteCount, ToAtom, BytesRead) :-
 	stat_flag(CURRENT_INPUT, IOport),
 	(var(ToAtom), var(BytesRead) ->
@@ -183,7 +136,6 @@ file_getbuf_atom(ByteCount, ToAtom, BytesRead) :-
 	; abort('Usage: file_getbuf_atom([+IOport,] +ByteCount, -ToAtom, -BytesRead)')
         ).
 
-:- mode file_getbuf_list(+,+,-,-).
 file_getbuf_list(IOport, ByteCount, ToList, BytesRead) :-
 	(var(ToList), var(BytesRead) ->
 	    file_function(FILE_GETBUF, IOport,ByteCount,TmpStr,BytesRead,_,_),
@@ -191,7 +143,6 @@ file_getbuf_list(IOport, ByteCount, ToList, BytesRead) :-
 	;
 	abort('Usage: file_getbuf_list([+IOport,] +ByteCount, -ToList, -BytesRead)')).
 
-:- mode file_getbuf_list(+,-,-).
 file_getbuf_list(ByteCount, ToList, BytesRead) :-
 	stat_flag(CURRENT_INPUT, IOport),
 	(var(ToList), var(BytesRead) ->
@@ -200,7 +151,6 @@ file_getbuf_list(ByteCount, ToList, BytesRead) :-
 	;
 	abort('Usage: file_getbuf_list([+IOport,] +ByteCount, -ToList, -BytesRead)')).
 
-:- mode file_putbuf(+,+,+,+,-).
 file_putbuf(IOport, ByteCount, FromString, Offset, BytesWritten) :-
 	(var(BytesWritten) ->
 	    file_function(FILE_PUTBUF, IOport,ByteCount,FromString,Offset,BytesWritten,_)
@@ -208,7 +158,6 @@ file_putbuf(IOport, ByteCount, FromString, Offset, BytesWritten) :-
 	abort('Usage: file_putbuf([+IOport,] +ByteCount, +FromString, +Offset, -BytesWritten)')
     ).
 
-:- mode file_putbuf(+,+,+,-).
 file_putbuf(ByteCount, FromString, Offset, BytesWritten) :-
 	stat_flag(CURRENT_OUTPUT, IOport),
 	(var(BytesWritten) ->
@@ -216,7 +165,7 @@ file_putbuf(ByteCount, FromString, Offset, BytesWritten) :-
 	; abort('Usage: file_putbuf([+IOport,] +ByteCount, +FromString, +Offset, -BytesWritten)')
 	).
 
-:- mode file_read_line(+,-).
+
 file_read_line(IOport, Str) :-
 	( var(Str) ->
 	    file_function(FILE_READ_LINE, IOport, Str, _, _, _,_)
@@ -230,7 +179,6 @@ file_read_line(IOport, Str) :-
 % checks.  
 
 %% same as file_read_line
-:- mode file_read_line_atom(+,?).
 file_read_line_atom(S_or_A, Atom) :-
 	check_open_stream_or_alias(S_or_A,file_read_line_atom/2,1,input,Stream),
 	file_read_line_atom_1(Stream, Atom).
@@ -242,7 +190,6 @@ file_read_line_atom_1(Stream, Atom) :-
         ).
 
 %% Read line from current input stream (previously set by 'see')
-:- mode file_read_line_atom(?).
 file_read_line_atom(Atom) :-
 	stat_flag(CURRENT_INPUT, IOport),  % Current input
 	file_read_line_atom_1(IOport, Atom).
@@ -250,7 +197,6 @@ file_read_line_atom(Atom) :-
 %-----------------------
 
 %% Like file_read_line_atom, but returns list of characters
-:- mode file_read_line_list(+,?).
 file_read_line_list(S_or_A, CharLst) :-
 	check_open_stream_or_alias(S_or_A,file_read_line_list/2,1,input,Stream),
 	file_read_line_list_1(Stream, CharLst).
@@ -263,7 +209,6 @@ file_read_line_list_1(Stream, CharLst) :-
 
 %% Read line from current input stream (previously set by 'see')
 %% Return list of chars
-:- mode file_read_line_list(?).
 file_read_line_list(Lst) :-
 	stat_flag(CURRENT_INPUT, IOport),  % Current input
 	file_read_line_list_1(IOport, Lst).
@@ -273,13 +218,11 @@ file_read_line_list(Lst) :-
 %% Write Str out to IOport. Str must be atom or list of chars.
 %% This is checked in C, by the builtin.
 
-:- mode file_write_line(+,+,?).
 file_write_line(S_or_A, Str, Offset) :-
 	check_open_stream_or_alias(S_or_A,file_write_line/3,1,output,Stream),
 	file_function(FILE_WRITE_LINE, Stream, Str, Offset, _,_,_).
 
 %% Same as file_write_line/3, but write to current output
-:- mode file_write_line(+,?).
 file_write_line(String, Offset) :-
 	stat_flag(CURRENT_OUTPUT, IOport),  % Current output
 	file_function(FILE_WRITE_LINE, IOport, String, Offset, _,_,_).
@@ -289,7 +232,6 @@ file_write_line(String, Offset) :-
 
 /* Fancy stuff */
 %% Like freopen
-:- mode file_reopen(+,+,+,?).
 file_reopen(FileName, Mode, IOport,ErrCode) :-
 	file_function(FILE_REOPEN, FileName,  Mode, IOport, ErrCode,_,_).
 
@@ -297,24 +239,19 @@ file_reopen(FileName, Mode, IOport,ErrCode) :-
 %% If DestIOport is var, then behaves like dup; else like dup2 
 %% (and then expects DestIOport to be a file descriptor).
 %% ErrCode=0 - ok
-:- mode file_clone(+,?,?).
 file_clone(SrcIOport, DestIOport, ErrorCode) :-
 	file_function(FILE_CLONE, SrcIOport, DestIOport, ErrorCode,_,_,_).
 
 %% Open pipe. ReadPipe is for reading from pipe,
 %% WritePipe is for writing to the pipe.
-:- mode pipe_open(?,?).
 pipe_open(ReadPipe, WritePipe) :-
 	file_function(PIPE_OPEN, ReadPipe, WritePipe, _,_,_,_).
 
 %% Convert pipe into an XSB file descriptor.
 %% This should be done on both ends: by the parent XSB process and by 
 %% the child XSB process
-:- mode fd2ioport(+,?).
 fd2ioport(Pipe, IOport) :-
 	file_function(FD2IOPORT, Pipe, IOport,'u',_,_,_).
-
-:- mode fd2iostream(+,+,?).
 fd2iostream(Pipe, Mode,IOstream) :-
 	file_function(FD2IOPORT, Pipe, IOstream,Mode,_,_,_).
 
@@ -325,18 +262,14 @@ fd2iostream(Pipe, Mode,IOstream) :-
 **
 ****************************************************************/
 
-:- mode print_file_contents(+).
 print_file_contents(Filename) :-
 	stat_flag(CURRENT_OUTPUT, ToIOport),  % current output
 	print_file_contents(Filename, ToIOport).
 
-:- mode print_file_contents(+,+).
 print_file_contents(FileName, ToIOport) :-
 	file_open(FileName, r, FromIOport),
 	copyIOport(FromIOport, ToIOport),
 	file_close(FromIOport).
-
-:- mode copyIOport(+,+).
 copyIOport(FromIOport, ToIOport) :-
 	repeat,
 	(file_read_line(FromIOport, Line) 
@@ -348,14 +281,9 @@ copyIOport(_,_).
 /***************************************************************/
 
 % TLS: changed to allow users to call with Time either time(A,B) or as var.
-:- mode file_time(+,?).
 file_time(FileName, Time) :-
 	sys_system(STAT_FILE_TIME,FileName,Time, _,_,_,_).
-:- mode file_time_ns(+,?,?).
-file_time_ns(FileName, TimeSec,TimeNanosec) :-
-	sys_system(STAT_FILE_TIME_NANOSECS,FileName,TimeSec,TimeNanosec,_,_,_).
 
-:- mode file_size(+,?).
 file_size(FileName, Size) :-
 	sys_system(STAT_FILE_SIZE,FileName,[H,L], _,_,_,_),
 	Size is L + (H << 24).
@@ -366,31 +294,9 @@ file_size(FileName, Size) :-
 ************************************************************************/
 
 %% These fail if the op doesn't succeed
-:- mode path_sysop(+,+).
 path_sysop(isplain, Path) :- !, is_plain_file(Path).
 path_sysop(isdir, Path) :- !, is_directory(Path).
-path_sysop(rm, Path) :- !, rm(Path).
-path_sysop(unlink, Path) :- !, rm(Path).
-path_sysop(cwd, Path) :- !, cwd(Path).
-path_sysop(chdir, Path) :- !, cd(Path).
-path_sysop(mkdir, Path) :- !, sys_mkdir(Path,Res), Res=:=0.
-path_sysop(rmdir, Path) :- !, sys_rmdir(Path,Res), Res=:=0.
-path_sysop(rmdir_rec, Path) :- !, rmdir_rec(Path).
-path_sysop(exists, Path) :- !, file_exists(Path).
-path_sysop(readable, Path) :- !, sys_access(Path, 'r', Res), Res =:= 0.
-path_sysop(writable, Path) :- !, sys_access(Path, 'w', Res), Res =:= 0.
-path_sysop(executable, Path) :- !, sys_access(Path, 'x', Res), Res =:= 0.
-path_sysop(tmpfilename,TmpName) :- !,
-	sys_system(GET_TMP_FILENAME,TmpName,_,_,_,_,_).
-path_sysop(isabsolute,Filename) :- !,
-	is_absolute_filename(Filename).
-
-:- mode path_sysop(+,+,?).
-path_sysop(link, SrsPath, DestPath) :- !,
-	sys_link(SrsPath,DestPath,Res), Res=:=0.
-path_sysop(rename, OldPath, NewPath) :- !,
-    check_atom(NewPath,'rename/2',2),
-    rename(OldPath,NewPath).
+path_sysop(rename, OldPath, NewPath) :- !, rename(OldPath,NewPath).
 path_sysop(copy, FromPath, ToPath) :- !,
 	sys_filecopy(FromPath,ToPath,Res), Res=:=0.
 path_sysop(append, FromPath, ToPath) :- !,
@@ -404,23 +310,37 @@ path_sysop(append, FromPath, ToPath) :- !,
 	file_close(ToIOport),
 	file_close(FromIOport).
         */
+path_sysop(rm, Path) :- !, rm(Path).
+path_sysop(unlink, Path) :- !, rm(Path).
+path_sysop(link, SrsPath, DestPath) :- !,
+	sys_link(SrsPath,DestPath,Res), Res=:=0.
+path_sysop(cwd, Path) :- !, cwd(Path).
+path_sysop(chdir, Path) :- !, cd(Path).
+path_sysop(mkdir, Path) :- !, sys_mkdir(Path,Res), Res=:=0.
+path_sysop(rmdir, Path) :- !, sys_rmdir(Path,Res), Res=:=0.
+path_sysop(rmdir_rec, Path) :- !, rmdir_rec(Path).
+path_sysop(exists, Path) :- !, file_exists(Path).
+path_sysop(readable, Path) :- !, sys_access(Path, 'r', Res), Res =:= 0.
+path_sysop(writable, Path) :- !, sys_access(Path, 'w', Res), Res =:= 0.
+path_sysop(executable, Path) :- !, sys_access(Path, 'x', Res), Res =:= 0.
 path_sysop(modtime,Path,Time) :- !,
 	file_time(Path,Time), Time \== 0.
 path_sysop(newerthan,Path1,Path2) :- !,
-        file_time_ns(Path1,Time1,Time1ns),
-	check_atom(Path2,'path_sysop/3',3),
-        file_time_ns(Path2,Time2,Time2ns),
-        (Time1 == Time2 -> Time1ns >= Time2ns
-	; Time1 > Time2
-        ).
+	file_time(Path1,Time1),
+	file_time(Path2,Time2),
+	Time1 >= Time2.
 path_sysop(size,Path,Size) :- !,
-        file_size(Path, Size).
+	sys_system(STAT_FILE_SIZE,Path,Size, _,_,_,_).
+path_sysop(tmpfilename,TmpName) :- !,
+	sys_system(GET_TMP_FILENAME,TmpName,_,_,_,_,_).
 path_sysop(extension,Filename,Extension) :- !,
 	parse_filename(Filename,_,_,Extension).
 path_sysop(basename,Filename,Basename) :- !,
 	parse_filename(Filename,_,Basename,_).
 path_sysop(dirname,Filename,Dirname) :- !,
 	parse_filename(Filename,Dirname,_,_).
+path_sysop(isabsolute,Filename) :- !,
+	is_absolute_filename(Filename).
 path_sysop(expand,Filename,ExpandedName) :- !,
 	expand_filename(Filename,ExpandedName).
 /*
@@ -452,8 +372,7 @@ path_sysop(cwd_ancestordir,BaseName,ExpandedName) :- !,
 	 ->	true
 	 ;	(getenv([BaseName,'_HOME'],FileName)
 		 ->	expand_filename(FileName,ExpandedName)
-		 ;	abort(('[PATH_SYSOP]: No ancestor directory: ',BaseName,
-			       ' (and no environment variable for: ',BaseName,'_HOME)'))
+		 ;	abort(('[PATH_SYSOP]: No ancestor directory (and no environment variable) for: ', BaseName))
 		)
 	).
 path_sysop(X,_,_) :- abort(('[PATH_SYSOP]: Invalid request for path_sysop/3, ', X)).
@@ -499,14 +418,12 @@ fails otherwise. If variable, backtracks through the valid streams.
 is_valid_stream(Stream) :- 
 	is_valid_stream(Stream,_).
 
-:- mode is_valid_stream(+,?).
 is_valid_stream(Stream,Mode) :-
 	file_function(IS_VALID_STREAM, Stream, M, _, _, _, _),
 	(M =:= 0 -> Mode = input ; Mode = output).
 
 %-----
 
-:- mode check_stream_or_alias(+,+,+,?).
 check_stream_or_alias(S_or_A,Predicate,Arg,Stream) :- 
 	(integer(S_or_A) -> 
 	    Stream = S_or_A
@@ -535,9 +452,7 @@ check_stream_or_alias(S_or_A,Predicate,Arg,Stream) :-
 :- dynamic '_$alias_dynamic'/3.
 :- index('_$alias_dynamic'/3,[1,3]).
 :- thread_shared '_$alias_dynamic'/3.
-:- mode_on_success('_$alias_dynamic'(+,+,+)).
 
-:- mode add_aliases_flag_error(+,+,+,?).
 add_aliases_flag_error([],_Type,_Obj,Flag):- !,(var(Flag) -> Flag = 0 ; true).
 add_aliases_flag_error([H|T],Type,Obj,Flag):- !,
 	add_alias_flag_error(H,Type,Obj,Flag),
@@ -550,13 +465,11 @@ add_alias_flag_error(Alias,Type,Obj,Flag):-
 	   Flag = 1
 	 ; asserta('_$alias_dynamic'(Alias,Type,Obj)).
 
-:- mode add_aliases(+,+,+,+).
 add_aliases([],_Type,_Stream,_Pred).
 add_aliases([H|T],Type,Stream,Pred):- 
 	add_alias(H,Type,Stream,Pred),
 	add_aliases(T,Type,Stream,Pred).
 
-:- mode add_alias(+,+,+,+).
 add_alias(Alias,Type,Stream,Predicate):- 
 	(	'_$alias_dynamic'(Alias,Type,_Stream) -> 
 		permission_error(open,source_sink,alias(Alias),Predicate)
@@ -564,12 +477,10 @@ add_alias(Alias,Type,Stream,Predicate):-
 	).
 
 :- export '_$alias_dynamic'/3.
-:- mode get_alias(?,?,?).
 get_alias(main,THREAD_ALIAS,0):- !.
 get_alias(Alias,Type,Stream):- 
 	'_$alias_dynamic'(Alias,Type,Stream).
 
-:- mode remove_alias(?,?,?).
 remove_alias(Alias,Type,Stream):- 
 	retractall('_$alias_dynamic'(Alias,Type,Stream)).
 
@@ -583,7 +494,6 @@ check_stream_position(Offset,Predicate,Arg) :-
 	).
 
 %-----
-:- mode check_open_stream_or_alias(+,+,+,?,?).
 check_open_stream_or_alias(S_or_A,Predicate,Arg,Mode,Stream) :- 
 	check_stream_or_alias(S_or_A,Predicate,Arg,Stream),
 	(	is_valid_stream(Stream,ActualMode) -> 
@@ -591,14 +501,12 @@ check_open_stream_or_alias(S_or_A,Predicate,Arg,Mode,Stream) :-
 			true
 		;	Mode == ActualMode ->
 			true
-		 ;	check_ground(Mode,'check_open_stream_or_alias/5',4),
-			permission_error(Mode,stream,S_or_A,Predicate)
+		;	permission_error(Mode,stream,S_or_A,Predicate)
 		)
 	;	existence_error(stream,S_or_A,Predicate,Arg)
 	).
 
 %-----
-:- mode check_enumerate_stream_or_alias(+,+,+,?).
 check_enumerate_stream_or_alias(S_or_A,Predicate,Arg,Stream):- 
 	(integer(S_or_A) -> 
 	    (is_valid_stream(S_or_A) -> 
@@ -636,19 +544,16 @@ current_stream_or_alias(S_or_A,Stream):-
 % TLS: Debugging predicate that will soon be obsolete.
 print_openfiles:- file_function(PRINT_OPENFILES,_,_,_,_,_,_).
 
-:- mode peek_code(+,?).
 peek_code(S_or_A,Code):- 
 	check_open_stream_or_alias(S_or_A,peek_code/2,1,input,Str),
 	file_function(FILE_PEEK_CODE,Str,Ret,_Y,_Z, _,_),
 	Ret = Code.
 
-:- mode peek_code(?).
 peek_code(Code):- 
 	stat_flag(CURRENT_INPUT, Str),
 	file_function(FILE_PEEK_CODE,Str,Ret,_Y,_Z, _,_),
 	Ret = Code.
 
-:- mode peek_byte(+,?).
 peek_byte(S_or_A,Byte):- 
 	check_open_stream_or_alias(S_or_A,peek_byte/2,1,input,Str),
 	(	var(Byte) ->
@@ -660,7 +565,6 @@ peek_byte(S_or_A,Byte):-
 	file_function(FILE_PEEK_BYTE,Str,Ret,_Y,_Z, _,_),
 	Ret = Byte.
 
-:- mode peek_byte(?).
 peek_byte(Byte):- 
 	stat_flag(CURRENT_INPUT, Str),
 	(	var(Byte) ->
@@ -673,7 +577,6 @@ peek_byte(Byte):-
 	Ret = Byte.
 
 % TLS: need char_conversion table.
-:- mode peek_char(+,?).
 peek_char(S_or_A,Char):- 
 	check_open_stream_or_alias(S_or_A,peek_char/2,1,input,Str),
 	file_function(FILE_PEEK_CHAR,Str,C,_Y,_Z, _,_),
@@ -682,7 +585,6 @@ peek_char(S_or_A,Char):-
 %	    atom_codes(Char,[Ret])
 %	 ;  Char = Ret).
 
-:- mode peek_char(?).
 peek_char(Char):- 
 	stat_flag(CURRENT_INPUT, Str),
 	file_function(FILE_PEEK_CHAR,Str,C,_Y,_Z, _,_), Char = C.
@@ -698,7 +600,6 @@ at_end_of_stream:-
 	stat_flag(CURRENT_INPUT, Str),
 	file_function(FILE_END_OF_FILE,Str,_Ret,_Y,_Z, _,_).
 	
-:- mode at_end_of_stream(+).
 at_end_of_stream(S_or_A):- 
 	check_open_stream_or_alias(S_or_A,at_end_of_file/1,1,_Mode,Str),
 	file_function(FILE_END_OF_FILE,Str,_Ret,_Y,_Z, _,_).
@@ -706,7 +607,6 @@ at_end_of_stream(S_or_A):-
 %-----------
 
 % TLS: ISO interface to file_seek/3.  For now, handling only files,.
-:- mode set_stream_position(+,+).
 set_stream_position(S_or_A,Offset):- 
 	check_open_stream_or_alias(S_or_A,set_stream_position/2,1,_Mde,Str),
 	check_stream_position(Offset,set_stream_position/2,2),
@@ -722,7 +622,6 @@ set_stream_position(S_or_A,Offset):-
 
 %-----------
 % TLS: ISO interface to file_flush/2
-:- mode flush_output(+).
 flush_output(S_or_A):-
 	check_open_stream_or_alias(S_or_A,flush_output/1,1,output,Str),
 	file_flush(Str,Ret),
@@ -741,7 +640,6 @@ flush_output:-
 
 %-----------
 % TLS: ISO specifies some error conditions for this, but failure seems better.
-:- mode stream_property(?,?).
 stream_property(S_or_A,Prop):- 
 	current_stream_or_alias(S_or_A,Stream),
 	stream_property_1(Stream,Prop).
@@ -866,8 +764,5 @@ transform_stream_class(BINARY_FILE_STREAM,file).
 transform_stream_class(PIPE_STREAM,pipe).
 transform_stream_class(CONSOLE_STREAM,console).
 
-:- mode url_encode(+,+).
 url_encode(In,Out) :- url_encode_decode(URL_ENCODE,In,Out).
-
-:- mode url_decode(+,+).
 url_decode(In,Out) :- url_encode_decode(URL_DECODE,In,Out).

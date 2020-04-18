@@ -33,4 +33,3 @@
 :- import term_comp_op/1, term_comp_tab/4 from tp_comp.
 :- import release_if_done0/5, getreg/2 from tp_var.
 :- import inline_jumpcof_cond/3 from builtin.
-:- import check_integer/3 from error_handler.

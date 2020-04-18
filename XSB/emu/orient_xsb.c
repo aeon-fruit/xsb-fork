@@ -80,20 +80,11 @@ void set_xsbinfo_dir (CTXTdecl) {
   char old_xinitrc[MAXPATHLEN], new_xinitrc[MAXPATHLEN],
     user_config_dir[MAXPATHLEN], user_arch_dir[MAXPATHLEN];
   int retcode;
-  char *auxdir;
-  // XSB_USER_AUXDIR = dir for .xsb auxiliary directory
-  // Eg, export XSB_USER_AUXDIR=~/foo/.xsb
-  auxdir = (char *) getenv("XSB_USER_AUXDIR");
 
   if (!fileinfo) {
     xsb_abort("No core memory to allocate stat structure.\n");
   }
-  if ( auxdir == NULL || strncmp(auxdir,"",1) == 0 ) {
-    // if XSB_USER_AUXDIR is not set, use $HOME/.xsb
-    snprintf(xsbinfo_dir_gl, MAXPATHLEN, "%s%c.xsb", user_home_gl, SLASH);
-  } else {
-    snprintf(xsbinfo_dir_gl, MAXPATHLEN, "%s", auxdir);
-  }
+  snprintf(xsbinfo_dir_gl, MAXPATHLEN, "%s%c.xsb", user_home_gl, SLASH);
   snprintf(old_xinitrc, MAXPATHLEN, "%s%c.xsbrc", user_home_gl, SLASH);
   snprintf(new_xinitrc, MAXPATHLEN, "%s%cxsbrc", xsbinfo_dir_gl, SLASH);
   snprintf(user_config_dir, MAXPATHLEN, "%s%cconfig", xsbinfo_dir_gl, SLASH);

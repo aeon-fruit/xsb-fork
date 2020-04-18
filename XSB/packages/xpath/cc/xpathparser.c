@@ -143,7 +143,7 @@ DllExport int call_conv parse_xpath__()
 	    return xpath_error(ERR_DOMAIN, "url", tmp_term);
 	  }
 	  else{
-	    n = (int) strlen(source);
+	    n = strlen(source);
 	  }
 	}
       }
@@ -213,7 +213,7 @@ execute_xpath_expression(const char * xmlsource, const xmlChar* xpathExpr, const
     }
   }
   else{
-    doc = xmlParseMemory(xmlsource, (int)strlen(xmlsource));
+    doc = xmlParseMemory(xmlsource, strlen(xmlsource));
     if (doc == NULL){
       return FALSE;
     }
@@ -253,7 +253,7 @@ execute_xpath_expression(const char * xmlsource, const xmlChar* xpathExpr, const
   for (i = 0; i < size; i++){
     buf[i]=xmlBufferCreate();
     xmlNodeDump(buf[i], doc, xpathObj->nodesetval->nodeTab[i],0,0);
-    bufsize += (int)strlen((char *)buf[i]->content); 
+    bufsize+=strlen((char *)buf[i]->content); 
   }
 
   output_buffer = malloc(bufsize+1);

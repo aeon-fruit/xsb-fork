@@ -25,7 +25,7 @@
 
 %%%:- import writeq/1,writeln/1,tell/1,telling/1 from standard.
 %%:- import writeln/2 from standard.
-:- mode varproc(?,?,?).
+
 varproc(VarListTab, VarTab, PvarCount) :-
 	get_lastchunk(VarTab, LastChunk, []),
 	mark_occurrences(VarTab),
@@ -292,47 +292,47 @@ collect_type1(ifthenelse(A,B,C),VarListTab,LastChunk) :-
 
 collect_type2([],_CkId,_VarListTab,_LastChunk).
 collect_type2([varocc(Vid,Prag)|Rest],CkId,VarListTab,LastChunk) :-
-    find(VarListTab,Vid,t(_Common,FirstChnks,OKt,Safe,_OccInChunk)),
-    (FirstChnks = [CkId|_]
-     ->	true
-     ;	FirstChnks = [_|CkId]
-     ->	true
-     ;	true
-    ),
-    (memberchk(CkId,LastChunk)
-     ->	vprag_lastchunk(Prag,1)
-     ;	vprag_lastchunk(Prag,0)
-    ),
-    (vprag_level(Prag,s)
-     ->	OKt = 1
-     ;	vprag_level(Prag,sc)
-     ->	OKt = 1
-     ;	true
-    ),
-    vprag_occ(Prag,Occ),
-    (Occ == f % determine if the variable is safe when pval in the last goal
-     ->	((vprag_context(Prag, b) ; vprag_context(Prag, i)),
-	 \+vprag_level(Prag, s) % unsafe if top(t) or subterm in conditional(sc)
-	 -> Safe = 0	% unsafe 
-	 %%		        ,(vprag_level(Prag,sc)->writeln(userout,newly_unsafe(Vid,Prag)) ; true)
-	 ;  true
-	),		 % determine if the variable must be permanent
-	(vprag_context(Prag, h)
-	 -> OKt = 1
-	 ;  member(CkId,LastChunk)
-	 -> OKt = 1
-	 ;  true
-	)
-	;  Occ == v	 % determine if the variable can be typed "vh"
-     ->	(vprag_context(Prag, h), vprag_level(Prag, t)
-	 -> vprag_type(Prag, vh)
-	 ;  member(CkId,LastChunk)
-	 -> OKt = 1
-	 ;  true
-	)
-     ;	true
-    ),
-    collect_type2(Rest,CkId,VarListTab,LastChunk).
+	find(VarListTab,Vid,t(_Common,FirstChnks,OKt,Safe,_OccInChunk)),
+	(FirstChnks = [CkId|_]
+	 ->	true
+	 ; FirstChnks = [_|CkId]
+	 ->	true
+	 ; true
+	),
+	(memberchk(CkId,LastChunk)
+	 ->	vprag_lastchunk(Prag,1)
+	 ;	vprag_lastchunk(Prag,0)
+	),
+	(vprag_level(Prag,s)
+	 ->	OKt = 1
+	 ; vprag_level(Prag,sc)
+	 ->	OKt = 1
+	 ;	true
+	),
+	vprag_occ(Prag,Occ),
+	(Occ == f	  % determine if the variable is safe when pval in the last goal
+	 ->	((vprag_context(Prag, b) ; vprag_context(Prag, i)),
+		 \+vprag_level(Prag, s) % unsafe if top(t) or subterm in conditional(sc)
+		 ->	Safe = 0	% unsafe 
+%%		        ,(vprag_level(Prag,sc)->writeln(userout,newly_unsafe(Vid,Prag)) ; true)
+		 ;	true
+		),		% determine if the variable must be permanent
+		(vprag_context(Prag, h)
+		 ->	OKt = 1
+		 ; member(CkId,LastChunk)
+		 ->	OKt = 1
+		 ;	true
+		)
+	 ; Occ == v	% determine if the variable can be typed "vh"
+	 ->	(vprag_context(Prag, h), vprag_level(Prag, t)
+		 ->	vprag_type(Prag, vh)
+		 ; member(CkId,LastChunk)
+		 ->	OKt = 1
+		 ;	true
+		)
+	 ;	true
+	),
+	collect_type2(Rest,CkId,VarListTab,LastChunk).
 
 /*======================================================================*/
 /* alloc_vars(#VarList, #VarTab, +PvarCountIn, -PvarCountOut)		*/
@@ -534,35 +534,25 @@ conf_nouse2(N, Use, NoUse) :-
 /*------------------------------------------------------*/
 /* The following information is filled by inprog/2.	*/
 /*------------------------------------------------------*/
-:- mode vprag_context(?,?).
+
 vprag_context(vrec(C,_,_,_,_,_), C).	% h - Head, i - Inline, b - Body
-
-:- mode vprag_level(?,?).
-vprag_level(vrec(_,C,_,_,_,_), C) :-
-    check_atom(C,'vprag_level/2',1).				% t - top level, s - second level
-
-:- mode vprag_argno(?,?).
-vprag_argno(vrec(_,_,C,_,_,_), C) :-
-    check_integer(C,'vprag_argno/2',1).
+vprag_level(vrec(_,C,_,_,_,_), C).	% t - top level, s - second level
+vprag_argno(vrec(_,_,C,_,_,_), C).
 
 /*--------------------------------------------------------------*/
 /* The following information is filled by mark_occurrences/1.	*/
 /*--------------------------------------------------------------*/
-:- mode vprag_occ(?,?).
+
 vprag_occ(vrec(_,_,_,C,_,_), C).
 	% f - first occ, s - subsequent occ, l - last occ, v - void
 
 /*--------------------------------------------------------------*/
 /* The following information is filled by mark_type/3.		*/
 /*--------------------------------------------------------------*/
-:- mode vprag_lastchunk(?,?).
+
 vprag_lastchunk(vrec(_,_,_,_,_,C), C).
-
-:- mode vprag_common(?,?).
-vprag_common(vrec(_,_,_,_,C,_), C). %% structure, some filled in by alloc_vars/2.
-
-:- mode vprag_type(?,?).
-vprag_type(vrec(_,_,_,_,v(C,_,_,_),_), C) :- check_atom(C,'vprag_type/1',1).
+vprag_common(vrec(_,_,_,_,C,_), C).  %% structure, some filled in by alloc_vars/2.
+vprag_type(vrec(_,_,_,_,v(C,_,_,_),_), C).
 	% t - Temp var, p - Permanent var, vh - void var at head, v - void not head
 
 /*------------------------------------------------------*/
@@ -571,7 +561,6 @@ vprag_type(vrec(_,_,_,_,v(C,_,_,_),_), C) :- check_atom(C,'vprag_type/1',1).
 
 % for temp var, the register number; (If nonvoid, extensible list of nums)
 % for perm var, numbered from 1
-:- mode vprag_loc(?,?).
 vprag_loc(vrec(_,_,_,_,v(T,Loc,_,_),_), C) :-
 	(T == t -> last_on_opentailed(Loc,C) ; C = Loc).
 
@@ -581,7 +570,6 @@ last_on_opentailed([C0|T],C) :-
 	 ;	last_on_opentailed(T,C)
 	).
 
-:- mode vprag_locnew(?,?).
 vprag_locnew(vrec(_,_,_,_,v(_,Loc,_,_),_), C) :-
 	new_on_opentailed(Loc,C).
 
@@ -592,13 +580,9 @@ new_on_opentailed([C0|T],C) :-
 	).
 
 	% for temp var, the "use" list; for perm var, "d", "u" or "p"
-
-:- mode vprag_use(?,?).
-vprag_use(vrec(_,_,_,_,v(_,_,C,_),_), C) :- check_ground(C,'vprag_use/2',1).
+vprag_use(vrec(_,_,_,_,v(_,_,C,_),_), C).
 	% for temp var, the "nouse" list; for perm var, not used.
-
-:- mode vprag_nouse(?,?).
-vprag_nouse(vrec(_,_,_,_,v(_,_,_,C),_), C) :- check_ground(C,'vprag_nouse/2',1).
+vprag_nouse(vrec(_,_,_,_,v(_,_,_,C),_), C).
 
 /*----------------------------------------------------------------------*/
 /* The non-first occurrence of a permanent variable in the last chunk	*/
@@ -607,7 +591,6 @@ vprag_nouse(vrec(_,_,_,_,v(_,_,_,C),_), C) :- check_ground(C,'vprag_nouse/2',1).
 /* is marked as "d" otherwise.						*/
 /*----------------------------------------------------------------------*/
 
-:- mode vprag_type1(?,?).
 vprag_type1(Prag, T) :-
 	vprag_type(Prag, T0),
 	(T0 = p, vprag_lastchunk(Prag,1), (vprag_occ(Prag,l) ; vprag_occ(Prag,s))
@@ -639,14 +622,13 @@ leaflist(Tree,List) returns a list of all [K|V] in the Tree.
 
 */
 
-:- mode addkey(?,?,?,?).
+
 addkey(Tree,X,V,Tree1) :-
 	ins2(Tree,X,V,Trees),
 	cmb0(Trees,Tree1).
 addkey([],X,V,[X|V]).
 
 
-:- mode find(?,?,?).
 find([X|V],Xs,V) :- X == Xs.
 find(n2(T1,M,T2),X,V) :-
 	M @=< X
@@ -680,7 +662,7 @@ leaflist(Node,List0,List) :-
 
 % updatevs(Tab0,X,Ov,Nv,Tab) updates Tab0 to Tab, by replacing
 % Ov of entry with key X by Nv.
-:- mode updatevs(?,?,?,?,?).
+
 updatevs([X|Ov],Xs,Ov,Nv,[X|Nv]) :- X == Xs.
 updatevs(n2(T1,M,T2),X,Ov,Nv,n2(NT1,M,NT2)) :-
 	M @=< X

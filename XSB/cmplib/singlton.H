@@ -33,4 +33,3 @@
 :- import atom_codes/2, functor/3, hilog_functor/3, atomic/1, integer/1,
 	  arg/3, '=..'/2
      from standard.
-:- import check_atom/3 from error_handler.

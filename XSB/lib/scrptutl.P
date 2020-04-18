@@ -29,7 +29,6 @@
 
 :- dynamic '_$_$_file_to_list'/1.
 %% Convert file into a list of lists of tokens
-:- mode file_to_list(+,?).
 file_to_list(File, List) :-
 	repeat,
 	(   file_read_line_list(File, Line)
@@ -64,7 +63,6 @@ space_char(CH_RETURN).
 space_char(CH_FORMFEED).
 space_char(CH_VERTAB).
 
-:- mode simple_tokenize(+,?).
 simple_tokenize([],[]):-!.
 simple_tokenize([Char|Rest],Toks):-
 	space_char(Char), !,
@@ -80,12 +78,10 @@ read_const([Char|Rest],Rest,[]):-
 read_const([H|Rest],Out,[H|T]):-
 	read_const(Rest,Out,T).
 
-:- mode ca(+,?).
 ca(In,Out):-
 	ca_1(In,Mid),
 	concat_atom(Mid,' ',Out).
 
-:- mode ca_null(+,?).
 ca_null(In,Out):-
 	ca_1(In,Mid),
 	concat_atom(Mid,'',Out).
@@ -101,14 +97,12 @@ ca_1(H,[H]):- atom(H).
 
 %% The stuff below is marked as obsolete!!
 
-:- mode date(?).
 date(date(Y,Mon,D,H,Min,S)):-
 	obsolete('date/1','datime/1'),
 	datime(datime(Y,Mon,D,H,Min,S)).
 
 % Crude but effective.  Returns stdout of a unix command as a list of
 % tokens. Obsolete!
-:- mode sysin(+,?).
 sysin(Command,List):-
 %	obsolete('sysin/1', 'shell/5'),
 	ca([Command,'> /tmp/XSBdir'],Com1),
@@ -124,7 +118,6 @@ sysin(Command,List):-
 
 
 %% Obsolete
-:- mode file_to_list(+,?,?).
 file_to_list(_Str,-1,[]):-
 	obsolete('file_to_list/3', 'file_to_list/2'),
 	!.
@@ -138,7 +131,6 @@ file_to_list(Str,_,List):-
 
 
 /* Stage 1: tokenize XSB specific */
-:- mode fget_line(+,?,?).
 fget_line(Str,Inlist,Next):-
 	obsolete('fget_line/3', 'file_read_line_atom/3 & file_read_line_list/3'),
 	seeing(OldFile),

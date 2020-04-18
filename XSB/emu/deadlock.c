@@ -90,7 +90,6 @@ static void reset_thread( th_context *th, th_context *ctxt, VariantSF sgf,
 	breg = subg_cp_ptr(sgf) ;
 	tbreg = breg ;
 	openreg = prev_compl_frame(subg_compl_stack_ptr(sgf)) ;
-	reset_level_num(openreg);
         switch_envs(tbreg);
   	ptcpreg = tcp_ptcp(tbreg);
   	delayreg = tcp_pdreg(tbreg);

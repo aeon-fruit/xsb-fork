@@ -748,41 +748,31 @@ i_trie_interned(Term,Root,Leaf):-
 
 /* So far, these are only implemented for private, general tries */
 
-%%:- import incr_table_update/0 from increval.  NO LONGER EXPORTED!!
-incr_table_update :-
-    abort('incr_table_update/0 NOT IMPLEMENTED!'). %% HACK
-incr_table_update.
-
+:- import incr_table_update/0 from increval.
 :- import invalidate_callnode_trie/1 from increval.
 
 :- export incr_trie_intern/2, incr_trie_intern_immed/2, incr_trie_intern_inval/2.
 :- export incr_trie_uninternall/2,  incr_trie_uninternall_immed/2, incr_trie_uninternall_inval/2.
 :- export incr_trie_unintern/2, incr_trie_unintern_inval/2, incr_trie_unintern_immed/2.
-:- mode incr_trie_intern_immed(+,?).
 incr_trie_intern_immed(Root,Term) :-
         trie_intern(Term,Root),
         invalidate_callnode_trie(Root), /* root -> callnodeptr */
 	incr_table_update.
 
-:- mode incr_trie_intern_inval(+,?).
 incr_trie_intern_inval(Root,Term) :-
 	incr_trie_intern(Root,Term).
 
-:- mode incr_trie_intern(+,?).
 incr_trie_intern(Root,Term) :-
         trie_intern(Term,Root),
         invalidate_callnode_trie(Root). /* root -> callnodeptr */
 
-:- mode incr_trie_uninternall_immed(+,?).
 incr_trie_uninternall_immed(Root,Term) :-
 	incr_trie_uninternall(Root,Term),
   	incr_table_update.
 
-:- mode incr_trie_uninternall_inval(+,?).
 incr_trie_uninternall_inval(Root,Term) :-
 	incr_trie_uninternall(Root,Term).
 
-:- mode incr_trie_uninternall(+,?).
 incr_trie_uninternall(Root,Term) :-
 	( trie_interned(Term,Root,Leaf,_S),
 	  private_trie_unintern(Root,Leaf,NO_CPS_CHECK),
@@ -790,7 +780,6 @@ incr_trie_uninternall(Root,Term) :-
          ; 
           invalidate_callnode_trie(Root)). /* root -> callnodeptr */
 
-:- mode incr_trie_unintern_immed(+,?).
 incr_trie_unintern_immed(Root,Term) :-
 	incr_trie_unintern(Root,Term),
   	incr_table_update.

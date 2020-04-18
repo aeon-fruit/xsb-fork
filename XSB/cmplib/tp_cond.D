@@ -2,58 +2,18 @@
 % DO NOT EDIT; ALL CHANGES WILL BE LOST!
 
 :- mode force_tp_cond_loaded.
-:- mode tcond(?,?,?,?,?,?,?,?,?).
-:- mode tcond_cof(+,?,?,?,?,?,?,?,?).
-:- mode tcond_componfun(+,+,?,?,?,?,?,?,?,?).
-:- mode tcond_componfun(+,?,?,?,?,?,?,?,?,?).
-:- mode tcond_compop(+,+,?,?,?,?,?,?,?,?).
-:- mode tcond_compop(+,?,?,?,?,?,?,?,?,?).
-:- mode tcond_relop(+,+,?,?,?,?,?,?,?,?,?).
-:- mode tcond_relop(+,?,?,?,?,?,?,?,?,?,?).
-:- mode tvar_hold(?,?,?).
-:- mode tvar_hold_arg(?,?,?).
+:- mode tcond_sot(?,?,?,?,?,?,?,?,?).
 :- mode tvar_hold_args(?,?,?).
+:- mode tcond_relop(++,?,?,?,?,?,?,?,?,?,?,?).
+:- mode tcond(?,?,?,?,?,?,?,?,?,?).
+:- mode tvar_hold_arg(?,?,?).
+:- mode tcond_compop(++,?,?,?,?,?,?,?,?,?).
+:- mode tvar_hold(?,?,?).
 
-:- mode_on_success force_tp_cond_loaded.
-:- mode_on_success tcond(A,B,C,D,D,E,E,F,G).
-:- mode_on_success tcond(A,B,C,ng,D,E,E,F,G).
-:- mode_on_success tcond(ng,A,B,C,g,D,D,E,F).
-:- mode_on_success tcond(ng,A,B,ng,C,D,ng,E,F).
-:- mode_on_success tcond_cof(g,A,B,C,ng,ng,D,D,E).
-:- mode_on_success tcond_cof(g,A,ng,B,ng,g,C,C,D).
-:- mode_on_success tcond_cof(g,g,g,g,g,g,A,A,B).
-:- mode_on_success tcond_cof(g,g,g,ng,A,g,B,B,C).
-:- mode_on_success tcond_cof(g,g,ng,A,g,g,B,B,C).
-:- mode_on_success tcond_cof(g,ng,A,B,C,g,D,D,E).
-:- mode_on_success tcond_componfun(g,g,A,B,C,ng,ng,D,D,E).
-:- mode_on_success tcond_componfun(g,g,A,ng,B,ng,g,C,C,D).
-:- mode_on_success tcond_componfun(g,g,g,g,g,g,g,A,A,B).
-:- mode_on_success tcond_componfun(g,g,g,g,ng,A,g,B,B,C).
-:- mode_on_success tcond_componfun(g,g,g,ng,A,g,g,B,B,C).
-:- mode_on_success tcond_componfun(g,g,ng,A,B,C,g,D,D,E).
-:- mode_on_success tcond_componfun(g,ng,A,B,C,ng,ng,D,D,E).
-:- mode_on_success tcond_componfun(g,ng,A,B,C,D,g,E,E,F).
-:- mode_on_success tcond_compop(g,g,A,B,C,ng,ng,g,g,D).
-:- mode_on_success tcond_compop(g,g,A,ng,B,ng,g,g,g,C).
-:- mode_on_success tcond_compop(g,g,g,g,g,g,g,g,g,A).
-:- mode_on_success tcond_compop(g,g,g,g,ng,A,g,g,g,B).
-:- mode_on_success tcond_compop(g,g,g,ng,A,g,g,g,g,B).
-:- mode_on_success tcond_compop(g,g,ng,A,B,C,g,g,g,D).
-:- mode_on_success tcond_compop(g,ng,A,B,C,ng,ng,g,g,D).
-:- mode_on_success tcond_compop(g,ng,A,B,C,D,g,g,g,E).
-:- mode_on_success tcond_relop(g,A,ng,B,C,D,g,E,E,F,G).
-:- mode_on_success tcond_relop(g,A,g,B,C,D,D,E,E,F,G).
-:- mode_on_success tcond_relop(g,g,A,g,B,ng,ng,C,C,D,E).
-:- mode_on_success tcond_relop(g,g,A,ng,B,ng,C,D,D,E,F).
-:- mode_on_success tcond_relop(g,g,g,g,ng,ng,A,B,B,C,D).
-:- mode_on_success tcond_relop(g,g,ng,g,A,ng,B,C,C,D,E).
-:- mode_on_success tcond_relop(g,g,ng,g,A,ng,B,C,ng,D,E).
-:- mode_on_success tcond_relop(g,g,ng,ng,A,ng,B,C,ng,D,E).
-:- mode_on_success tcond_relop(g,ng,A,g,B,ng,C,D,D,E,F).
-:- mode_on_success tcond_relop(g,ng,A,ng,B,ng,C,D,D,E,F).
-:- mode_on_success tcond_relop(g,ng,A,B,C,ng,D,E,ng,F,G).
-:- mode_on_success tcond_relop(g,ng,A,B,C,g,g,D,D,E,F).
-:- mode_on_success tcond_relop(g,ng,A,B,C,D,g,g,g,E,F).
-:- mode_on_success tvar_hold(A,B,B).
-:- mode_on_success tvar_hold_arg(A,B,B).
-:- mode_on_success tvar_hold_args(A,B,B).
+:- '_$mode_pattern'(tvar_hold(g,_1012080,_1012080)).
+:- '_$mode_pattern'(tvar_hold(ng,_1012080,_1012080)).
+:- '_$mode_pattern'(tcond(g,_1012080,_1012084,_1012088,_1012088,_1012096,_1012096,_1012104,_1012108,_1012112)).
+:- '_$mode_pattern'(tcond(g,_1012080,_1012084,ng,g,_1012096,_1012096,_1012104,_1012108,_1012112)).
+:- '_$mode_pattern'(tcond(ng,_1012080,_1012084,_1012088,_1012088,_1012096,_1012096,_1012104,_1012108,_1012112)).
+:- '_$mode_pattern'(tcond(ng,_1012080,_1012084,ng,g,_1012096,_1012096,_1012104,_1012108,_1012112)).
+:- '_$mode_pattern'(force_tp_cond_loaded).

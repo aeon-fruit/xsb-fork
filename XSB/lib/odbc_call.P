@@ -329,7 +329,7 @@ comparison(@<,<).
 comparison(@>,>).
 comparison('IS','IS').
 
-negated_comparison(=,<>).
+negated_comparison(=,'<>').
 negated_comparison(\=,=).
 negated_comparison(>,=<).
 negated_comparison(=<,>).
@@ -1601,7 +1601,6 @@ get_some_columns([Col|Columns],Cursor,[X|Row]) :-
 odbc_query(Head,Body,Options) :-
 	odbc_query(_,Head,Body,Options).
 
-:- mode odbc_link(+,+,?,?,?,+).
 odbc_query(Connection,Head,Body,Options) :-
 	odbc_connection_check(Connection,ConnHandle),
 	\+ atomic(Head),

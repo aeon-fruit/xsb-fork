@@ -5,7 +5,7 @@
 ** Copyright (C) The Research Foundation of SUNY, 1986, 1993-1998
 ** 
 ** XSB is free software; you can redistribute it and/or modify it under the
-** s of the GNU Library General Public License as published by the Free
+** terms of the GNU Library General Public License as published by the Free
 ** Software Foundation; either version 2 of the License, or (at your option)
 ** any later version.
 ** 
@@ -28,30 +28,27 @@
 :- export extract_aggr_spec/4.
 :- export get_return_w_tv/4.
 :- export call_join_op/6.
-:- export collect_orders_from_indexes/5.
+:- export collect_orders_from_indexes/4.
 
 :- import nthmember/3 from listutil.
 :- import have_hardcut/2 from preproc.
 :- import index_split/2 from tp_index.
 :- import member/2, append/3, length/2, copy_term/2 from basics.
 :- import functor/3, arg/3, '=..'/2, call/1 from standard.
-:- import sym_type/2, sym_name/3, sym_index/2, sym_insert/5, sym_propin/2, sym_prop/2,
-   extract_symlist/3 from symtab.
+:- import sym_type/2, sym_name/3, sym_index/2, sym_insert/5, sym_propin/2, sym_prop/2 from symtab.
 :- import warning/1 from auxlry.
 :- import syntax_error/1 from error_handler.
 :- import excess_vars/4 from setof.
-   :- import concat_atom/2,term_to_atom/3 from string.
-:- import trans_head/5, trans_goals/5, ensure_gensym_num_larger/1 from parse.
+:- import concat_atom/2 from string.
+:- import trans_head/5, trans_goals/5 from parse.
 :- import memberchk/2 from basics.
 :- import xwam_state/2 from machine.
 :- import parsort/4 from machine.
-:- import term_psc/2, psc_arity/2, term_new/2 from machine.
 :- import findall/3, sort/2 from setof.
 :- import concat_atom/3 from string.
 :- import ith/3, member/2 from basics.
 :- import (',')/2 from standard.
 :- import (';')/2 from standard.
 :- import ('->')/2 from standard.
-:- import abort/1 from standard.
 :- import undefined/0 from tables.
 :- import '_$$get_returns'/3 from tables.

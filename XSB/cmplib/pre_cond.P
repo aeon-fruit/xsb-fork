@@ -36,7 +36,7 @@
 /*	parts.	The test, true part, and false part will be returned.	*/
 /*	The complementary inline conditions are defined below.		*/
 /*======================================================================*/
-:- mode compl_cond(?,?,?,?,?).
+
 compl_cond(G1, G2, Test, TPart, FPart) :-
 	get_test(G1, Test, TPart), get_test(G2, Test2, FPart),
 	Test = inlinegoal(P,A,Args1), Test2 = inlinegoal(P2,A,Args2),
@@ -57,7 +57,7 @@ arg_same(structure(Sym, Args1), structure(Sym, Args2)) :-
 /* get_test(+Goal, -TestPart, -RestPart)				*/
 /*	Partitions the test part (first goal) and the rest of the goal.	*/
 /*======================================================================*/
-:- mode get_test(?,?,?).
+
 get_test(and(not(Test0),Rest), Test1, Rest) :-
 	inline_neg(Test0, Test1),
 	!.
@@ -72,23 +72,23 @@ get_test(Test, Test, inlinegoal(true,0,[])).
 /*	Succeeds iff Goal1 and Goal2 are complementary inline tests	*/
 /*	that do not change the state (without unification).		*/
 /*======================================================================*/
-:- mode inline_neg(?,?).
+
 inline_neg(inlinegoal(P,A,Args), inlinegoal(NP,A,Args)) :-
 	inline_neg0(P, A, NP).
 
-inline_neg0(=:=, 2, =\=).
-inline_neg0(=\=, 2, =:=).
-%%inline_neg0(>, 2, =<).  %% not equivalent for floating point inf's 
-%%inline_neg0(>=, 2, <).
-%%inline_neg0(=<, 2, >).
-%%inline_neg0(<, 2, >=).
+inline_neg0('=:=', 2, '=\=').
+inline_neg0('=\=', 2, '=:=').
+%%inline_neg0('>', 2, '=<').  %% not equivalent for floating point inf's 
+%%inline_neg0('>=', 2, '<').
+%%inline_neg0('=<', 2, '>').
+%%inline_neg0('<', 2, '>=').
 
-inline_neg0(==, 2, \==).
-inline_neg0(\==, 2, ==).
-inline_neg0(@>, 2, @=<).
-inline_neg0(@>=, 2, @<).
-inline_neg0(@=<, 2, @>).
-inline_neg0(@<, 2, @>=).
+inline_neg0('==', 2, '\==').
+inline_neg0('\==', 2, '==').
+inline_neg0('@>', 2, '@=<').
+inline_neg0('@>=', 2, '@<').
+inline_neg0('@=<', 2, '@>').
+inline_neg0('@<', 2, '@>=').
 
 inline_neg0(var, 1, nonvar).
 inline_neg0(nonvar, 1, var).

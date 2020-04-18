@@ -29,7 +29,7 @@
 /*	WARNING: Make sure that the size of OptCode is equal to the	*/
 /*		 size of Code.						*/
 /*======================================================================*/
-:- mode asm_opt(?,?,?,+,?).
+
 asm_opt(Code, Index, Sym, IsModule, OptCode) :-
 	asm_transform(Code, Index, Code1),
 	( option(optimize) -> 

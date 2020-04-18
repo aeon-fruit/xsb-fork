@@ -46,8 +46,6 @@
 :- dynamic
 	TRACEGOALSTACK/2,
 	CURRENTLYTRACING/1.
-:- mode_on_success(TRACEGOALSTACK(+,+)).
-:- mode_on_success(CURRENTLYTRACING(+)).
 
 :- set_inthandler('_$deb_spy'(_), MYSIG_SPY),
    set_inthandler('_$deb_trace'(_), MYSIG_TRACE).
@@ -108,17 +106,13 @@ notrace :-
 	nodebug,		% ??dsw added, (no load msgs)
 	clear_goalstack.
 %% dumps trace into a file
-:- mode trace(+).
 trace(File) :-
 	dump_trace_to_file(File),
 	trace.
 %% instead of generating a trace, generate a queriable log
-:- mode trace(+,?).
 trace(File,log) :-
 	set_debug_logging_queriable_trace(on),
 	trace(File).
-
-:- mode dump_trace_to_file(+).
 dump_trace_to_file(File) :-
 	debug_ctl(prompt,off),
 	debug_ctl(profile,on),
@@ -137,7 +131,6 @@ make_trace_interactive :-
 
 
 %% Trace control
-:- mode debug_ctl(+,+).
 debug_ctl(prompt, off)   :- !, leash([]).
 debug_ctl(prompt, on) :- !, leash(['Call','Exit','Redo','Fail']).
 debug_ctl(leash, L)      :- is_list(L), !, leash(L).
@@ -250,12 +243,9 @@ pop_cputime(_CallNum,_CallType,_).
 init_goalstack :-
 	retractall(TRACEGOALSTACK(_,_)),
 	assert(TRACEGOALSTACK(0,INITIALGOALSTACK)).
-
 clear_goalstack :-
 	retractall(TRACEGOALSTACK(_,_)).
-
 %% this is exported
-:- mode trace_goalstack(?,?).
 trace_goalstack(Depth,Stack) :- TRACEGOALSTACK(Depth,Stack).
 
 
@@ -335,7 +325,6 @@ debugging :-
 
 /* -- trace interrupt handler ------------------------------------------ */
 
-:- mode '_$deb_trace'(?).
 '_$deb_trace'(Call) :-
 	%%ll_write(trace(Call)),ll_nl,
         (   callable(Call)
@@ -396,7 +385,6 @@ must_load(PSC) :-
 
 /* -- spy interrupt handler ------------------------------------------ */
 
-:- mode '_$deb_spy'(?).
 '_$deb_spy'(Call) :-
 	%%ll_write(spy(Call)),ll_nl,
 	%% P-pred name, A- arity
@@ -618,9 +606,7 @@ leashable('Fail').
 :- dynamic(shown(_,_)).
 :- show(['Call','Exit','Redo','Fail']).
 
-:- mode show(+).
 show(X) :- retractall(shown(_,_)), show0(X).
-
 show0([]).
 show0([X|R]) :- 
 	leashable(X)
@@ -632,9 +618,7 @@ show0([X|R]) :-
 :- dynamic(leashed(_,_)).
 :- leash(['Call','Exit','Redo','Fail']).
 
-:- mode leash(?).
 leash(X) :- retractall(leashed(_,_)), leash0(X).
-
 leash0([]).
 leash0([X|R]) :- 
 	leashable(X)
@@ -653,8 +637,6 @@ restore_leash :-
 	retractall('_$_deb_old_leash'(_)).
 restore_leash.
 
-:- dynamic '_$_deb_old_show'/1.
-:- mode_on_success('_$_deb_old_show'(+)).
 %% Restore the old shown saved in '_$_deb_old_show'/1 by show_nothing
 restore_shown :- '_$_deb_old_show'(X), !,
 	    	 show(X),
@@ -784,7 +766,6 @@ spy0(M:P) :- atom(P),!,
 	    spy0(Preds)
 	  ; console_writeln(['Warning: cannot find predicate ',P,' for any arity in ',M]) ).
 spy0(M:P/A) :- !,
-	check_atom(M,(spy)/1,'1.1'),
 	functor(Call,P,A),
 	(( M \== usermod, M \== global, \+ predicate_property(M:Call,_))
 	 ->	import(from(P/A,M))
@@ -802,7 +783,6 @@ spy0(P/A) :- !,
 	 ;  console_writeln(['Warning: ',P/A,' not found in usermod']) ).
 % TLS: dont know about these next 3 -- leaving them alone.
 spy0((M:T:-B)) :- !,
-	check_atom(M,'spy/1','1.1'),
 	(( M \== usermod, M\== global, \+ predicate_property(M:T,_))
 	 ->	functor(T,P,A),
 		import(from(P/A,M))
@@ -891,11 +871,8 @@ basic_call(I,PSC,Call) :-
 		)
 	).
 
-:- mode debug_logging_queriable_trace(+).
 debug_logging_queriable_trace(on) :- conget(AtmDBGLOG,1).
 debug_logging_queriable_trace(off) :- conget(AtmDBGLOG,0).
-
-:- mode set_debug_logging_queriable_trace(+).
 set_debug_logging_queriable_trace(on)  :- conset(AtmDBGLOG,1).
 set_debug_logging_queriable_trace(off) :- conset(AtmDBGLOG,0).
 

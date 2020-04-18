@@ -37,4 +37,4 @@
 :- import sym_type/2 from symtab.
 :- import extract_aggr_spec/4 from cp_opt.
 :- import functor/3 from standard.
-:- import check_atom/3, check_integer/3 from error_handler.
+

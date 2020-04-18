@@ -4,6 +4,6 @@
 :- mode asm_inst(?,?,?,?).
 :- mode force_asm_inst_loaded.
 
-:- mode_on_success asm_inst(A,g,g,A).
-:- mode_on_success asm_inst(A,g,g,g).
-:- mode_on_success force_asm_inst_loaded.
+:- '_$mode_pattern'(force_asm_inst_loaded).
+:- '_$mode_pattern'(asm_inst(ng,g,g,g)).
+:- '_$mode_pattern'(asm_inst(_1106408,g,g,_1106408)).

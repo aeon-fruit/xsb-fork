@@ -158,89 +158,6 @@ static CPtr sched_answers(CTXTdeclc VariantSF producer_sf, CPtr *last_consumer)
   return first_sched_cons;
 }
 
-#define empty_sched_heap (num_in_sched_heap == 0)
-#define min_from_sched_heap (sched_heap[0])
-#define SCHED_HEAP_INIT_SIZE 50
-
-/* for debugging... */
-void dump_sched_heap(CTXTc Integer rt, Integer indent) {
-  Integer i;
-  if (num_in_sched_heap) {
-    for (i=1; i<=indent; i++) printf(" ");
-    printf("%p\n",sched_heap[rt]);
-    if (2*rt+1 < num_in_sched_heap) dump_sched_heap(CTXTc 2*rt+1,indent+3);
-    if (2*rt+2 < num_in_sched_heap) dump_sched_heap(CTXTc 2*rt+2,indent+3);
-  }
-}
-
-void add_to_sched_heap(CTXTc CPtr csf) {
-  Integer i, ipar;
-
-  //  printf("add %p\n",csf);
-  if (num_in_sched_heap >= sched_heap_size) {
-    if (sched_heap_size) {
-      sched_heap = (CPtr *)mem_realloc(sched_heap,sched_heap_size*sizeof(CPtr),
-				 sched_heap_size*sizeof(CPtr)*2,OTHER_SPACE);
-      sched_heap_size = sched_heap_size*2;
-    } else {
-      sched_heap_size = SCHED_HEAP_INIT_SIZE;
-      sched_heap = (CPtr *)mem_alloc(sched_heap_size*sizeof(CPtr),OTHER_SPACE);
-    }
-  }
-  i = num_in_sched_heap++;
-  while (i > 0) {
-    ipar = (i-1)/2;
-    if (csf < sched_heap[ipar]) {
-      sched_heap[i] = sched_heap[ipar];
-      i = ipar;
-    } else break;
-  }
-  sched_heap[i] = csf;
-  //  printf("sched_heap: %lld\n",num_in_sched_heap);
-  //  dump_sched_heap(CTXTc 0,0);
-}
-  
-void remove_min_from_sched_heap(CTXTdecl) {
-  Integer rt = 0, rt1, rt2;
-  CPtr rcsf = sched_heap[--num_in_sched_heap];
-  //  printf("rem: %p, leaf: %p\n",sched_heap[0],rcsf);
-  while (rt < num_in_sched_heap) {
-    rt1 = 2*rt+1;
-    rt2 = rt1+1;
-    if (rt2 < num_in_sched_heap) { // has 2 children
-      if (rcsf < sched_heap[rt1]) {
-	if (rcsf < sched_heap[rt2]) {
-	  sched_heap[rt] = rcsf;
-	  break;
-	} else {
-	  sched_heap[rt] = sched_heap[rt2];
-	  rt = rt2;
-	}
-      } else if (sched_heap[rt1] < sched_heap[rt2]) {
-	sched_heap[rt] = sched_heap[rt1];
-	rt = rt1;
-      } else {
-	  sched_heap[rt] = sched_heap[rt2];
-	  rt = rt2;
-      }
-    } else if (rt1 < num_in_sched_heap) { // has child1 but no child2
-      if (rcsf < sched_heap[rt1]) {
-	sched_heap[rt] = rcsf;
-	break;
-      } else {
-	sched_heap[rt] = sched_heap[rt1];
-	sched_heap[rt1] = rcsf;
-	break;
-      }
-    } else { // is leaf node
-      sched_heap[rt] = rcsf;
-      break;
-    }
-  }
-  //  printf("sched_heap: %lld\n",num_in_sched_heap);
-  //  dump_sched_heap(CTXTc 0,0);
-}
-
 /*-------------------------------------------------------------------------*/
 
 /* returns 0 if reached fixpoint, otherwise, returns the next breg 
@@ -275,11 +192,7 @@ static CPtr find_fixpoint(CTXTdeclc CPtr leader_csf, CPtr producer_cpf)
 
   while(complFrame <= leader_csf) {
 #else
-    while (!empty_sched_heap && min_from_sched_heap <= leader_csf) {
-      complFrame = min_from_sched_heap;
-      remove_min_from_sched_heap(CTXT);
-      compl_scheduled(complFrame) = FALSE;
-      if (complFrame < leader_csf && complFrame >= openreg) { 
+  while(complFrame < leader_csf) {
 #endif
 #ifdef PROFILE
     subinst_table[ITER_FIXPOINT][1]++;
@@ -314,7 +227,7 @@ static CPtr find_fixpoint(CTXTdeclc CPtr leader_csf, CPtr producer_cpf)
 #endif
 
     if ((tmp_sched = sched_answers(CTXTc currSubg, &last_cons))) {
-#endif // (else of) CONC_COMPL
+#endif
       if (prev_sched) { /* if there is a prev subgoal scheduled */
 	/* link new node to the previous one */
 	nlcp_prevbreg(prev_sched) = tmp_sched;
@@ -325,13 +238,8 @@ static CPtr find_fixpoint(CTXTdeclc CPtr leader_csf, CPtr producer_cpf)
       if( last_cons == NULL ) printf("lc NULL");
       prev_sched = last_cons;
     }
-#ifndef CONC_COMPL    
-    }
-  }  // while 
-#else
     complFrame = prev_compl_frame(complFrame);	
-  }  // while
-#endif
+  }  /* while */
 
   if (prev_sched)  /* if anything has been scheduled */
     /* the first generator should backtrack to leader */

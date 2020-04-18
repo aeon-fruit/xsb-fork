@@ -27,7 +27,7 @@
 :- export compile_clause/5.
 :- export force_tprog_loaded/0.
 
-:- import option/1, error/1 from auxlry.
+:- import option/1 from auxlry.
 :- import inprog/3 from inprog.
 :- import merge/3 from listutil.
 :- import flatten/2 from flatten.
@@ -38,4 +38,4 @@
 :- import tcond/9, tvar_hold/3 from tp_cond.
 :- import sym_name/3, sym_type/2 from symtab.
 :- import tgetpar/6, tgoalargs/7 from tp_goal.
-:- import check_ground/3, check_integer/3, check_atom/3 from error_handler.
+

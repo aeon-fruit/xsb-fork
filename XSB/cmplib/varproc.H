@@ -34,4 +34,4 @@
 :- import append/3, member/2, memberchk/2 from basics.
 :- import closetail/1, member2/2 from listutil.
 :- import sort/2 from setof.
-:- import check_atom/3, check_integer/3, check_ground/3 from error_handler.
+

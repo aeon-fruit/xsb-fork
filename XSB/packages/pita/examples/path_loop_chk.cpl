@@ -1,4 +1,4 @@
-:- import member/2 from basics.
+:- import member/2 from lists.
 
 path(X,Y):-path(X,Y,[X],Z).
 

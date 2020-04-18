@@ -25,8 +25,9 @@
 
 :- compiler_options([xpp_on,sysmod,optimize]).
 
-/* TES: because of a 64-bit number used below, compilation may give
-   the error: Overflow in radix notation, returning float */
+/* TLS: because of a 64-bit number used below, compilation may give the error:
+   Overflow in radix notation, returning float
+*/
 
 #include "standard.h"
 #include "flag_defs_xsb.h"
@@ -37,13 +38,9 @@
 #include "incr_xsb_defs.h"
 #include "token_defs_xsb.h"
 #include "basicdefs.h"
-#include "table_status_defs.h"
-#include "psc_defs.h"
-#include "io_defs_xsb.h"
 
 /* ===== current_atom/1 ====================================== */
 
-:- mode current_atom(?).
 %current_atom(Atom) :- true.
 current_atom(Module:Atom) :-
 	get_first_psc_pair(PSC_Pair),
@@ -83,7 +80,6 @@ current_atom(Module:Atom) :-
 %   A variable in place of Predicate_Indicator succeeds only for global
 %   modules.
 
-:- mode current_functor(?).
 current_functor(Module:Functor/N) :-
 	get_first_psc_pair(PSC_Pair),
 	module_scan(PSC_Pair, ModuleName, ModulePSC),
@@ -140,7 +136,6 @@ psc_scan_in_bucket(PSC_Pair, Next_PSC) :-
 %   A variable in place of Term_Indicator succeeds only for global
 %   modules. Note that the order of term generation is undetermined.
 
-:- mode current_functor(?,?).
 current_functor(Name, Term) :-		% This takes care of global modules.
 					% i.e. "usermod" and "global".
 	psc_scan_in_hash_table(0, PSC),
@@ -181,7 +176,6 @@ each byte.  Unlike simple * indices, the l.s. byte is not set to 0.
 
 */
 
-:- mode current_index(+,?).
 current_index(Term,Index):-
 	check_nonvar(Term,current_index/2,1),
 	current_index_1(Term,Index).
@@ -192,18 +186,12 @@ current_index_1(F/N,Index):-
 	functor(Term,F,N),!,
 	current_index_1(Term,Index).
 current_index_1(Term,Index):- 
-	'_$multifile'(Term),
-	'_$multifile_comp'(Comp,Term),
-	!,
-	current_index_1(Comp,Index).
-current_index_1(Term,Index):- 
 	'_$index'(Term,Ind,_Size),!,
 	decode_index(Ind,Index).
 current_index_1(Term,trie):- 
 	'_$trie_asserted'(Term),!.
 current_index_1(_Term,1).
 
-decode_index(0,0) :- !.
 decode_index([],[]):-!.
 decode_index([Ind|Rest],[Index|R]):- !,
 	decode_index_in_list(Ind,Index),
@@ -232,9 +220,8 @@ decode_star_index(Ind,IndIn,IndOut):-
 	decode_star_index(IndRest,IndMid,IndOut).
 
 /* ===== current_input/1 ======================================= */
-% TES: changed on 8/04 for new streams.
+% TLS: changed on 8/04 for new streams.
 
-:- mode current_input(?).
 current_input(Stream) :- 
 	(	var(Stream) ->
 		true
@@ -247,7 +234,6 @@ current_input(Stream) :-
 	S = Stream.
 
 % Obsolescent...
-:- mode current_input_port(?).
 current_input_port(FileDes) :- stat_flag(CURRENT_INPUT, FileDes).
 
 
@@ -255,9 +241,8 @@ current_input_port(FileDes) :- stat_flag(CURRENT_INPUT, FileDes).
 %   current_op(?Operator_Precedence, ?Operator_Specifier, ?Operator_Name)
 %   Succeeds iff Operator_Name is an operator with type defined by
 %   Operator_Specifier and precedence Operator_Precedence.
-%   TES: added errors acc. to Prolog standard. 8/04
+%   TLS: added errors acc. to Prolog standard. 8/04
 
-:- mode current_op(?,?,?).
 current_op(Prec, Type, Name) :- 
 	check_precedence(Prec),
 	check_operator_type(Type),
@@ -299,9 +284,8 @@ check_operator_name(Name):-
 
 
 /* ===== current_output/1 ===================================== */
-% TES: changed on 8/04 for new streams.
+% TLS: changed on 8/04 for new streams.
 
-:- mode current_output(?).
 current_output(Stream) :- 
 	(	var(Stream) ->
 		true
@@ -327,11 +311,10 @@ current_output_port(FileDes) :- stat_flag(CURRENT_OUTPUT, FileDes).
 %	(ii) Functor/Arity (for global modules)
 %   A variable in place of Predicate_Indicator succeeds only for global
 %   modules.
-%  TES: added ISO-style error handling 8/04.
-% TES: redid so that we have a unified semantics for different forms
+%  TLS: added ISO-style error handling 8/04.
+% TLS: redid so that we have a unified semantics for different forms
 % of predicate indicators.  09/04
 
-:- mode current_predicate(?).
 current_predicate(Specifier) :-		% This takes care of global modules.
 	check_current_predicate_argument(Specifier),
 	(	Specifier = Module:Functor/N ->
@@ -440,7 +423,6 @@ psc_scan_in_module(PSC_Pair, Next_PSC) :-
 %   A variable in place of Term_Indicator succeeds only for global
 %   modules. Note that the order of term generation is undetermined.
 
-:- mode current_predicate(?,?).
 current_predicate(Name, Term) :-	% This takes care of global modules.
 					% i.e. "usermod" and "global".
 	psc_scan_in_hash_table(0, PSC),
@@ -485,7 +467,6 @@ current_predicate(Name, Term_Indicator) :-
 %   module that is loaded in the system imports some predicates from 
 %   that module. A module can never lose the property of being "current".
 
-:- mode current_module(?).
 current_module(Module) :- 
 	get_first_psc_pair(PSC_Pair),
 	scan_modules(PSC_Pair, ModuleName),
@@ -511,19 +492,18 @@ scan_modules(PSC_Pair, NextModuleName) :-
 %   have no associated object file name or for the system to be unable 
 %   to find out the object file name of a current module.
 
-:- mode current_module(?,?).
 current_module(Module, ObjectFile) :- 
 	current_module(Module),
 	module_file(Module,ObjectFile).
 
 module_file('xsbrc', File) :-
 	!,
-	current_predicate('xsbrc':_),	% module ~/.xsb/xsbrc.P is indeed loaded
+	current_predicate('xsbrc':_),	% module .xsbrc is indeed loaded
 	!,
-	xsb_configuration(user_auxdir, UsrAuxDir),
+	xsb_configuration(user_home, HomeDir),
 	slash(Slash),
-	fmt_write_string(FileName, '%s%sxsbrc.%s',
-			 arg(UsrAuxDir, Slash, XSB_OBJ_EXTENSION_ATOM)),
+	fmt_write_string(FileName, '%s%s.xsb%sxsbrc.%s',
+			 arg(HomeDir, Slash, Slash,XSB_OBJ_EXTENSION_ATOM)),
 	FileName = File.
 module_file(Module, File) :-
 	psc_insertmod(Module,0,ModPsc),
@@ -551,97 +531,57 @@ module_file(Module, File) :-
 %   Hacked by Kostis (10/27/92) to make it fast when searching 
 %   in a global module with Predicate_Indicator ground.
 
-:- mode predicate_property(?,?).
 predicate_property(Term_Indicator, Property) :-
-%   writeln(predicate_propertyc1(Term_Indicator, Property)),
 	nonvar(Term_Indicator),
 	Term_Indicator = :(Module, Term),
 	nonvar(Term),		% send ':'(_,_) predicate to next clause
 	!,
-        functor(Term,F,A),functor(Skel,F,A),
-        term_new_mod(Module,Skel,NewTerm),
-%        writeln(term_new_mod(Module,Term,NewTerm)),
-	pred_prop_compat(Property,Search_prop),
-%	writeln(pred_prop_compat(_,Property,Search_prop)),
 	get_first_psc_pair(PSC_Pair),
 	module_scan(PSC_Pair, ModuleName, ModulePSC),
 	ModuleName = Module,
 	psc_prop(ModulePSC, First_PSC_Pair),	% get the first psc_pair 
 						% of this module
 	( First_PSC_Pair =:= 1 ->	% We are dealing with a global module!
-		predicate_property(Skel, Search_prop)
+		predicate_property(Term, Property)
         ; psc_scan_in_module(First_PSC_Pair, PSC),
 	  psc_name(PSC, Name),
 	  psc_arity(PSC, Arity),
-	  functor(NewTerm, Name, Arity),
-	  predicate_property_1(PSC,NewTerm, Search_prop)
+	  functor(Term, Name, Arity),
+	  psc_properties(PSC, Property)
 	).
-% TES -- I have no idea why T_FILE is used in the clause below: it
-% seems to happen on 0-ary preds(?)
 predicate_property(Term, Property) :-	% This takes care of global 
 					% modules,"usermod" and "global".
-%   writeln(predicate_propertyc2(Term, Property)),
 	term_type(Term, Type),
-	pred_prop_compat(Property,Search_prop),
-	( Type =:= T_DYNA ->	% Hacked to make it fast when Term is given.
+	( Type =:= 1 ->	% Hacked to make it fast when Term is given.
 			% If Term is given and it is represented as a structure 
 			% (has a PSC record) then using term_psc/2 we get to 
 			% this PSC record directly without having to scan the 
 			% whole PSC-Pair list.
-%	 writeln(dyna),
-		term_psc(Term, PSC),term_new(PSC,Skel),
-		predicate_property_1(PSC,Skel, Search_prop)
-	 ; Type =:= 5 ->  
-%	        warning(('predicate_property/2 called on term of type T_FILE: ',Term)),
+		term_psc(Term, PSC),
+		psc_properties(PSC, Property)
+	; Type =:= 5 ->
 		conpsc(Term, PSC),
-		predicate_property_1(PSC,Term, Search_prop)
+		psc_properties(PSC, Property)
 	; psc_scan_in_hash_table(0, PSC),
 	  psc_name(PSC, Name),
 	  psc_arity(PSC, Arity), 
 	  functor(Term, Name, Arity),
-	  predicate_property_1(PSC,Term, Search_prop)
+	  psc_properties(PSC, Property)
 	).
-   :- import term_new/2 from machine.
-/* This is to ensure backward compatability with goals like
-   predicate_property(X,tabled) */
-pred_prop_compat(Propin,Prop):-
-    nonvar(Propin),
-    !,
-    (Propin = tabled -> Prop = (table_reuse = _)
-     ; Propin = incremental -> Prop = (updating = incremental)
-     ; Propin = opaque -> Prop = (updating = opaque)
-     ; Propin = Prop).
-pred_prop_compat(Propin,Propin).
-
-predicate_property_1(PSC,_Term, Property):- 
-%   writeln(predicate_property_1_1(PSC,_Term, Property)),
-    psc_properties(PSC, Property).
-predicate_property_1(_PSC,Term, multifile):- 
-%   writeln(predicate_property_1_2(PSC,_Term, Property)),
-    standard:'_$multifile'(Term).
-predicate_property_1(_PSC,Term, Property) :-
-%   writeln(predicate_property_1_3(PSC,Term, Property)),
-%   functor(Term,F,A),functor(Skel,F,A),
-   get_tabling_options(Term,List),
-   member(Property,List).
-
-   :- import writeln/1 from standard.
-%-----------------
 
 psc_properties(PSC, Property) :- 
 	psc_type(PSC, Type),
-%	( Type =:= T_ORDI -> Property = unclassified  
-        ( Type =:= T_ORDI -> psc_env(PSC,Env),Env = T_IMPORTED,Property = unloaded
+	( Type =:= T_ORDI -> Property = unclassified
 	; Type =:= T_DYNA -> Property = (dynamic)
-	; Type =:= T_PRED -> Property = static
+	; Type =:= T_PRED -> Property = loaded
 	; Type =:= T_UDEF -> Property = unloaded
-	; Type =:= T_FORN -> Property = foreign).
-%	; Type =:= 14 -> Property = function ).
-%psc_properties(PSC, static) :-
-%	\+ (psc_type(PSC, Type), Type =:= T_DYNA).
+	; Type =:= T_FORN -> Property = foreign
+	; Type =:= 14 -> Property = function ).
+psc_properties(PSC, static) :-
+	\+ (psc_type(PSC, Type), Type =:= T_DYNA).
 psc_properties(PSC, Property) :-
 	psc_env(PSC, Env),
- 	( Env =:= T_EXPORTED -> psc_type(PSC,Type),Type \== T_ORDI,Property = exported	
+	( Env =:= T_EXPORTED -> Property = exported
 	; Env =:= T_LOCAL -> Property = (local)
 	; Env =:= T_IMPORTED -> psc_mod(PSC, ModulePSC), 
 		       psc_name(ModulePSC, ModuleName), 
@@ -650,25 +590,24 @@ psc_properties(PSC, Property) :-
 psc_properties(PSC, Property) :- 
 	psc_spy(PSC, Spy),
 	( Spy =\= 0 -> Property = spied ).
-
-%psc_properties(PSC, Property) :- 
-%	psc_tabled(PSC, Tabled),
-%	(psc_type(PSC, Type),Type =:= T_DYNA -> 
-%	    psc_get_incr(PSC,Incr),Incr == NONINCREMENTAL
-%	  ; true),  
-%	( (Tabled /\ 12 > 0),Property = tabled 
-%        ; 
-%	 ( Tabled == T_VARIANT -> Property = variant
-%         ; Tabled == T_SUBSUMPTIVE -> Property = subsumptive ) ).
-%%         ; Tabled == T_TABLED_UNDETERMINED -> Property = tabled(default)).
-%psc_properties(PSC, Property) :- 
-%	psc_get_incr(PSC, Incr),
-%	( Incr == INCREMENTAL -> 
-%	    Property = incremental 
-%	  ; Incr == OPAQUE -> Property = opaque).
-%psc_properties(PSC, Property) :- 
-%	psc_shared(PSC, Shared),
-%	( Shared =\= 0 -> Property = shared ).
+psc_properties(PSC, Property) :- 
+	psc_tabled(PSC, Tabled),
+	(psc_type(PSC, Type),Type =:= T_DYNA -> 
+	    psc_get_incr(PSC,Incr),Incr == NONINCREMENTAL
+	  ; true),  
+	( (Tabled /\ 12 > 0),Property = tabled 
+        ; 
+	 ( Tabled == T_VARIANT -> Property = variant
+         ; Tabled == T_SUBSUMPTIVE -> Property = subsumptive ) ).
+%         ; Tabled == T_TABLED_UNDETERMINED -> Property = tabled(default)).
+psc_properties(PSC, Property) :- 
+	psc_get_incr(PSC, Incr),
+	( Incr == INCREMENTAL -> 
+	    Property = incremental 
+	  ; Incr == OPAQUE -> Property = opaque).
+psc_properties(PSC, Property) :- 
+	psc_shared(PSC, Shared),
+	( Shared =\= 0 -> Property = shared ).
 psc_properties(PSC, Property) :-
 	psc_name(PSC, Functor),		% Finding the Functor and the Arity
 	psc_arity(PSC, Arity),		% twice is silly, isn''t it?
@@ -681,8 +620,10 @@ psc_properties(PSC, Property) :-
 		( %	Property = xsb_standard_predicate ; 
 			Property = built_in
 		)
-	 ).
+	).
 	% Unfortunately this doesn''t take the Module into account.
+
+%:- import writeln/1 from standard.
 
 /* PM: this code was used in the old implementation of the
        meta_predicate/1 predicate property:
@@ -705,74 +646,11 @@ psc_meta_predicate_property_args([Meta| Metas], N, Arity, [Arg| Args]) :-
 	).
 */
 
-	 %%%
-%------------------------------------
-:- export set_predicate_property/2.
-:- import is_tabled/1,set_psc_table_property/2,check_table_option/4,set_tif_property/3 from tables.
-
-:- mode set_predicate_property(+,+).
-set_predicate_property(TermSpec,Property):-
-    (TermSpec = :(Module, T1) -> term_new_mod(Module, T1, Term) ; TermSpec = Term),
-    is_tabled(Term),
-    (Property = (P=V) -> Prop = P,Value = V ; Prop = Property),
-    set_predicate_property_1(Term,Prop,Value).
-
-translate_tabling_options([H],H1):-
-    !,
-    translate_tabling_option(H,H1).
-translate_tabling_options([H|T],(H1,T1)):-
-    translate_tabling_option(H,H1),
-    translate_tabling_options(T,T1).
-
-translate_tabling_option((table_reuse=M),M):- !.
-translate_tabling_option((updating=M),M):- !.
-translate_tabling_option((subgoal_abstract=M),subgoal_abstract(M)):- !.
-translate_tabling_option((answer_abstract=M),answer_abstract(M)):- !.
-translate_tabling_option((ground_term=M),M):- !.
-translate_tabling_option((thread_sharing=M),M):- !.
-translate_tabling_option((answer_subsumption=_),ans_subsumption):- !.
-
-
-
-
-:- index(set_predicate_property_1/3,2).
-set_predicate_property_1(Term,subgoal_abstract,N):-
-    get_tabling_options(Term,OptionsL),translate_tabling_options(OptionsL,Options),
-    check_table_option(subgoal_abstract(N),Options,Term,yes),
-    check_integer(N,'set_predicate_property/3',1),
-    set_tif_property(Term,subgoal_size,N).
-set_predicate_property_1(Term,answer_abstract,N):-  
-    %    get_tabling_options(Term,Options),  not needed, works with everythingn
-    %    check_table_option(answer_abstract(_),Options,Term,yes), % should work with anything.
-    check_integer(N,'set_predicate_property/3',1),
-    set_tif_property(Term,answer_size,N).
-set_predicate_property_1(Term,subsumptive,_):-
-    get_tabling_options(Term,OptionsL),translate_tabling_options(OptionsL,Options),
-    check_table_option(subsumptive,Options,Term,yes),
-    set_psc_table_property(Term,subsumptive).
-set_predicate_property_1(Term,variant,_):-
-    get_tabling_options(Term,OptionsL),translate_tabling_options(OptionsL,Options),
-    check_table_option(variant,Options,Term,yes),
-    set_psc_table_property(Term,variant).
-set_predicate_property_1(Term,incremental,_):-
-    get_tabling_options(Term,OptionsL),translate_tabling_options(OptionsL,Options),
-    check_table_option(incremental,Options,Term,yes),
-    set_psc_table_property(Term,incremental).
-set_predicate_property_1(Term,nonincremental,_):-
-    get_tabling_options(Term,OptionsL),translate_tabling_options(OptionsL,Options),
-    check_table_option(nonincremental,Options,Term,yes),
-    set_psc_table_property(Term,nonincremental).
-set_predicate_property_1(Term,opaque,_):-
-    get_tabling_options(Term,OptionsL),translate_tabling_options(OptionsL,Options),
-    check_table_option(opaque,Options,Term,yes),
-    set_psc_table_property(Term,opaque).
-
 /* ===== module_property/2 ============================================ */
 
 %   module_property(?Module, ?Property)
 %   Succeeds iff module Module has the property Property.
 
-:- mode module_property(?,?).
 module_property(Module, Property) :-
 	get_first_psc_pair(PSC_Pair),
 	module_scan(PSC_Pair, ModuleName, ModulePSC),
@@ -784,111 +662,15 @@ module_properties(PSC, Property) :-
 	( Type =:=  T_ORDI -> Property = unloaded
 	; Type =:=  T_MODU -> Property = loaded ).
 
-/* ===== subgoal_property/2 ================================== */
-:- mode subgoal_property(?,?).
-subgoal_property(Subgoal,Property):-
-%   writeln(xbsubgoal_property(Subgoal,Property)),
-   (var(Subgoal) -> 
-	predicate_property(S,tabled),
-%	writeln(predicate_property(S,tabled)),
-	functor(S,F,A),current_predicate(M:F/A),Subgoal = M:S
-      ;    (Subgoal = M:Goal -> term_new_mod(M,Goal,S) ; Subgoal = S)),
-   Property = [Attribute,Value],
-%   writeln(catch(get_calls(S,SF,_),_E,fail)),
-   catch(get_calls(S,SF,_),_E,fail),
-%   writeln('  subgoal_property_1'(S,SF,Property)),
-   subgoal_property_1(S,SF,Attribute,Value).
-
-:- mode variant_subgoal_property(?,?).
-variant_subgoal_property(Subgoal,Property):- 
-   get_call(Subgoal,SF,_),
-   Property = [Attribute,Value],
-   subgoal_property_1(Subgoal,SF,Attribute,Value).
-
-%:- import incremental/1,invalid/1,calls_to/1,answers/1 from usermod.
-:- index(subgoal_property_1(_,_,_),[3]).
-subgoal_property_1(Subgoal,_SF,incremental,Value):-
- %   writeln(incremental_subgoal(Subgoal,N)),
-    incremental_subgoal(Subgoal,N),
-    (N == 0 -> Value = valid ; Value = invalid).
-subgoal_property_1(Subgoal,_SF,evaluation_state,Value):-
-	table_status(Subgoal, _PredType, CallType, AnsSetStatus,_Sf),
-	subgoal_property_2(CallType,AnsSetStatus,Value).
-subgoal_property_1(_Subgoal,SF,calls_to,Number):-
-    get_callsto_number(SF,Number).
-subgoal_property_1(_Subgoal,SF,answers,Number):-
-    get_answer_number(SF,Number).
-
-subgoal_property_2(PRODUCER_CALL,_AnsSetStatus,producer).
-subgoal_property_2(SUBSUMED_CALL,_AnsSetStatus,subsumed).
-%subgoal_property_2(INCR_NEEDS_REEVAL,_AnsSetStatus,incremental_needs_reeval).
-subgoal_property_2(_CallType,INCOMPLETE_ANSWER_SET,incomplete).
-subgoal_property_2(_CallType,COMPLETED_ANSWER_SET,completed).
-
-/* ===== current_prolog_flag/2 ================================== */
-       
-user_dyn_clause_count:-
-    setof(Mod,(current_module(Mod),\+ system_module(Mod)),ModList),
-    member(Module,ModList),
-    setof(F1/A1-P,(predicates_for_module(Module,P),predicate_property(P,dynamic),functor(P,F1,A1)),PredList),
-    write(Module),writeln(':'),
-    member(F/A-Pred,PredList),
-    count(Module,Pred,Count),
-    str_length(F,Flen),
-    Tabbing is max(10,(40 - Flen)),
-    number_codes(Count,NList),
-    atom_codes(ACount,NList),
-    str_length(ACount,ALen),
-    NumTab is 10 - ALen,
-    tab(4),write(F),write('/'),write(A),tab(Tabbing),tab(NumTab),writeln(Count),
-    fail.
-user_dyn_clause_count.
-
-system_module(Module):- 
-    xsb_configuration(srcdir,XSBroot),
-    current_module(Module,File),
-    str_sub(XSBroot,File).
-
-predicates_for_module(Module,Pred):- 
-    current_predicate(Module:F/A),
-    functor(Pred,F,A),
-    (Module = usermod -> \+ system_pred(Pred) ; true).
-
-system_pred(cmp(_,_,_)).
-system_pred(del(_,_,_)).
-system_pred(default_user_error_handler(_)).
-system_pred(interpreter_index_hook(_)).
-system_pred(max_answers_for_subgoal_user_handler).
-system_pred(max_incomplete_subgoals_user_handler).
-system_pred(max_memory_user_handler).
-system_pred(max_scc_subgoals_user_handler).
-system_pred(max_table_answer_size_user_handler).
-system_pred(max_table_subgoal_size_user_handler).
-system_pred(invalidate_table_for(_,_)).
-system_pred(library_directory(_)).
-system_pred(na(_,_,_)).
-system_pred(ns_smpl(_,_,_)).
-system_pred(nf_smpl(_,_,_)).
-system_pred(nc(_,_,_,_)).
-system_pred(nda(_,_,_,_)).
-system_pred(puc_smpl(_,_,_,_,_)).
-system_pred(pus_smpl(_,_,_,_)).
-system_pred(tc(_,_,_,_)).
-system_pred('_$thread_exit_ball'(_,_)).
-
-count(Module,Pred,Count):-
-    findall(1,clause(Module:Pred,_),List),
-    length(List,Count).
 
 /* ===== current_prolog_flag/2 ================================== */
 :- import tripwire/1 from usermod.
 
-:- mode current_prolog_flag(+,?).
 current_prolog_flag(Flag, Value) :- 
 	(	var(Flag) ->
 		true
 	;	\+ atom(Flag),\+ (Flag = tripwire(_)) ->
-		type_error(atom_or_variable,Flag,current_prolog_flag/2,1)
+		type_error(atom,Flag,current_prolog_flag/2,1)
 	;	\+ iso_flag(Flag),\+ (Flag = tripwire(_)),\+ xsb_flag(Flag),\+ prolog_commons_flag(Flag) ->
 		domain_error(prolog_flag,Flag,current_prolog_flag/2,1)
 	;	true
@@ -920,7 +702,6 @@ settable_flag_value(double_quotes,codes).
 :- asserta(settable_prolog_flag(unknown,error)).
 :- asserta(settable_prolog_flag(double_quotes,codes)).
 
-:- mode set_prolog_flag(+,+).
 set_prolog_flag(Flag,Value) :-
 	(	var(Flag) ->
 		instantiation_error(set_prolog_flag/2,1,bound)
@@ -959,7 +740,7 @@ iso_flag(char_conversion).
 %% fix for 64-bit compilation?
 iso_flag(bounded,true).
 
-% TES: dont understand why we dont just say 7fffffff.
+% TLS: dont understand why we dont just say 7fffffff.
 %iso_flag(old_max_integer,Maxint) :- Maxint is 14 * 16'08000000 + 16'0fffffff.
 % Also, in 64-bits, we dont seem to get full wordsize.  We have 7 followed by 13 fs rather than by 15?
 iso_flag(max_integer,Maxint):- 
@@ -978,11 +759,11 @@ iso_flag(unknown, State) :- settable_prolog_flag(unknown, State).
 iso_flag(double_quotes, Meaning) :- settable_prolog_flag(double_quotes, Meaning).
 iso_flag(char_conversion, off).
 
-% TES: need to understand ISO char conversion
+% TLS: need to understand ISO char conversion
 %iso_flag(char_conversion,{on,off})
-% TES: we only do codes...
+% TLS: we only do codes...
 %iso_flag(double_quotes,{chars,codes,atom}).
-% TES: shd. add
+% TLS: shd. add
 %iso_flag(unknown,{error,warning,fail})
 
 /* ===== prolog_commons_flag/2 ========================================== */
@@ -1028,7 +809,6 @@ tripwire_action(max_scc_subgoals,max_scc_subgoals_action).
 tripwire_action(max_memory,max_memory_action).
 tripwire_action(max_answers_for_subgoal,max_answers_for_subgoal_action). 
 
-:- mode xsb_flag(?,?).
 xsb_flag(write_attributes,Value):- 
 	stat_flag(WRITE_ATTRIBUTES, V), 
 	( V =:= WA_IGNORE -> Value = ignore
@@ -1098,8 +878,7 @@ xsb_flag(gc_verbose_level,Level) :-
 	->  stat_set_flag(VERBOSE_GC,1),
 	    stat_set_flag(COUNT_CHAINS,1),
 	    stat_set_flag(EXAMINE_DATA,1)
-	 ;  warning('xsb_flag(gc_verbose_level,X) -> X out of bounds.'),
-	    check_atomic(Level,'xsb_flag/2',1) % ensure bound on return
+	;   warning('xsb_flag(gc_verbose_level,X) -> X out of bounds.')
 	).
 xsb_flag(verbose_gc, VerboseGC) :-
 	(   var(VerboseGC)
@@ -1108,8 +887,7 @@ xsb_flag(verbose_gc, VerboseGC) :-
 	->  stat_set_flag(VERBOSE_GC, 1)
 	;   VerboseGC = no
 	->  stat_set_flag(VERBOSE_GC, 0)
-	;   warning('xsb_flag(verbose_gc,X) -> X should be no, yes or unbound.'),
-	    check_atomic(VerboseGC,'xsb_flag/2',2)
+	;   warning('xsb_flag(verbose_gc,X) -> X should be no, yes or unbound.')
 	).
 xsb_flag(count_chains, CountYN) :-
 	(   var(CountYN)
@@ -1118,8 +896,7 @@ xsb_flag(count_chains, CountYN) :-
 	->  stat_set_flag(COUNT_CHAINS, 1)
 	;   CountYN = no
 	->  stat_set_flag(COUNT_CHAINS, 0)
-	;   warning('xsb_flag(count_chains,X) -> X should be no, yes or unbound.'),
-	    check_atomic(CountYN,'xsb_flag/2',2)
+	;   warning('xsb_flag(count_chains,X) -> X should be no, yes or unbound.')
 	).
 xsb_flag(examine_data, ExamineYN) :-
 	(var(ExamineYN)
@@ -1128,8 +905,7 @@ xsb_flag(examine_data, ExamineYN) :-
 	->  stat_set_flag(EXAMINE_DATA, 1)
 	;   ExamineYN = no
 	->  stat_set_flag(EXAMINE_DATA,0)
-	;   warning('xsb_flag(examine_data,X) -> X should be no, yes or unbound.'),
-	    check_atomic(ExamineYN,'xsb_flag/2',2)
+	;   warning('xsb_flag(examine_data,X) -> X should be no, yes or unbound.')
 	).
 xsb_flag(table_gc_action, Action) :-
 	stat_flag(TABLE_GC_ACTION, ActionFlag),
@@ -1176,8 +952,8 @@ xsb_flag(max_table_subgoal_size_action, Action) :-
 	stat_flag(MAX_TABLE_SUBGOAL_ACTION, A),
 	(A == XSB_ERROR -> Action = error 
          ; A == XSB_ABSTRACT -> Action = abstract 
-         ; A == XSB_SUSPEND -> Action = suspend
-         ; A == XSB_CUSTOM -> Action = custom).
+         ; A == XSB_SUSPEND -> Action = suspend).
+%         ; A == XSB_FAILURE, Action = failure ).
 xsb_flag(max_table_answer_size,Max):- 
 	stat_flag(MAX_TABLE_ANSWER_METRIC,M),
 	iso_flag(max_integer,Maxint),
@@ -1185,9 +961,10 @@ xsb_flag(max_table_answer_size,Max):-
 xsb_flag(max_table_answer_size_action, Action) :-
 	stat_flag(MAX_TABLE_ANSWER_ACTION, A),
 	(A == XSB_ERROR -> Action = error 
-         ; A == XSB_BRAT -> Action = abstract 
-         ; A == XSB_SUSPEND -> Action = suspend
-	 ; A == XSB_CUSTOM -> Action = custom).
+         ; (A == XSB_BRAT -> Action = abstract 
+         ; (A == XSB_SUSPEND -> Action = suspend) ) ).
+%	   ; (A == XSB_FAILURE -> Action = failure 
+%              ; A == XSB_WARNING, Action = warning) ).
 %xsb_flag(max_table_answer_list_depth,Depth):- 
 %	stat_flag(MAX_TABLE_ANSWER_LIST_DEPTH,Depth).
 %xsb_flag(max_table_answer_list_action, Action) :-
@@ -1202,9 +979,8 @@ xsb_flag(max_incomplete_subgoals, Max) :-
 xsb_flag(max_incomplete_subgoals_action, Action) :-
 	stat_flag(MAX_INCOMPLETE_SUBGOALS_ACTION,A),
 	(A == XSB_ERROR -> Action = error 
-	 ; A == XSB_SUSPEND -> Action = suspend 
-	 ; A == XSB_CUSTOM -> Action = custom
-         ; A == XSB_WARNING, Action = warning).
+	; (A == XSB_SUSPEND -> Action = suspend 
+            ; A == XSB_WARNING, Action = warning)).
 xsb_flag(max_scc_subgoals, Max) :-
 	stat_flag(MAX_SCC_SUBGOALS,M),
 	iso_flag(max_integer,Maxint),
@@ -1212,9 +988,8 @@ xsb_flag(max_scc_subgoals, Max) :-
 xsb_flag(max_scc_subgoals_action, Action) :-
 	stat_flag(MAX_SCC_SUBGOALS_ACTION,A),
 	(A == XSB_ERROR -> Action = error 
-	 ; A == XSB_SUSPEND -> Action = suspend 
-	 ; A == XSB_CUSTOM -> Action = custom					    
-         ; A == XSB_WARNING, Action = warning ).
+	; (A == XSB_SUSPEND -> Action = suspend 
+            ; A == XSB_WARNING, Action = warning)).
 xsb_flag(max_answers_for_subgoal, Max) :-
 	stat_flag(MAX_ANSWERS_FOR_SUBGOAL,M),
 	iso_flag(max_integer,Maxint),
@@ -1222,9 +997,8 @@ xsb_flag(max_answers_for_subgoal, Max) :-
 xsb_flag(max_answers_for_subgoal_action, Action) :-
 	stat_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION,A),
 	(A == XSB_ABSTRACT -> Action = complete_soundly
-	; A == XSB_ERROR -> Action = error 
-	; A == XSB_SUSPEND -> Action = suspend
-	; A == XSB_CUSTOM -> Action = custom ).
+	; (A == XSB_ERROR -> Action = error 
+		; (A == XSB_SUSPEND -> Action = suspend) ) ).
 xsb_flag(unify_with_occurs_check, Mode) :-
 	stat_flag(UNIFY_WITH_OCCURS_CHECK_FLAG, Flag),
 	( Flag =:= 0 -> Mode = off ; Mode = on ).
@@ -1274,19 +1048,8 @@ xsb_flag(alt_semantics,Mode):-
 xsb_flag(errors_with_position,Mode):- 
 	stat_flag(ERRORS_WITH_POSITION, Flag),
 	( Flag =:= 0 -> Mode = off ; Mode = on ).
-xsb_flag(float_display_format,Num):- 
-    file_function(GET_FLOAT_DISPLAY_FORMAT,P,_),
-    atom_codes(P,[_,_,_|R]),
-    remove_last(R,NumL),
-    atom_codes(Num,NumL).
-
-
-remove_last([_],[]):- !.
-remove_last([H|T],[H|T1]):- 
-    remove_last(T,T1).
 
 %:- import writeln/1 from standard.
-:- mode set_xsb_flag(+,+).
 set_xsb_flag(Type,Val):- 
 %	writeln(set_xsb_flag(Type,Val)),
 	check_ground(Type,set_xsb_flag/2,1),
@@ -1318,7 +1081,7 @@ set_xsb_flag_1(tracing, Trace) :-  !,
 	stat_set_flag(TRACE, Value).
 set_xsb_flag_1(verboseness,Level) :-  !, 
 	stat_set_flag(VERBOSENESS_LEVEL,Level).
-% TES: dont think setting makes sense here.
+% TLS: dont think setting makes sense here.
 %% Goal passed on cmd line
 %set_xsb_flag_1(goal, Goal) :-
 %	stat_flag(CMD_LINE_GOAL, GoalUninterned),
@@ -1445,61 +1208,74 @@ set_xsb_flag_1(max_table_subgoal_size, Size) :-!,
 	  stat_set_flag(MAX_TABLE_SUBGOAL_SIZE, MaxInt)
 	; stat_set_flag(MAX_TABLE_SUBGOAL_SIZE, Size)).
 set_xsb_flag_1(max_table_subgoal_size_action, Action) :-!,
-	(Action == error -> stat_set_flag(MAX_TABLE_SUBGOAL_ACTION, XSB_ERROR)
-         ; Action == suspend ->  stat_set_flag(MAX_TABLE_SUBGOAL_ACTION, XSB_SUSPEND)
-         ; Action == abstract ->  stat_set_flag(MAX_TABLE_SUBGOAL_ACTION, XSB_ABSTRACT)
-         ; domain_error([error,', ',suspend,', ',abstract],
-			Action,set_xsb_flag/2,2,'max_table_subgoal_action clause') ).
+	(Action == error -> 
+	    stat_set_flag(MAX_TABLE_SUBGOAL_ACTION, XSB_ERROR)
+          ; (Action == suspend ->  
+	    stat_set_flag(MAX_TABLE_SUBGOAL_ACTION, XSB_SUSPEND)
+          ; (Action == abstract ->  
+	    stat_set_flag(MAX_TABLE_SUBGOAL_ACTION, XSB_ABSTRACT)
+            ; domain_error([error,', ',suspend,', ',abstract],
+                        Action,set_xsb_flag/2,2,'max_table_subgoal_action clause') ) ) ).
 set_xsb_flag_1(max_table_answer_size, Size) :-!,
 	(Size =:= 0 -> 
 	  iso_flag(max_integer,MaxInt),
 	  stat_set_flag(MAX_TABLE_ANSWER_METRIC, MaxInt)
 	; stat_set_flag(MAX_TABLE_ANSWER_METRIC, Size) ).
 set_xsb_flag_1(max_table_answer_size_action, Action) :-!,
-	(Action == error -> stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_ERROR)
-         ; (Action == bounded_rationality ; Action == abstract) ->  
-	       stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_BRAT),
-	       reinitialize_undefineds
-         ; Action == suspend -> stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_SUSPEND)
-         ; Action == custom -> stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_CUSTOM)
-         ; domain_error([error,', ',suspend,', ',abstract],
-                        Action,set_xsb_flag/2,2,'max_table_answer_action clause') ).
+	(Action == error -> 
+	    stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_ERROR)
+%          ; (Action == warning ->  
+%	    stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_WARNING)
+          ; ((Action == bounded_rationality ; Action == abstract) ->  
+	    stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_BRAT),
+	    reinitialize_undefineds
+          ; (Action == suspend ->  
+	    stat_set_flag(MAX_TABLE_ANSWER_ACTION, XSB_SUSPEND)
+%            ; domain_error([error,', ',warning,', ',suspend,', ',abstract],
+            ; domain_error([error,', ',suspend,', ',abstract],
+                        Action,set_xsb_flag/2,2,'max_table_answer_action clause') ) ) ).
 set_xsb_flag_1(max_incomplete_subgoals, Max) :-!,
 	(Max =:= 0 -> 
 	  iso_flag(max_integer,MaxInt),
 	  stat_set_flag(MAX_INCOMPLETE_SUBGOALS, MaxInt)
 	; stat_set_flag(MAX_INCOMPLETE_SUBGOALS, Max) ).
 set_xsb_flag_1(max_incomplete_subgoals_action, Action) :-!,
-	(Action == error -> stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_ERROR)
-         ; Action == warning -> stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_WARNING)
-         ; Action == suspend -> stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_SUSPEND)
-         ; Action == custom -> stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_CUSTOM)
-         ; domain_error([error,', ',warning,', ',suspend,', ',custom],
-                        Action,set_prolog_flag/2,2,'max_incomplete_subgoals_action clause') ).
+	(Action == error -> 
+	    stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_ERROR)
+          ; (Action == warning ->  
+	    stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_WARNING)
+          ; (Action == suspend ->  
+	    stat_set_flag(MAX_INCOMPLETE_SUBGOALS_ACTION, XSB_SUSPEND)
+            ; domain_error([error,', ',warning,', ',suspend],
+                        Action,set_prolog_flag/2,2,'max_incomplete_subgoals_action clause') ) ) ).
 set_xsb_flag_1(max_scc_subgoals, Max) :-!,
 	(Max =:= 0 -> 
 	  iso_flag(max_integer,MaxInt),
 	  stat_set_flag(MAX_SCC_SUBGOALS, MaxInt)
 	; stat_set_flag(MAX_SCC_SUBGOALS, Max) ).
 set_xsb_flag_1(max_scc_subgoals_action, Action) :-!,
-	(Action == error -> stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_ERROR)
-         ; Action == warning -> stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_WARNING)
-         ; Action == suspend -> stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_SUSPEND)
-         ; Action == custom -> stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_CUSTOM)
-         ; domain_error([error,', ',warning,', ',suspend,', ',custom],
-                        Action,set_prolog_flag/2,2,'max_scc_subgoals_action clause') ).
+	(Action == error -> 
+	    stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_ERROR)
+          ; (Action == warning ->  
+	    stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_WARNING)
+          ; (Action == suspend ->  
+	    stat_set_flag(MAX_SCC_SUBGOALS_ACTION, XSB_SUSPEND)
+            ; domain_error([error,', ',warning,', ',suspend],
+                        Action,set_prolog_flag/2,2,'max_scc_subgoals_action clause') ) ) ).
 set_xsb_flag_1(max_answers_for_subgoal, Max) :-!,
 	(Max =:= 0 -> 
 	  iso_flag(max_integer,MaxInt),
 	  stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL, MaxInt)
 	; stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL, Max) ).
 set_xsb_flag_1(max_answers_for_subgoal_action, Action) :-!,
-	(Action == complete_soundly -> stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_ABSTRACT)
-	 ; Action == error ->     stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_ERROR)
-         ; Action == suspend ->   stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_SUSPEND)
-         ; Action == custom ->    stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_CUSTOM)
-         ; domain_error([error,', ',suspend,', ',custom,', ',custom,', ',complete_soundly],
-                        Action,set_prolog_flag/2,2,'max_answers_for_subgoal_action clause') ).
+	(Action == complete_soundly -> 
+	    stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_ABSTRACT)
+	; (Action == error -> 				  
+	       stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_ERROR)
+             ; (Action == suspend ->  
+	          stat_set_flag(MAX_ANSWERS_FOR_SUBGOAL_ACTION, XSB_SUSPEND)
+                ; domain_error([error,', ',suspend,', ',complete_soundly],
+                               Action,set_prolog_flag/2,2,'max_answers_for_subgoal_action clause') ) ) ).
 set_xsb_flag_1(max_memory,Max):-!,
 	(integer(Max),Max >= 0 -> 
 	     stat_set_flag(MAX_MEMORY,Max)
@@ -1571,145 +1347,16 @@ set_xsb_flag_1(errors_with_position,Mode):- !,
 	( Mode = on -> 
 	    stat_set_flag(ERRORS_WITH_POSITION, 1)
 	 ;  (Mode = off, stat_set_flag(ERRORS_WITH_POSITION, 0))).
-set_xsb_flag_1(float_display_format,P):- 
-    integer(P),P >= 1,P =< 17,!,
-    number_codes(P,PList),append([37,49,46],PList,L1),append(L1,[103],Flist),
-    atom_codes(Format,Flist),
-%    concat_atom(['%1.',P,g],Format),
-    file_function(PUT_FLOAT_DISPLAY_FORMAT,Format,_).
 set_xsb_flag_1(Type, _) :-
 	(	iso_flag(Type)
 	;	prolog_commons_flag(Type)
 	),
 	permission_error(modify,flag,Type,set_prolog_flag/2).
-set_xsb_flag_1(Type, _) :-
+set_xsb_flag_1(Type, _) :-  
 	domain_error(prolog_flag,Type,set_prolog_flag/2,1).
-
-:- export current_xsb_param/2.
-:- import concat_atom/2 from string.
-:- import atom_chars/2 from standard.
-
-:- mode current_xsb_param(?,?).
-current_xsb_param(Flag, Value) :- 
-	(var(Flag) ->
-	  true
-	; \+ atom(Flag) ->
-	  type_error(atom_or_variable,Flag,current_prolog_flag/2,1)
-	 ; true ),
-	(var(Value) ->
-	   true
-	 ; type_error(var,Value,current_xsb_param/2,2) ),
-	current_xsb_param_1(Flag,Value).
-
-current_xsb_param_1(float_display_format, Value) :- 
-    file_function(GET_FLOAT_DISPLAY_FORMAT,Param,_),
-    parse_float(Param,Width,Prec,Spec),
-    Value = [width(Width),precision(Prec),specifier(Spec)].
-current_xsb_param_1(max_table_subgoal_size, [limit(Max),action(Action)]) :- 
-    xsb_flag(max_table_subgoal_size,Max),
-    xsb_flag(max_table_subgoal_size_action, Action).
-current_xsb_param_1(max_table_answer_size, [limit(Max),action(Action)]) :- 
-    xsb_flag(max_table_answer_size,Max),
-    xsb_flag(max_table_answer_size_action, Action).
-current_xsb_param_1(max_incomplete_subgoals, [limit(Max),action(Action)]) :- 
-    xsb_flag(max_incomplete_subgoals,Max),
-    xsb_flag(max_incomplete_subgoals_action, Action).
-current_xsb_param_1(max_scc_subgoals, [limit(Max),action(Action)]) :- 
-    xsb_flag(max_scc_subgoals,Max),
-    xsb_flag(max_scc_subgoals_action, Action).
-current_xsb_param_1(max_memory, [limit(Max),action(Action)]) :- 
-    xsb_flag(max_memory,Max),
-    xsb_flag(max_memory_action, Action).
-current_xsb_param_1(max_answers_for_subgoal, [limit(Max),action(Action)]) :- 
-    xsb_flag(max_answers_for_subgoal,Max),
-    xsb_flag(max_answers_for_subgoal_action, Action).
-
-:- export set_xsb_param/2.
-:- mode set_xsb_param(+,+).
-set_xsb_param(Flag, Value) :- 
-	(	var(Flag) ->
-		true
-	;	\+ atom(Flag) ->
-		type_error(atom,Flag,current_xsb_param/2,1)
-	;	set_xsb_param_1(Flag,Value)
-	 ),!.
-set_xsb_param(Type, _) :-
-	domain_error(xsb_param,Type,set_xsb_param/2,1).
-
-set_xsb_param_1(float_display_format, Value) :-
-    file_function(GET_FLOAT_DISPLAY_FORMAT,Param,_),
-    parse_float(Param,Width,Prec,Spec),
-    parse_new_float_params(Value,VW,VP,VS),
-    (var(VW) -> NewW = Width ; NewW = VW),
-    (var(VP) -> NewP = Prec ; NewP = VP),
-    (var(VS) -> NewS = Spec ; NewS = VS),
-    concat_atom(['%',NewW,'.',NewP,NewS],NewFormat),
-    file_function(PUT_FLOAT_DISPLAY_FORMAT,NewFormat,_).
-set_xsb_param_1(max_table_subgoal_size, List) :-
-    check_tripwire_param_list(List),
-    (member(limit(L),List) -> set_prolog_flag(max_table_subgoal_size,L) ; true),
-    (member(action(A),List) -> set_prolog_flag(max_table_subgoal_size_action,A) ; true).
-set_xsb_param_1(max_table_answer_size, List) :-
-    check_tripwire_param_list(List),
-    (member(limit(L),List) -> set_prolog_flag(max_table_answer_size,L) ; true),
-    (member(action(A),List) -> set_prolog_flag(max_table_answer_size_action,A) ; true).
-set_xsb_param_1(max_scc_subgoals, List) :-
-    check_tripwire_param_list(List),
-    (member(limit(L),List) -> set_prolog_flag(max_scc_subgoals,L) ; true),
-    (member(action(A),List) -> set_prolog_flag(max_scc_subgoals_action,A) ; true).
-set_xsb_param_1(max_incomplete_subgoals, List) :-
-    check_tripwire_param_list(List),
-    (member(limit(L),List) -> set_prolog_flag(max_incomplete_subgoals,L) ; true),
-    (member(action(A),List) -> set_prolog_flag(max_incomplete_subgoals_action,A) ; true).
-set_xsb_param_1(max_memory, List) :-
-    check_tripwire_param_list(List),
-    (member(limit(L),List) -> set_prolog_flag(max_memory,L) ; true),
-    (member(action(A),List) -> set_prolog_flag(max_memory_action,A) ; true).
-set_xsb_param_1(max_answers_for_subgoal, List) :-
-    check_tripwire_param_list(List),
-    (member(limit(L),List) -> set_prolog_flag(max_answers_for_subgoal,L) ; true),
-    (member(action(A),List) -> set_prolog_flag(max_answers_for_subgoal_action,A) ; true).
-
-check_tripwire_param_list([]).
-check_tripwire_param_list([H|T]):-
-    (H = action(_) -> true
-    ; H = limit(_) -> true
-    ; domain_error(tripwire_param,H,set_xsb_param/2,1) ),
-    check_tripwire_param_list(T).
-    
-parse_new_float_params([],_,_,_).
-parse_new_float_params([H|T],W,P,S):- 
-    parse_new_float_param(H,W,P,S),
-    parse_new_float_params(T,W,P,S).
-
-parse_new_float_param(width(W),W,_P,_S):-
-    integer(W),W >= 1,W =< 30,!.
-parse_new_float_param(precision(P),_W,P,_S):-
-    integer(P),P >= 1,P =< 30,!.
-parse_new_float_param(specifier(S),_W,_P,S):-
-    member(S,[g,f,'G','F']),!.
-parse_new_float_param(Param,_W,_P,_S):-
-    domain_error(float_display_format_param,Param,set_xsb_param/2,2).
-
-parse_float(Param,Width,Prec,Spec):-
-    atom_chars(Param,Plist),
-    get_float_width(Plist,Width,Plist1),
-    get_float_precision(Plist1,Prec,Spec).
-    
-get_float_width(Plist,Width,Plist1):-
-    (Plist = ['%',Width,'.'|Plist1] ->
-       true
-     ; Plist = [W1,W2,'.'|Plist1],
-       concat_atom([W1,W2],Width) ).
-
-get_float_precision(Plist,Prec,Spec):- 
-    (Plist = [P1,P2,Spec] ->
-       concat_atom([P1,P2],Prec)
-     ; Plist = [Prec,Spec]).
 
 /* ==================================================================== */
 
-:- mode garbage_collection(+).
 garbage_collection(GC) :- var(GC), !,
 	abort('Uninstantiated argument 1 of garbage_collection/1').
 garbage_collection(none) :- !, stat_set_flag(GARBAGE_COLLECT, NO_GC).
@@ -1725,7 +1372,6 @@ garbage_collection(_) :-
 %   hilog_symbol(?Symbol)
 %   Succeeds iff Symbol is one of the symbols that are declared as HiLog.
 
-:- mode hilog_symbol(?).
 hilog_symbol(HS) :- 
 	'_$hilog_symbol'(HS).
 
@@ -1734,104 +1380,4 @@ hilog_symbol(HS) :-
 get_first_psc_pair(PSC_Pair) :-
 	stat_flag(MOD_LIST, PSC_Pair).
 
-/* ===== predicate_property_20180213.P ======================================== */
-:- export predicate_property_20180213/2.
-:- import psc_shared/2,psc_get_incr/2,psc_tabled/2 from machine.
-
-:- mode predicate_property_20180213(+,?).
-predicate_property_20180213(Term_Indicator, Property) :-
-	nonvar(Term_Indicator),
-	Term_Indicator = :(Module, Term),
-	nonvar(Term),		% send ':'(_,_) predicate to next clause
-	!,
-	get_first_psc_pair(PSC_Pair),
-	module_scan(PSC_Pair, ModuleName, ModulePSC),
-	ModuleName = Module,
-	psc_prop(ModulePSC, First_PSC_Pair),	% get the first psc_pair 
-						% of this module
-	( First_PSC_Pair =:= 1 ->	% We are dealing with a global module!
-		predicate_property_20180213(Term, Property)
-        ; psc_scan_in_module(First_PSC_Pair, PSC),
-	  psc_name(PSC, Name),
-	  psc_arity(PSC, Arity),
-	  functor(Term, Name, Arity),
-	  psc_properties_20180213(PSC, Property)
-	).
-predicate_property_20180213(Term, Property) :-	% This takes care of global 
-					% modules,"usermod" and "global".
-	term_type(Term, Type),
-	( Type =:= 1 ->	% Hacked to make it fast when Term is given.
-			% If Term is given and it is represented as a structure 
-			% (has a PSC record) then using term_psc/2 we get to 
-			% this PSC record directly without having to scan the 
-			% whole PSC-Pair list.
-		term_psc(Term, PSC),
-		psc_properties_20180213(PSC, Property)
-	; Type =:= 5 ->
-		conpsc(Term, PSC),
-		psc_properties_20180213(PSC, Property)
-	; psc_scan_in_hash_table(0, PSC),
-	  psc_name(PSC, Name),
-	  psc_arity(PSC, Arity), 
-	  functor(Term, Name, Arity),
-	  psc_properties_20180213(PSC, Property)
-	).
-
-psc_properties_20180213(PSC, Property) :- 
-	psc_type(PSC, Type),
-%	( Type =:= T_ORDI -> Property = unclassified
-        ( Type =:= T_ORDI -> psc_env(PSC,Env),Env = T_IMPORTED,Property = unloaded
-	; Type =:= T_DYNA -> Property = (dynamic)
-	; Type =:= T_PRED -> Property = static
-	; Type =:= T_UDEF -> Property = unloaded
-	; Type =:= T_FORN -> Property = foreign
-	; Type =:= 14 -> Property = function ).
-%psc_properties_20180213(PSC, static) :-
-%	\+ (psc_type(PSC, Type), Type =:= T_DYNA).
-psc_properties_20180213(PSC, Property) :-
-	psc_env(PSC, Env),
- 	( Env =:= T_EXPORTED -> psc_type(PSC,Type),Type \== T_ORDI,Property = exported	
-	; Env =:= T_LOCAL -> Property = (local)
-	; Env =:= T_IMPORTED -> psc_mod(PSC, ModulePSC), 
-		       psc_name(ModulePSC, ModuleName), 
-		       Property = imported_from(ModuleName)
-	; Property = global ).
-psc_properties_20180213(PSC, Property) :- 
-	psc_spy(PSC, Spy),
-	( Spy =\= 0 -> Property = spied ).
-psc_properties_20180213(PSC, Property) :- 
-	psc_tabled(PSC, Tabled),
-	writeln(psc_tabled(PSC, Tabled)),
-	(psc_type(PSC, Type),Type =:= T_DYNA -> 
-	    psc_get_incr(PSC,Incr),Incr == NONINCREMENTAL
-	  ; true),  
-	( (Tabled /\ 12 > 0),Property = tabled 
-        ; 
-	 ( Tabled == T_VARIANT -> Property = variant
-         ; Tabled == T_SUBSUMPTIVE -> Property = subsumptive ) ).
-%         ; Tabled == T_TABLED_UNDETERMINED -> Property = tabled(default)).
-psc_properties_20180213(PSC, Property) :- 
-	psc_get_incr(PSC, Incr),
-	( Incr == INCREMENTAL -> 
-	    Property = incremental 
-	  ; Incr == OPAQUE -> Property = opaque).
-psc_properties_20180213(PSC, Property) :- 
-	psc_shared(PSC, Shared),
-	( Shared =\= 0 -> Property = shared ).
-psc_properties_20180213(PSC, Property) :-
-	psc_name(PSC, Functor),		% Finding the Functor and the Arity
-	psc_arity(PSC, Arity),		% twice is silly, isn''t it?
-	(	standard_metapredicate_template(Functor,Arity,Template),
-%		setof(Meta, standard_metapredicate(Functor, Arity, Meta), Metas),
-%		psc_meta_predicate_property_args(Metas, 1, Arity, Args),
-%		Template =.. [Functor| Args],
-		Property = meta_predicate(Template)
-	;	standard_symbol(Functor, Arity, _) ->
-		( %	Property = xsb_standard_predicate ; 
-			Property = built_in
-		)
-	).
-	% Unfortunately this doesn''t take the Module into account.
-
 /* ----------------- end of file current_symbols.P -------------------- */
-

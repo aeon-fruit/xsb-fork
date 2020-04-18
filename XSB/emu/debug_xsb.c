@@ -721,7 +721,7 @@ static void sprint_registers(CTXTdeclc forestLogBuffer fl_buf,Psc psc,long depth
   arity = (int)get_arity(psc);
 
   size = sprint_quotedname(buffer, 0, get_name(psc));
-  if (arity != 0) {sprintf(buffer+size, "(");size++;}
+  if (arity != 0) sprintf(buffer+size, "(");size++;
   for (i=1; i <= arity; i++) {
     size = sprint_term(fl_buf, size, cell(reg+i), CAR, depth-1);
     if (i < arity) {sprintf(buffer+size, ",");size++;}
@@ -742,7 +742,7 @@ static void sprint_cyclic_registers(CTXTdeclc forestLogBuffer fl_buf,Psc psc,lon
   arity = (int)get_arity(psc);
 
   size = sprint_quotedname(buffer, 0, get_name(psc));
-  if (arity != 0) {sprintf(buffer+size, "(");size++;}
+  if (arity != 0) sprintf(buffer+size, "(");size++;
   for (i=1; i <= arity; i++) {
     size = sprint_cyclic_term_nonvoid(CTXTc fl_buf, size,  cell(reg+i), depth-1);
     if (i < arity) {sprintf(buffer+size, ",");size++;}
@@ -1384,15 +1384,15 @@ void print_completion_stack(CTXTdeclc FILE *fptr)
   VariantSF subg;
   CPtr temp = COMPLSTACKBOTTOM-COMPLFRAMESIZE;
   printf("----------- scc -----------\n");
-  lastSCCnum = compl_leader_level(temp);
+  lastSCCnum = compl_level(temp);
 
  while (temp >= openreg) {
-   if (compl_leader_level(temp) != lastSCCnum) {
-     SCCnum++; lastSCCnum = compl_leader_level(temp);
+   if (compl_level(temp) != lastSCCnum) {
+     SCCnum++; lastSCCnum = compl_level(temp);
    }
    subg = (VariantSF) *temp;
    print_subgoal(CTXTc fptr,subg);
-   fprintf(fptr," - scc(%d,%d).\n",SCCnum,compl_leader_level(temp));
+   fprintf(fptr," - scc(%d,%d).\n",SCCnum,compl_level(temp));
    temp = next_compl_frame(temp);
   }
 }
@@ -1679,7 +1679,7 @@ void print_deltf_chain(CTXTdecl) {
 
 /** not used, but in commented-out code..
 static char *compl_stk_frame_field[] = {
-  "subgoal_ptr",   "del_ret_list", "level_num","visited", "to_leader_csf"
+  "subgoal_ptr",   "del_ret_list", "level_num","visited",
 #ifndef LOCAL_EVAL
 "DG_edges", "DGT_edges"
 #endif
@@ -2043,8 +2043,7 @@ void quick_print_trail(CTXTdecl)	/* trail grows up */
 
   for (i = (top_of_trail); (i > (CPtr *)tcpstack.low + 1); i = i-3)     {
     printf("-------------------------------------------------------------------\n");
-    if ( i == trreg ) printf("trreg");
-    if ( i == trfreg ) printf("trfreg ");
+    if ( i == trreg ) printf("trreg");if ( i == trfreg ) printf("trfreg ");
     if ((CPtr *)cell(CPtr)(i) != i-3) printf("*");
     print_cell("          Trail parent ", (CPtr)(i), cell((CPtr)(i)), NULL);
     print_cell("          Trail value  ", (CPtr)(i-1), cell((CPtr)(i-1)), NULL);
@@ -2263,7 +2262,7 @@ void print_help(void)
 /*** already defined above ???
 static char *compl_stk_frame_field[] = {
   "subgoal_ptr", "level_num",
-  "del_ret_list", "visited", "to_leader_csf"
+  "del_ret_list", "visited",
 #ifndef LOCAL_EVAL
 "DG_edges", "DGT_edges"
 #endif

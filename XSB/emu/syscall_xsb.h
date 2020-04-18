@@ -211,7 +211,6 @@
 
 #define SYS_epoch_seconds 180
 #define SYS_epoch_msecs   181
-#define SYS_epoch_nsecs   182
 
 /* XSB-specific numbers */
 

@@ -33,17 +33,10 @@
 
 %:- import write/1, nl/0,writeln/1 from standard.
 
-:- import  put_code/2, nl/1, write/2, writeq/2, 
-	write_canonical/2, atom_codes/2
-	from standard.
-
-:- import xsb_configuration/2 from xsb_configuration.
-
-:- import current_output/1 %%'C'/3, % C/2 used in -->
-    from curr_sym.
-
-:- import print/2 from usermod.
-
+:- import  put_code/2, nl/1, write/2, writeq/2, print/2,
+	write_canonical/2, current_output/1, %%'C'/3, % C/2 used in -->
+	atom_codes/2, xsb_configuration/2
+	from usermod.
 :- import 'C'/3 from dcg.
 
 :-  import throw/1 from standard.
@@ -386,7 +379,6 @@ position movement to @var{N}, where @var{N} defaults to @key{SPC}.
 
 % ------------------------------------------------------------------------
 
-:- mode format_control(+).
 format_control(C) :- isString(C).
 format_control(C) :- atom(C).  
 
@@ -402,7 +394,6 @@ format_control(C) :- atom(C).
 
 % TLS: should probably replace parse_error.
 
-:- mode format(+,?).
 format(Control_in, Args_in) :- 
 	check_nonvar(Control_in,format/2,1),
 	check_nonvar(Args_in,format/2,1),
@@ -413,7 +404,6 @@ format(Control_in, Args_in) :-
 format(Control, Arguments) :-
 	throw(error(parse_error(format(Control, Arguments)), format/2)).
 
-:- mode format(+,+,?).
 format(Stream_or_alias, Control_in, Args_in) :-
         check_open_stream_or_alias(Stream_or_alias,format/2,1,output,Stream),
         check_nonvar(Control_in,format/2,2),

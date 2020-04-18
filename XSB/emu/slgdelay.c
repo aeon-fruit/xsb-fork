@@ -1306,7 +1306,6 @@ void simplify_pos_unconditional(CTXTdeclc NODEptr as_leaf)
     //    xsb_resource_error_nopred("recursion stack", "depth of simplifications is over the allowed limit of ",
     //			      MAX_SIMPLIFICATION_DEPTH);
   }
-  //printf("puc simplification_depth %d\n",simplification_depth_gl);
 
   subgoal = asi_subgoal(asi);
   release_all_dls(CTXTc asi);
@@ -1390,7 +1389,6 @@ void simplify_neg_fails(CTXTdeclc VariantSF subgoal)
     //			      MAX_SIMPLIFICATION_DEPTH);
   }
   push_neg_simpl(subgoal);
-  //printf("nf simplification_depth %d\n",simplification_depth_gl);
 
   if (in_simplify_neg_fails) {
     return;
@@ -1458,7 +1456,6 @@ static void simplify_neg_succeeds(CTXTdeclc VariantSF subgoal)
     //			      MAX_SIMPLIFICATION_DEPTH);
   }
   //  printf("in simplify neg succeeds: ");print_subgoal(stddbg,subgoal);printf("\n");
-  //printf("ns simplification_depth: %d\n",simplification_depth_gl);
   answer_complete_subg(subgoal);
 
   while ((nde = subg_nde_list(subgoal))) {
@@ -1552,7 +1549,7 @@ void simplify_pos_unsupported(CTXTdeclc NODEptr as_leaf)
     //    xsb_resource_error_nopred("recursion stack", "depth of simplifications is over the allowed limit of ",
     //			      MAX_SIMPLIFICATION_DEPTH);
   }
-  //  printf("in simplify pos unsupported: ");print_subgoal(stddbg,asi_subgoal(Delay(as_leaf)));printf("\n")  printf("pus simplification_depth: %d",simplification_depth_gl);
+  //  printf("in simplify pos unsupported: ");print_subgoal(stddbg,asi_subgoal(Delay(as_leaf)));printf("\n");
 
   while ((pde = asi_pdes(asi))) {
 

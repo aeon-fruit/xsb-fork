@@ -34,7 +34,6 @@
 :- import xsb_configuration/2 from xsb_configuration.
 
 :- thread_shared library_directory/1.
-:- mode library_directory(+).
 :- dynamic library_directory/1.
 
 :- %% Add the packages dir to the search path
@@ -78,7 +77,4 @@
 %% NO, made standard preds so this will be loaded on demand.
 %%:- [packaging].
 
-%%:- import reinitialize_undefineds/0 from xsbbrat.
-%%?- reinitialize_undefineds. % tables for "undefineds" must be defined.
-
-:- [xsbbrat]. % why doesn''t above work instead of this??
+:- [xsbbrat].

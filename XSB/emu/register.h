@@ -45,7 +45,6 @@ extern CPtr hbreg;	/* heap back track point        */
 extern CPtr sreg;	/* current build or unify field */
 extern byte *cpreg;	/* return point register        */
 extern byte *pcreg;	/* program counter              */
-extern byte *biarg;
 
 // #define CP_DEBUG 1
 

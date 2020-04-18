@@ -29,7 +29,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "auxlry.h"
 #include "context.h"
@@ -167,17 +166,14 @@ int findall_init_c(CTXTdecl)
 	}
 
   if (nextfree < 0) /* could realloc here - too lazy to do it */
-	xsb_abort("[FINDALL] Maximum number of active findalls reached; probably runaway recursion through findall.");
+	xsb_abort("[FINDALL] Maximum number of active findalls reached");
   thisfree = nextfree;
 	/* no checking - no trailing - just use findall_init correctly :-) */
   p = findall_solutions + thisfree ;
 
   if (p->first_chunk == NULL) {
     w = (CPtr)mem_calloc(FINDALL_CHUNCK_SIZE,sizeof(Cell),FINDALL_SPACE);
-  } else {
-    w = p->first_chunk;  /* already a first chunk, so use it */
-    //    memset(w,0,FINDALL_CHUNCK_SIZE*sizeof(Cell));
-  }
+  } else w = p->first_chunk;  /* already a first chunk, so use it */
   *w = 0 ;
   p->first_chunk = p->current_chunk = w ;
   w++ ; 
@@ -209,8 +205,6 @@ void findall_free(CTXTdeclc int i)
 
   /* Leave first chunk, so no need to realloc later */
   p = (CPtr) *(this_solution->first_chunk) ;
-  // Clear first chunk so gc doesn't unnecessarily scan it and get confused.
-  memset(this_solution->first_chunk,0,FINDALL_CHUNCK_SIZE*sizeof(Cell));
   while (p != NULL)
     { to_free = p ; p = (CPtr)(*p) ; mem_dealloc(to_free,FINDALL_CHUNCK_SIZE * sizeof(Cell),FINDALL_SPACE) ; }
   this_solution->tail = 0 ;
@@ -301,7 +295,7 @@ copy_again : /* for tail recursion optimisation */
       CPtr pfirstel;
       Cell q ;
 
-      if (isinternstr(from)) {
+      if (isinternstr_really(from)) {
 	*to = from;
 	return;
       }
@@ -375,7 +369,7 @@ copy_again : /* for tail recursion optimisation */
             return;
 	  }
 
-	if (isinternstr(from)) {
+	if (isinternstr(from) && isinternstr_really(from)) {
 	  *to = from;
 	  return;
 	}
@@ -545,12 +539,12 @@ static int findall_copy_template_to_chunk(CTXTdeclc Cell from, CPtr to, CPtr *h)
 	  /* first test whether from - which is an L - is actually the left over
 	     of a previously copied first list element
 	  */
-	  if (isinternstr(from)) {
+	  if (isinternstr_really(from)) {
 	    *to = from;
 	    return(size);
 	  }
 	  pfirstel = clref_val(from) ;
-	  if (! on_glstack(pfirstel) && !isinternstr(*pfirstel))  // copied already
+	  if (! on_glstack(pfirstel) && !isinternstr_really(*pfirstel))  // copied already
 	    {
 	      /* pick up the old value and copy it */
 	      *to = *pfirstel;
@@ -558,7 +552,7 @@ static int findall_copy_template_to_chunk(CTXTdeclc Cell from, CPtr to, CPtr *h)
 	    }
 	  
 	  q = *pfirstel;
-	  if (islist(q) && !isinternstr(q))
+	  if (islist(q) && !isinternstr_really(q))
 	    {
 	      CPtr p;
 	      
@@ -611,7 +605,7 @@ static int findall_copy_template_to_chunk(CTXTdeclc Cell from, CPtr to, CPtr *h)
 	  Cell newpsc;
 	  int ar ;
     
-	  if (isinternstr(from)) {
+	  if (isinternstr(from) && isinternstr_really(from)) {
 	    *to = from;
 	    return(size);
 	  }
@@ -1509,15 +1503,11 @@ void mark_findall_strings(CTXTdecl) {
       while (chunk != (findall_solutions+i)->current_chunk) {
 	for (cell=chunk+1; cell<(chunk+FINDALL_CHUNCK_SIZE); cell++) {
 	  mark_if_string(*cell,"findall");
-	  if (isconstr(*cell) && isinternstr(*cell))
-	    mark_interned_term(CTXTc *cell);
 	}
 	chunk = *(CPtr *)chunk;
       }
       for (cell=chunk+1; cell<(findall_solutions+i)->top_of_chunk; cell++) {
 	mark_if_string(*cell,"findall");
-	if (isconstr(*cell) && isinternstr(*cell))
-	  mark_interned_term(CTXTc *cell);
       }
     }
   }

@@ -13,9 +13,8 @@
 
 :- import file_flush/2 from file_io.
 :- import concat_atom/2 from string.
-:- import abort/1 from standard.
-:- import current_op/3 from curr_sym.
-:- import parse_filename/4 from machine.
+:- import abort/1, current_op/3, parse_filename/4 
+			from usermod.
 :- import message/2 from standard.
 
 % Ciao idioms and support -- adapted from operators.pl

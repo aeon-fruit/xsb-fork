@@ -23,10 +23,8 @@
 */
 
 
-:- mode_on_success('_$hilog_symbol1'(+)).
 :- dynamic '_$hilog_symbol1'/1.
 
-:- mode add_hilog_symbol(+).
 add_hilog_symbol(X) :- 
 	var(X), 
 	!, 

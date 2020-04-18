@@ -11,8 +11,8 @@
 :- import parsort/4 from machine.
 :- import sort/2 from setof.
 :- import write/2, writeq/2, nl/0, nl/1,
-	\= /2,
-	=.. /2, (',')/2
+	'\='/2,
+	'=..'/2, (',')/2
    from standard.
 :- import current_output/1, predicate_property/2 from curr_sym.
 :- import findall/3 from setof.
@@ -70,7 +70,7 @@ table_dump(Stream,Pred,Options) :-
 	 write(table_dump(elapsed_time,Time)),writeln('.').
 */
 %:- import writeln/1 from standard.
-:- mode table_dump(+,?,+).
+
 table_dump(Stream,Pred,Options) :- 
 	check_options(Options,Details,Summary,ResultsIn,Output), 
 	(ResultsIn = results(Result) -> true ; ResultsIn = Result),
@@ -256,10 +256,8 @@ check_options_1([Culprit|_],_D,_S,_,_):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % table_dump/0   table dump all tabled predicates.
 
-:- mode table_dump(?,+).
 table_dump(Pred,Options):- current_output(Stream),table_dump(Stream,Pred,Options).
 
-:- mode table_dump(?).
 table_dump(Pred) :- table_dump(Pred,[summary(true)]).
 
 table_dump :- findall(Pred,predicate_property(Pred,tabled),Preds),

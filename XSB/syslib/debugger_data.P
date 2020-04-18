@@ -140,5 +140,3 @@ trace_this_noprint(num_words,1).
 trace_standard_predicate(tphrase,2).
 
 '_$_debugger_data_loaded'.
-
-trace_standard_predicate(assert,1).

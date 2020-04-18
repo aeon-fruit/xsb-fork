@@ -87,7 +87,7 @@ extern void gdb_dummy(void);
 
 /* round N to the next multiple of P2, P2 must be a power of 2 */
 
-#if defined(DARWIN) || defined(WIN_NT)
+#ifdef DARWIN 
 #define SQUASH_LINUX_COMPILER_WARN(VAR) 
 #else
 #define SQUASH_LINUX_COMPILER_WARN(VAR) VAR = VAR;
@@ -101,19 +101,16 @@ extern void gdb_dummy(void);
 #define Intfmt "lld"
 #define UIntfmt "lld"
 #define Intxfmt "llx"
-#define Intofmt "llo"
 #define Cellfmt "llu"
 #elif defined(BITS64)
 #define Intfmt "ld"
 #define UIntfmt "lu"
 #define Intxfmt "lx"
-#define Intofmt "lo"
 #define Cellfmt "lu"
 #else 
 #define Intfmt "d"
 #define UIntfmt "u"
 #define Intxfmt "x"
-#define Intofmt "lo"
 #define Cellfmt "lu"
 #endif
 
@@ -133,14 +130,3 @@ noticed and needed. */
 //#define DEBUG_ABSTRACTION 
 
 //#define GC_TEST 1
-
-#define INCR_SUBST
-//#define DEBUG_INCR
-#ifdef DEBUG_INCR
-#define debug_incr(X) printf X
-#define incr_print_subgoal(X) print_subgoal(stdout,X)
-#else
-#define debug_incr(X)
-#define incr_print_subgoal(X)
-#endif
-

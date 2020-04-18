@@ -80,7 +80,7 @@
 	 intersect/3,
 	 intersect_eq/3,
 	 is_empty/1,
-%         is_list/1,
+         is_list/1,
 	 is_not_empty/1,
          last/2,
 	 length/2,
@@ -119,15 +119,15 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % written by Bart Demoen
-%is_list(L) :-
-%	(var(L) ->
-%	    fail
-%	;
-%	    is_list2(L)
-%	).
+is_list(L) :-
+	(var(L) ->
+	    fail
+	;
+	    is_list2(L)
+	).
 
-%is_list2([]).
-%is_list2([_|Tail]) :- nonvar(Tail), is_list2(Tail).
+is_list2([]).
+is_list2([_|Tail]) :- nonvar(Tail), is_list2(Tail).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 is_empty([]).
@@ -334,7 +334,6 @@ nth(N, L, X) :-
 	var(N),
 	'$nth2'(L, X, 1, N).
 
-/*
 nth0(N, L, X) :-
 	integer(N), !,
 	N >= 0,
@@ -342,7 +341,6 @@ nth0(N, L, X) :-
 nth0(N, L, X) :-
 	var(N),
 	'$nth2'(L, X, 0, N).
-*/
 
 '$nth1'(1, [X|_], X) :-
 	! .
@@ -354,28 +352,6 @@ nth0(N, L, X) :-
 '$nth2'([_|T], X, I, N) :-
 	I1 is I + 1,
 	'$nth2'(T, X, I1, N).
-
-
-/* The above version of nth0 indexed on 1(?!).
-   So I replaced it with a 0-indexed version of nth0 based 
-   on ith in basics. */
-   
-nth0(Index,List,Element) :-
-	( integer(Index) -> nth0_0(Index,List,Element)
-	;   nth0_1(List,0,Index,Element)
-	).
-
-nth0_0(I,[X|L],Y) :-
-	I >= 0,
-	(I =< 0
-	 ->	Y=X
-	 ;	I1 is I-1,
-		nth0_0(I1,L,Y)
-	).
-
-nth0_1([X|_],I,I,X).
-nth0_1([_|L],I1,I,X) :- I2 is I1+1, nth0_1(L,I2,I,X).
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 nth(N, L, X, R) :-

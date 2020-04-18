@@ -30,7 +30,6 @@
 /*======================================================================*/
 
 
-:- mode ti_pred_block(?,?,?).
 ti_pred_block([],[],_SymTab).
 ti_pred_block([InPred|InPreds],OutPreds,SymTab) :-
 	ti_xform_pred(InPred,OutPreds,OutPredsR,SymTab),
@@ -225,7 +224,6 @@ make_name(ArgName,ArgArity,OutName) :-
 	; number(ArgName) ->
 		OutName = 'F'
 	; ArgArity > 0 ->
-		check_atom(ArgName,'make_name/3',1),
 		str_cat(ArgName,'/',Temp0),
 		number_codes(ArgArity,L), atom_codes(Temp1,L),
 		str_cat(Temp0,Temp1,OutName)
@@ -242,7 +240,6 @@ make_name(ArgName,ArgArity,OutName) :-
 
 cat_name(InName,Name,OutName) :-
 	str_cat(InName,'_',Name0),
-	check_atom(Name,'cat_name/3',2),
 	str_cat(Name0,Name,OutName).
 
 
@@ -318,18 +315,14 @@ ext_pred_data(pred(Sym,[Clause|Clauses],Prag),Pred,Clauses,Prag) :-
 ext_clause_data(clause(Args,Body,Prag),Args,Body,Prag).
 
 int_pred_data(ti_pred(ExtName,Name,Arity,MList,Cls,ClsR,LastCl),
-	      ExtName,Name,Arity,MList,Cls,ClsR,LastCl) :-
-    check_atom(Name,'int_pred_data/8',1),
-    check_integer(Arity,'int_pred_data/8',1),
-    int_clause_data(ti_clause(Args,Body,Prag,Pred),
-		    Args,Body,Prag,Pred).
+	      ExtName,Name,Arity,MList,Cls,ClsR,LastCl).
 
 int_clause_data(ti_clause(Args,Body,Prag,Pred),
 		Args,Body,Prag,Pred).
 
 arg_data(constant(Sym),Name,Arity,[]) :- sym_name(Sym,Name,Arity).
-arg_data(integer(Int),Int,0,[]) :- check_integer(Int,arg_data/4',1).
-arg_data(real(Real),Real,0,[]) :- check_number(Real,arg_data/4',1).
+arg_data(integer(Int),Int,0,[]).
+arg_data(real(Real),Real,0,[]).
 arg_data(structure(Sym,Args),Name,Arity,Args) :- sym_name(Sym,Name,Arity).
 
 make_arg(structure(Sym,_),Args,structure(Sym,Args)) :- !.
@@ -341,7 +334,7 @@ new_var(varocc(Varocc)) :- cmp_gensym('_', Prefix), cat_name(Prefix,(ti),Varocc)
 
 pass_thru_sym(constant(Sym)) :- sym_pass_thru(Sym).
 
-is_var(varocc(Int)) :- check_integer(Int,'is_var/1',1).
+is_var(varocc(_)).
 
 is_nonvar(X) :- \+ is_var(X).
 

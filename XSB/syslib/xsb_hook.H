@@ -25,7 +25,7 @@
 :- import
 	'=..'/2, atom/1, call/1, call_c/1, callable/1, abort/1, arg/3
 	from standard.
-:- import retractall/1, (dynamic)/1, assert/3 from assert.
+:- import retractall/1, assert/1, (dynamic)/1 from assert.
 :- import psc_type/2, term_psc/2, term_new/2, psc_arity/2 from machine.
 
 :- export add_xsb_hook/1, remove_xsb_hook/1, call_xsb_hook/2, call_xsb_hook/3.
@@ -34,11 +34,5 @@
 	xsb_exit_hook/1,
 	xsb_undefined_predicate_hook/1,
 	xsb_assert_hook/1,
-	xsb_intercept_assert_hook/1,
 	xsb_retract_hook/1,
-	xsb_intercept_retractall_hook/1,
-	xsb_before_prompt_hook/1,
-	xsb_hook_class_active/1.
-:- export rename_dyn_pred/2,
-   set_rename_dyn_pred/2,
-   reset_rename_dyn_pred/1.
+	xsb_before_prompt_hook/1.

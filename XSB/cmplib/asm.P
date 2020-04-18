@@ -67,7 +67,6 @@
 /*	global (No distiction again!).					*/
 /*======================================================================*/
 
-:- mode asm_genheader(+,+,+,?,+).
 asm_genheader(OStr, ModName, ModPars, SymTab, IsModule) :-
 	asm_genheader0(OStr, ModName, ModPars, SymTab, IsModule), 
 	fail.	% reclaim space (remove all choice points left) and undo
@@ -108,7 +107,7 @@ asm_genheader0(OStr, ModName, ModPars, SymTab, IsModule) :-
 /*	Generates byte code from the PIL code of a predicate block.	*/
 /*	The magic number for the block of byte code is 17-18-19-6.	*/
 /*======================================================================*/
-:- mode asm_PIL(+,-,-,+,+).
+
 asm_PIL(OStr, Sym, PilCode, NC, IsModule) :-
 	asm_magic(OStr,6),				% use magic number 17-18-19-6
 	sym_name(Sym, PredName, Arity), 
@@ -151,7 +150,6 @@ asm_get_index([Inst|Rest], ProgramCode, Index, IndexSize, Ni) :-
 /*	language files.							*/
 /*======================================================================*/
 
-:- mode asm_magic(+,+).
 asm_magic(OStr,N) :- file_put(OStr,17), file_put(OStr,18), file_put(OStr,19), file_put(OStr,N).
 
 /*======================================================================*/
@@ -160,7 +158,7 @@ asm_magic(OStr,N) :- file_put(OStr,17), file_put(OStr,18), file_put(OStr,19), fi
 
 asm_index_inst(cases(_,_,_,_), 10).
 asm_index_inst(arglabel(T,_,_), Size) :-
-	( asm_index_inst1(T, Size) -> check_integer(Size,'asm_index_inst/2',2) ; Size = 5 ).
+	( asm_index_inst1(T, Size) -> true ; Size = 5 ).
 
 asm_index_inst1(i, 9).
 asm_index_inst1(c, 9).

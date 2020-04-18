@@ -151,7 +151,7 @@ XSB_Start_Instr(check_complete,_check_complete)
   if ( is_leader(cs_ptr)) {
     leader = 1;
   }
-
+  
 /* 
  * This code is done regardless of whether breg is a leader.  The
  * thought was that as long as we're here, why not schedule answers
@@ -161,7 +161,7 @@ XSB_Start_Instr(check_complete,_check_complete)
   FailIfAnswersFound(sched_answers(CTXTc subgoal, NULL));
 //printf("got through first sched_answers\n");
   if (leader) {
-
+    
     //    printf("leader scheduling answers breg %x\n",breg);
     /* The following code is only done in profile mode; it keeps track
      * of characteristics of SCCs */
@@ -185,12 +185,8 @@ XSB_Start_Instr(check_complete,_check_complete)
       altsem_dbg(("got through suspension frames for negation\n"));
 
       if (flags[ALTERNATE_SEMANTICS] == NAF_CS) {
-	if (check_SCC_for_compl_sems(CTXTc cs_ptr)) {
-	  altsem_dbg(("ComplSem SCC\n"));
-	  FailIfAnswersFound(ProcessCSReturns(CTXTc cs_ptr));
-	  PerformCSSimplification(CTXTc cs_ptr);
-	}
-	else altsem_dbg(("WFS SCC\n"));
+	FailIfAnswersFound(ProcessCSReturns(CTXTc cs_ptr));
+	PerformCSSimplification(CTXTc cs_ptr);
       }
 
       CompleteSimplifyAndReclaim(CTXTc cs_ptr);
@@ -218,7 +214,6 @@ XSB_Start_Instr(check_complete,_check_complete)
 	/* there is nothing else to be done for this SCC */
 	cc_tbreg = tcp_prevbreg(orig_breg); /* go to prev SCC */
 	openreg = prev_compl_frame(cs_ptr); 
-	reset_level_num(openreg);
 	reclaim_stacks(orig_breg);
       } 
       breg = cc_tbreg; /* either orig, prev_cp or compl_susp */
@@ -268,7 +263,7 @@ XSB_Start_Instr(check_complete,_check_complete)
     ebreg = tcp_ebreg(breg);
 #endif
   }
-#endif /* else CONC_COMPL */
+#endif /* CONC_COMPL */
   Fail1;
 XSB_End_Instr()
 /* end of check_complete */

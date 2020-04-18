@@ -1,4 +1,0 @@
-% This file is a style file for makeindex, to produce an index of predicates
-% in sbprolog.
-preamble ""
-postamble ""

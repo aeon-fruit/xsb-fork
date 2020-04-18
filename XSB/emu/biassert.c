@@ -155,7 +155,7 @@ PrRef dynpredep_to_prref(CTXTdeclc void *pred_ep) {
    empty switch statements like the ones below, if DEBUG is not set
    (in which case xsb_dbgmsg is empty)                    --lfcastro */
 
-static inline void dbgen_printinst3(Cell Opcode, Integer Arg1, Integer Arg2, Integer Arg3)
+static inline void dbgen_printinst3(Opcode, Arg1, Arg2, Arg3)
 {
   switch (Opcode) {
   case getlist_tvar_tvar:
@@ -178,7 +178,7 @@ static inline void dbgen_printinst3(Cell Opcode, Integer Arg1, Integer Arg2, Int
   }
 }
 
-static inline void dbgen_printinst(Cell Opcode, Integer Arg1, Integer Arg2)
+static inline void dbgen_printinst(Opcode, Arg1, Arg2)
 {
   switch (Opcode) {
   case getpvar:	/* PRV */
@@ -722,7 +722,7 @@ static int assert_code_to_buff_p(CTXTdeclc prolog_term);
 
 int assert_code_to_buff( CTXTdecl /* Clause */)
 {
-  return assert_code_to_buff_p(CTXTc ptoc_tag(CTXTc 1));
+  return assert_code_to_buff_p(CTXTc reg_term(CTXTc 1));
 }
 
 static int assert_code_to_buff_p(CTXTdeclc prolog_term Clause)
@@ -830,7 +830,7 @@ static void db_gentopinst(CTXTdeclc prolog_term T0, int Argno, RegStat Reg)
     inst_queue_init(flatten_queue);
     inst_queue_push(CTXTc flatten_queue, Argno, T0, 0);
     if (isattv(T0)) {
-      T0 = p2p_attvar(T0);		/* the VAR part of the attv */
+      T0 = p2p_arg(T0, 0);		/* the VAR part of the attv */
       freeze_var(CTXTc T0,Argno,Reg);
     }      
     db_genterms(CTXTc 1, flatten_queue, Reg); /* gen uni's */
@@ -952,7 +952,7 @@ static void db_geninst(CTXTdeclc int unibld, prolog_term Sub, int isLast,
     }
     inst_queue_add(CTXTc flatten_queue, Rt, Sub, 0);
       
-    Sub = p2p_attvar(Sub);		/* the VAR part of the attv */
+    Sub = p2p_arg(Sub, 0);		/* the VAR part of the attv */
     freeze_var(CTXTc Sub,Rt,Reg);
   } else {
     Rt = reg_get(CTXTc Reg, TVAR);
@@ -1024,7 +1024,7 @@ static void db_genaput(CTXTdeclc prolog_term T0, int Argno,
     Rt = reg_get(CTXTc Reg, RVAR);
     inst_queue_push(CTXTc inst_queue, movreg, Rt, Argno);
 
-    T1 = p2p_attvar(T0);		/* the VAR part of the attv */
+    T1 = p2p_arg(T0, 0);		/* the VAR part of the attv */
     freeze_var(CTXTc T1,Rt,Reg);
 
     inst_queue_init(flatten_queue);
@@ -1385,9 +1385,8 @@ void dump_asserted_pred(PrRef prref, char *dumpfilename) {
 /***************************************************************/
 
 /* Used by assert & retract to get through the SOBs */
-#define MAXINDEXES 40
 
-static void get_indexes(CTXTdeclc prolog_term prolog_ind, int *Index, int *NI, prolog_term Head )
+static void get_indexes( prolog_term prolog_ind, int *Index, int *NI )
 {
   Index[0] = 0;
   if (isinteger(prolog_ind)) {
@@ -1395,12 +1394,6 @@ static void get_indexes(CTXTdeclc prolog_term prolog_ind, int *Index, int *NI, p
     if (Index[1] == 0) *NI = 0; else *NI = 1;
   } else {
     for (*NI = 0; !isnil(prolog_ind); prolog_ind = p2p_cdr(prolog_ind)) {
-      if (*NI+1 >= MAXINDEXES) {
-	xsb_warn(CTXTc "Too many indexes for %s/%d; only first %d used.\n",
-		 get_name(get_str_psc(Head)),get_arity(get_str_psc(Head)),
-		 MAXINDEXES);
-	return;
-      }
       (*NI)++;
       Index[*NI] = (int)int_val(p2p_car(prolog_ind));
     }
@@ -1416,26 +1409,16 @@ xsbBool assert_buff_to_clref_p(CTXTdeclc prolog_term,byte,PrRef,int,
 xsbBool assert_buff_to_clref(CTXTdecl /*Head,Arity,Prref,AZ,Indexes,HashTabSize,Clref*/)
 {
   ClRef Clref;
-  assert_buff_to_clref_p(CTXTc ptoc_tag(CTXTc 1),
+  assert_buff_to_clref_p(CTXTc reg_term(CTXTc 1),
 			 (byte)ptoc_int(CTXTc 2),
 			 (PrRef)ptoc_int(CTXTc 3),
 			 (int)ptoc_int(CTXTc 4),
-			 ptoc_tag(CTXTc 5),
+			 reg_term(CTXTc 5),
 			 (int)ptoc_int(CTXTc 6),
 			 &Clref);
   /* ctop_int(7, (Integer Clref)); */
   return TRUE;
 }
-
-#define RETRACT_EXPERIMENT 1
-int gc_dynamic(CTXTdecl);
-
-#ifdef RETRACT_EXPERIMENT
-UInteger retract_num = 0;
-UInteger assert_num = 0;
-
-#define retract_time_to_dyngc	 !(retract_num & 0x7ff)
-#define assert_time_to_dyngc	 !(assert_num & 0x7ff)
 
 xsbBool assert_buff_to_clref_p(CTXTdeclc prolog_term Head,
 			       byte Arity,
@@ -1447,17 +1430,12 @@ xsbBool assert_buff_to_clref_p(CTXTdeclc prolog_term Head,
 {
   ClRef Clause;
   int Location, *Loc, Inum;
-  int Index[MAXINDEXES], NI;
-
-  // try gc dynamic.  Now in another context than retracts,
-  // and cant do lots of retracts without asserts.
-  assert_num++;
-  if (assert_time_to_dyngc) gc_dynamic(CTXT);
+  int Index[20], NI;
 
   xsb_dbgmsg((LOG_ASSERT,"Now add clref to chain:"));
 
   XSB_Deref(Indexes);
-  get_indexes(CTXTc Indexes, Index, &NI, Head ) ;
+  get_indexes( Indexes, Index, &NI ) ;
 
   MakeClRef( Clause,
 	     (NI>0) ? INDEXED_CL : UNINDEXED_CL,
@@ -1465,16 +1443,9 @@ xsbBool assert_buff_to_clref_p(CTXTdeclc prolog_term Head,
 	     IC_CELLS(NI) + ((asrtBuff->Size+0x7)&~0x7)/sizeof(Cell) ) ;
 
   XSB_Deref(Head);
-  if (xsb_profiling_enabled) {
-    int new;
-    Psc apsc;
-    if (isstring(Head)) {
-      apsc = insert(string_val(Head),0,(Psc)flags[CURRENT_MODULE],&new)->psc_ptr;
-    } else {
-      apsc = get_str_psc(Head);
-    }
-    add_prog_seg(apsc,(byte *)Clause,ClRefSize(Clause));
-  }
+  if (xsb_profiling_enabled)
+    add_prog_seg(get_str_psc(Head),(byte *)Clause,ClRefSize(Clause));
+
   //  printf("asserting clause for: %s/%d at %x\n",
   // get_name(get_str_psc(Head)),get_arity(get_str_psc(Head)),Clause);
 
@@ -1727,11 +1698,8 @@ static SOBRef new_SOBblock(int ThisTabSize, int Ind, Psc psc )
    return NewSOB ;
 }
 
-#define LONG_HASHCHAIN_LENGTH 30000
-static int long_hashchain_warning_given = 0;
-
 static void addto_hashchain( int AZ, Integer Hashval, SOBRef SOBrec, CPtr NewInd,
-			     int Arity, prolog_term Head )
+			     int Arity )
 {
     CPtr *Bucketaddr = (CPtr *) (ClRefHashTable(SOBrec) + Hashval);
     CPtr OldInd = *Bucketaddr ;
@@ -1762,16 +1730,8 @@ static void addto_hashchain( int AZ, Integer Hashval, SOBRef SOBrec, CPtr NewInd
       if (cell_opcode(OldInd) == dynnoop)
       {  dbgen_inst_ppvw_safe(dyntrymeelse,Arity,NewInd,OldInd,&Loc); }
       else {
-	Integer hct = 0;
-        while (cell_opcode(OldInd) != dyntrustmeelsefail) {
-	  hct++;
+        while (cell_opcode(OldInd) != dyntrustmeelsefail)
           OldInd = IndRefNext(OldInd);
-	}
-	if (!long_hashchain_warning_given && hct > LONG_HASHCHAIN_LENGTH) {
-	  long_hashchain_warning_given = 1;
-	  fprintf(stdwarn, "Warning: In assert to %s/%d, an index hash chain is very long; consider using asserta, multi or no index.\n",
-		  get_name(get_str_psc(Head)),get_arity(get_str_psc(Head)));
-	}
         dbgen_inst_ppvw_safe(dynretrymeelse,Arity,NewInd,OldInd,&Loc);
       }
       IndRefPrev(NewInd) = OldInd ;
@@ -1835,7 +1795,7 @@ static void db_addbuff_i(byte Arity, ClRef Clause, PrRef Pred, int AZ,
       db_addbuff(Arity,SOBbuff,Pred,AZ,TRUE,Inum);
     }
     Pred = ClRefPrRef(SOBbuff) ; /* fake a prref */
-    addto_hashchain(AZ, Hashval, SOBbuff, ClRefIndPtr(Clause,Inum), Arity, Head);
+    addto_hashchain(AZ, Hashval, SOBbuff, ClRefIndPtr(Clause,Inum), Arity);
   }
   addto_allchain( AZ, Clause, SOBbuff, Arity ) ;
 }
@@ -2620,7 +2580,7 @@ void check_insert_private_delcf_clause(CTXTdeclc PrRef prref,
 
    If a DelCF represents a deleted prref, reclamation is complicated
    by the fact that clauses can be repeatedly asserted for a predicate
-   and retracted.  If GC cannot occur right away, this leads to
+   and retractalled.  If GC cannot occur right away, this leads to
    "generations" of DelCFs.  Probably the best solution for this is to
    put ISO-style timestamps in clrefs and prrefs: until then, however,
    I'm marking all prrefs for a predicate P if any clause for P is in
@@ -3050,15 +3010,19 @@ static void mark_for_deletion(CTXTdeclc ClRef Clause)
    we can actually delete the clause.  Otherwise, we make a frame on
    the delcf list. */
 
+#define RETRACT_EXPERIMENT 1
+
+#ifdef RETRACT_EXPERIMENT
+UInteger retract_num = 0;
+
+#define time_to_dyngc	 !(retract_num & 0xff)
 
 static void retract_clause(CTXTdeclc ClRef Clause, Psc psc ) { 
   PrRef prref; 
   int really_deleted = 0;
 
-  // may be that always in bad context so cant reclaim;
-  // so added similar test in assert_buff, so gets called in another context.
   retract_num++;
-  if (retract_time_to_dyngc) gc_dynamic(CTXT);    // gc strategy -- dont know how good
+  if (time_to_dyngc) gc_dynamic(CTXT);    // gc strategy -- dont know how good
 
   mark_for_deletion(CTXTc Clause);
 #ifdef MULTI_THREAD
@@ -3246,7 +3210,7 @@ xsbBool db_get_clause( CTXTdecl /*+CC, ?CI, ?CIL, +PredEP, +Head, +Failed, -Clau
   PrRef Pred = (PrRef)ptoc_int(CTXTc 4);
   int IndexLevel = 0, IndexArg = 0;
   ClRef Clause ;
-  prolog_term Head = ptoc_tag(CTXTc 5);
+  prolog_term Head = reg_term(CTXTc 5);
   CPtr EntryPoint = 0;
   Integer failed = ptoc_int(CTXTc 6) ;
 
@@ -4114,19 +4078,17 @@ xsbBool dynamic_code_function( CTXTdecl )
       addr = iso_ptoc_callable_arg(CTXTc 2, 4,5);
       psc = term_psc(addr);
       termType = get_type(psc);
-      //      printf("Term Type %d\n",termType);
-      if ( termType == T_DYNA || termType == T_ORDI) {		
+      if ( termType == T_DYNA ) {		
 	//	printf("ep %p %x %p %x \n",get_ep(psc),*get_ep(psc),dynpredep_to_prref(CTXTc get_ep(psc)),
-	//%	     *(pb) dynpredep_to_prref(CTXTc get_ep(psc)));
+	//     *(pb) dynpredep_to_prref(CTXTc get_ep(psc)));
 	if (*(pb) dynpredep_to_prref(CTXTc get_ep(psc)) == fail) 
 	  ctop_int(CTXTc 3,FALSE);
 	else 	  
 	  ctop_int(CTXTc 3,TRUE);
       }
-      else { //if (termType == T_PRED) 
+      else //if (termType == T_PRED) 
 	xsb_permission_error(CTXTc "access","non_dynamic",ptoc_tag(CTXTc 2),
 			     ptoc_string(CTXTc 4),(int)ptoc_int(CTXTc 5));
-      }
       //      else return FALSE;
       break;
   }
@@ -4199,7 +4161,7 @@ int trie_assert(CTXTdecl)
   BTNptr inst_node_ptr;
   int  found = 1;
 
-  Clause = ptoc_tag(CTXTc 1);
+  Clause = reg_term(CTXTc 1);
   psc    = (Psc)ptoc_int(CTXTc 2);
   Prref  = (CPtr)ptoc_int(CTXTc 4);
 

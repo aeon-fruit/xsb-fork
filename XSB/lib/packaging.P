@@ -38,11 +38,9 @@
 %% installed, or it is a list containing the package dir and any additional
 %% subdirectories in package dir that must be placed on the library path.
 %% PackageName is the name given to the package.
-:- mode bootstrap_package(+,+).
 bootstrap_package(PackageDirs, PackageName) :-
 	bootstrap(packagesdir, PackageDirs, PackageName).
 
-:- mode ensure_package_bootstrapped(+,+).
 ensure_package_bootstrapped(PackageDirs,PackageName) :-
 	(package_configuration(loaded(PackageName),yes)
 	 ->	true
@@ -50,17 +48,14 @@ ensure_package_bootstrapped(PackageDirs,PackageName) :-
 	).
 
 %% This is for bootstrapping packages installed in the system lib/ directory
-:- mode bootstrap_syspackage(+,+).
 bootstrap_syspackage(PackageDirs, PackageName) :-
 	bootstrap(libdir, PackageDirs, PackageName).
 
 %% This one for packages installed in the site directory
-:- mode bootstrap_sitepackage(+,+).
 bootstrap_sitepackage(PackageDirs, PackageName) :-
 	bootstrap(site_libdir, PackageDirs, PackageName).
 
 %% This one for packages installed in the use-specified directory
-:- mode bootstrap_userpackage(+,+,+).
 bootstrap_userpackage(LibDir, PackageDirs, PackageName) :-
 	expand_filename(LibDir, LibDir1),
 	bootstrap1(LibDir1, PackageDirs, PackageName).
@@ -107,7 +102,6 @@ put_pkg_dirs_on_libpath(FullPkgDirname,[Dir|Dirs],ExpandedDirs) :-
 
 %% This is useful for keeping library_directory under control
 %% and to clean up after a package crash.
-:- mode unload_package(+).
 unload_package(PackageName) :-
     package_configuration(dir(PackageName), FullPackageDirname),
     retract(library_directory(FullPackageDirname)),
@@ -124,7 +118,6 @@ remove_pkg_dirs_from_libpath([Dir|Dirs]) :-
     remove_pkg_dirs_from_libpath(Dirs).
 
 %%% some common tools used in package configuration
-:- mode xsb_running_under(?).
 xsb_running_under(cygwin) :-
 	xsb_configuration(architecture, A),
 	str_sub(cygwin, A),
@@ -149,7 +142,6 @@ xsb_running_under(unix) :-
 
 %% Windows semantics for renaming is such that the op fails, 
 %% if the target exists
-:- mode force_rename_file(+,+).
 force_rename_file(Orig,Target) :-
 	(path_sysop(unlink,Target), !; true),
 	path_sysop(rename,Orig,Target).

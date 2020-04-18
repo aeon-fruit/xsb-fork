@@ -2,47 +2,16 @@
 % DO NOT EDIT; ALL CHANGES WILL BE LOST!
 
 :- mode force_inprog_loaded.
-:- mode inp_arg(?,?,+,?,?,+,+,+,?,?).
-:- mode inp_args(?,?,+,?,+,+,+,?,?).
-:- mode inp_subargs(?,?,+,?,?,+,+,?,?).
-:- mode inprog(?,?,?).
+:- mode inp_body_test(?,?,?,?,?,++).
+:- mode inp_args(?,?,?,++,++,++,?).
+:- mode inp_arg(?,?,?,?,++,++,++,?).
 :- mode need_alloc(?).
-:- mode need_alloc(?,+,?,?).
+:- mode need_alloc(?,++,?,?).
+:- mode inp_subargs(?,?,?,?,++,++,?).
+:- mode inprog(?,?,?,?).
+:- mode inp_body(?,?,?,?,++,?,?).
 
-:- mode_on_success force_inprog_loaded.
-:- mode_on_success inp_arg(A,A,g,B,B,g,g,g,C,ng).
-:- mode_on_success inp_arg(A,A,g,B,B,g,g,g,C,C).
-:- mode_on_success inp_arg(A,ng,g,ng,B,g,g,g,C,ng).
-:- mode_on_success inp_arg(A,ng,g,ng,B,g,g,g,C,C).
-:- mode_on_success inp_arg(A,ng,g,ng,B,g,g,g,g,C).
-:- mode_on_success inp_args(A,A,g,g,g,g,g,B,ng).
-:- mode_on_success inp_args(A,A,g,g,g,g,g,B,B).
-:- mode_on_success inp_args(A,ng,g,ng,g,g,g,B,ng).
-:- mode_on_success inp_args(A,ng,g,ng,g,g,g,B,B).
-:- mode_on_success inp_args(A,ng,g,ng,g,g,g,g,B).
-:- mode_on_success inp_body(A,A,g,ng,ng,g,g,B,B).
-:- mode_on_success inp_body(A,A,g,ng,ng,g,g,B,ng).
-:- mode_on_success inp_body(A,ng,g,ng,B,g,g,C,C).
-:- mode_on_success inp_body(A,ng,g,ng,B,g,g,C,ng).
-:- mode_on_success inp_body(A,ng,g,ng,B,g,g,g,C).
-:- mode_on_success inp_body(g,g,g,g,g,g,g,A,A).
-:- mode_on_success inp_body(g,g,g,g,g,g,g,A,ng).
-:- mode_on_success inp_body(ng,A,g,ng,ng,g,g,B,ng).
-:- mode_on_success inp_body(ng,A,g,ng,ng,g,g,B,B).
-:- mode_on_success inp_body(ng,A,g,g,g,g,g,B,B).
-:- mode_on_success inp_body(ng,A,g,g,g,g,g,B,ng).
-:- mode_on_success inp_body_test(A,A,g,g,B,B,g).
-:- mode_on_success inp_body_test(A,A,g,g,B,ng,g).
-:- mode_on_success inp_body_test(A,ng,ng,B,C,C,g).
-:- mode_on_success inp_body_test(A,ng,ng,B,C,ng,g).
-:- mode_on_success inp_body_test(A,ng,ng,B,g,C,g).
-:- mode_on_success inp_body_test(A,A,ng,ng,B,B,g).
-:- mode_on_success inp_body_test(A,A,ng,ng,B,ng,g).
-:- mode_on_success inp_subargs(A,A,g,B,B,g,g,C,ng).
-:- mode_on_success inp_subargs(A,A,g,B,B,g,g,C,C).
-:- mode_on_success inp_subargs(A,ng,g,ng,B,g,g,C,ng).
-:- mode_on_success inp_subargs(A,ng,g,ng,B,g,g,C,C).
-:- mode_on_success inp_subargs(A,ng,g,ng,B,g,g,g,C).
-:- mode_on_success inprog(A,B,C).
-:- mode_on_success need_alloc(A).
-:- mode_on_success need_alloc(A,g,g,g).
+:- '_$mode_pattern'(inprog(_1022256,g,g,_1022268)).
+:- '_$mode_pattern'(inprog(_1022256,ng,ng,_1022268)).
+:- '_$mode_pattern'(inprog(_1022256,ng,g,_1022268)).
+:- '_$mode_pattern'(force_inprog_loaded).

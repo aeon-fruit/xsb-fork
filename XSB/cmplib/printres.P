@@ -24,7 +24,6 @@
 */
 
 
-:- mode print_result(?).
 print_result(Module) :-
 	ttywritenl('***** Exported symbols ***************'),
 	get_symtab(Module, SymTab),

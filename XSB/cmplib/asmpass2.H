@@ -37,4 +37,4 @@
 :- import write_int/2, write_float/2, write_double/2 from xsb_writ.
 :- import member/2 from basics.
 :- import sym_offset/2, sym_env/2, sym_category/2, sym_name/3, sym_prop/2 from symtab.
-:- import check_number/3, check_integer/3 from error_handler.
+

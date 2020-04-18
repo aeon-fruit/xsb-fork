@@ -2007,15 +2007,14 @@ void init_message_queue(XSB_MQ_Ptr xsb_mq, int declared_size) {
   	SET_THREAD_INCARN(xsb_mq->id, xsb_mq->incarn );
   }
   else
-  {
-#ifdef MULTI_THREAD    
-       int pos;
+  {	int pos;
 
-       //      for a private mq the mq id is equal to the thread id
-       //           for a signal mq it is displaced max_threads_glc  
-       pos = (xsb_mq - mq_table ) % max_threads_glc;
-#endif
-       xsb_mq->id = (int)(xsb_mq - mq_table);
+        /* for a private mq the mq id is equal to the thread id
+           for a signal mq it is displaced max_threads_glc 
+         */
+	pos = (xsb_mq - mq_table ) % max_threads_glc;
+
+	xsb_mq->id = (int)(xsb_mq - mq_table);
   	SET_THREAD_INCARN(xsb_mq->id, th_vec[pos].incarn );
   }
 

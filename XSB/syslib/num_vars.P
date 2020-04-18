@@ -36,12 +36,10 @@
 %   LastVar-1.
 
 
-:- mode numbervars(?,+,?,+).
 numbervars(Y,I,J,Options) :-
 	check_numbervars_options(Options,Attv_Act),
 	numbervars_int(Y,I,J,Attv_Act).
 
-:- mode numbervars(?,+,?).
 numbervars(Y,I,J) :- numbervars_int(Y,I,J,error).
 
 %:- import writeln/1 from standard.
@@ -88,7 +86,6 @@ numbervars(Y,I,J,N,A,AttvAct) :-
 %   integer values of N ranging from 0 up. This predicate was written since
 %   most of the calls to numbervars/3 are of the form: numbervars(Term,0,_)
  
-:- mode numbervars(?).
 numbervars(Term) :-
         numbervars(Term, 0, _).
 
@@ -99,45 +96,39 @@ a term with variables in it, by replacing uniformly the '$VAR'(<int>)
 terms where <int> >= FirstN with new variables.  It is the converse of
 numbervars, and must copy the input term. */
 
-:- mode unnumbervars(?,?).
 unnumbervars(TermIn,TermOut) :- unnumbervars(TermIn,0,TermOut,_Vars).
 
-:- mode unnumbervars(?,?,?).
 unnumbervars(TermIn,FirstN,TermOut) :- 
 	unnumbervars(TermIn,FirstN,TermOut,_Vars).
 
-:- mode unnumbervars(?,?,?,?).
 unnumbervars(TermIn,FirstN,TermOut,Vars) :-
-    term_type(TermIn,Type),
-    (Type =:= XSB_STRUCT
-     ->	(TermIn = '$VAR'(I), integer(I)
-	 -> (I >= FirstN
-	     ->	log_ith(I,Vars,TermOut)
-	     ;	TermOut = TermIn
-	    )
-	    ;  term_psc(TermIn,PSC),
-	    term_new(PSC,NTermOut),
-	    NTermOut = TermOut,
-	    psc_arity(PSC,Arity),
-	    unnumbervars(TermIn,FirstN,TermOut,Vars,1,Arity)
-	)
-     ;	Type =:= XSB_LIST
-     ->	TermIn = [A1|A2],
-	TermOut = [B1|B2],
-	unnumbervars_list(A1,FirstN,B1,Vars,A2,B2) % avoid allocate
-     ;	TermOut = TermIn
-    ).
+	term_type(TermIn,Type),
+	(Type =:= XSB_STRUCT
+         ->     (TermIn = '$VAR'(I)
+                 ->     (I >= FirstN
+	                 ->     log_ith(I,Vars,TermOut)
+		         ;      TermOut = TermIn
+		        )
+                 ;      term_psc(TermIn,PSC),
+		        term_new(PSC,TermOut),
+			psc_arity(PSC,Arity),
+			unnumbervars(1,Arity,TermIn,FirstN,TermOut,Vars)
+		)
+         ; Type =:= XSB_LIST
+         ->     TermIn = [A1|A2],
+	        TermOut = [B1|B2],
+		unnumbervars(A1,FirstN,B1,Vars),
+		unnumbervars(A2,FirstN,B2,Vars)
+         ;      TermOut = TermIn
+        ).
 
-unnumbervars_list(A1,FirstN,B1,Vars,A2,B2) :-
-    unnumbervars(A1,FirstN,B1,Vars),
-    unnumbervars(A2,FirstN,B2,Vars).
 
-unnumbervars(TermIn,FirstN,TermOut,Vars,I,Arity) :-
+unnumbervars(I,Arity,TermIn,FirstN,TermOut,Vars) :-
 	(I =< Arity
          ->     term_arg(TermIn,I,ArgIn),
 		term_arg(TermOut,I,ArgOut),
 	        unnumbervars(ArgIn,FirstN,ArgOut,Vars),
 		I1 is I+1,
-		unnumbervars(TermIn,FirstN,TermOut,Vars,I1,Arity)
+		unnumbervars(I1,Arity,TermIn,FirstN,TermOut,Vars)
 	 ;      true
         ).

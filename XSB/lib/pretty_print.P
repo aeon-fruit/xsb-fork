@@ -42,14 +42,12 @@
 
 :- import current_output/1 from curr_sym.
 
-:- mode pretty_print(+,?).
 pretty_print(Stream,List):- 
 	current_output(OldStream),
 	set_output(Stream),
 	pretty_print(List),
 	set_output(OldStream).	
 
-:- mode pretty_print(?).
 pretty_print([]):- !.
 pretty_print([(Cl,Dict)|T]) :- !,
 	pretty_print_clause(Cl,Dict),

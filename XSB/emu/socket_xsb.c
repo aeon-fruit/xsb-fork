@@ -77,8 +77,6 @@
 #include "psc_xsb.h"
 #include "register.h"
 #include "memory_xsb.h"
-#include "deref.h"
-#include "ptoc_tag_xsb_i.h"
 
 #ifdef WIN_NT
 typedef int socklen_t;
@@ -92,12 +90,9 @@ static u_long block_false = 0;
 /* return error code handling */
 static xsbBool set_error_code(CTXTdeclc int ErrCode, int ErrCodeArgNumber,char *Where);
 
-#ifdef WIN_NT
 /* In WIN_NT, this gets redefined into _fdopen by configs/special.h */
-__declspec(dllimport) FILE * fdopen(int fildes, const char *type);
-#else
-extern FILE * fdopen(int fildes, const char *type);
-#endif
+extern FILE *fdopen(int fildes, const char *type);
+
 /* declare the utility functions for select calls (bodies of these functions are below) */
 static void init_connections(CTXTdecl);
 static void set_sockfd(CTXTdeclc int count);
@@ -728,9 +723,9 @@ xsbBool xsb_socket_request(CTXTdecl)
     char *connection_name = ptoc_string(CTXTc 2);
     
     /* bind fds to input arguments */
-    R_sockfd = ptoc_tag(CTXTc 3);
-    W_sockfd = ptoc_tag(CTXTc 4);
-    E_sockfd = ptoc_tag(CTXTc 5);	
+    R_sockfd = reg_term(CTXTc 3);
+    W_sockfd = reg_term(CTXTc 4);
+    E_sockfd = reg_term(CTXTc 5);	
     
     /* initialize the array of connect_t structure for select call */	
     init_connections(CTXT); 
@@ -793,7 +788,7 @@ xsbBool xsb_socket_request(CTXTdecl)
 
     SYS_MUTEX_LOCK(MUTEX_SOCKETS);
     /* specify the time out */
-    timeout_term = ptoc_tag(CTXTc 3);
+    timeout_term = reg_term(CTXTc 3);
     if (isointeger(timeout_term)) {
       timeout = (int)oint_val(timeout_term);
       /* initialize tv */
@@ -809,9 +804,9 @@ xsbBool xsb_socket_request(CTXTdecl)
     Avail_esockfds = p2p_new(CTXT); 
 
     /* bind to output arguments */
-    Avail_rsockfds = ptoc_tag(CTXTc 4);
-    Avail_wsockfds = ptoc_tag(CTXTc 5);
-    Avail_esockfds = ptoc_tag(CTXTc 6);
+    Avail_rsockfds = reg_term(CTXTc 4);
+    Avail_wsockfds = reg_term(CTXTc 5);
+    Avail_esockfds = reg_term(CTXTc 6);
 
     Avail_rsockfds_tail = Avail_rsockfds;
     Avail_wsockfds_tail = Avail_wsockfds;
@@ -897,7 +892,7 @@ static xsbBool set_error_code(CTXTdeclc int ErrCode, int ErrCodeArgNumber, char 
 {
   prolog_term ecode_value_term, ecode_arg_term = p2p_new(CTXT);
   
-  ecode_value_term = ptoc_tag(CTXTc ErrCodeArgNumber);
+  ecode_value_term = reg_term(CTXTc ErrCodeArgNumber);
   if (!isref(ecode_value_term) && 
       !(isointeger(ecode_value_term)))
     xsb_abort("[%s] Arg %d (the error code) must be a variable or an integer!",

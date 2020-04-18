@@ -125,8 +125,6 @@
 /* incremental evaluation */
 #define INCR_EVAL_BUILTIN        78
 
-#define BASE64_OPS		 79
-
 #define GET_DATE                 80
 #define STAT_WALLTIME            81
 
@@ -368,10 +366,5 @@
 #define START_SLEEPER_THREAD 1
 #define CANCEL_SLEEPER_THREAD 2
 
-// CRYPTO_HASH sub-builtins
 #define MD5  1
 #define SHA1 2
-
-// BASE64_OPS sub-builtins
-#define BASE64_ENC 1
-#define BASE64_DEC 2

@@ -1,45 +1,43 @@
 ## File:      packages/Makefile
 ## Author(s): kifer
-## Contact:   xsb-users@lists.sourceforge.net
+## Contact:   xsb-contact@cs.sunysb.edu
 ## 
-## Copyright (C) The Research Foundation of SUNY, 1998-2019
+## Copyright (C) The Research Foundation of SUNY, 1998
 ## 
-## Licensed under the Apache License, Version 2.0 (the "License");
-## you may not use this file except in compliance with the License.
-## You may obtain a copy of the License at
+## XSB is free software; you can redistribute it and/or modify it under the
+## terms of the GNU Library General Public License as published by the Free
+## Software Foundation; either version 2 of the License, or (at your option)
+## any later version.
+## 
+## XSB is distributed in the hope that it will be useful, but WITHOUT ANY
+## WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+## FOR A PARTICULAR PURPOSE.  See the GNU Library General Public License for
+## more details.
+## 
+## You should have received a copy of the GNU Library General Public License
+## along with XSB; if not, write to the Free Software Foundation,
+## Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 ##
-##      http://www.apache.org/licenses/LICENSE-2.0
-##
-## Unless required by applicable law or agreed to in writing, software
-## distributed under the License is distributed on an "AS IS" BASIS,
-## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-## See the License for the specific language governing permissions and
-## limitations under the License.
-##
+## $Id: Makefile,v 1.39 2012-09-27 02:25:58 kifer Exp $
+## 
 ##
 
 OBJEXT=.xwam
 
 ALL = 	slx${OBJEXT} gap${OBJEXT} \
 	regmatch${OBJEXT} wildmatch${OBJEXT} \
-	xsbdoc${OBJEXT} \
+	xasp${OBJEXT} xsbdoc${OBJEXT} \
 	chr${OBJEXT} chr_d${OBJEXT} \
 	sgml${OBJEXT} \
-	minizinc${OBJEXT} \
 	wildmatch${OBJEXT} regmatch${OBJEXT} \
-	justify${OBJEXT} clpr${OBJECT} curl${OBJECT} pcre${OBJECT}
-# Disabled due to errors
-#	xasp${OBJEXT} xmc${OBJEXT}
+	xmc${OBJEXT} justify${OBJEXT} clpr${OBJECT} curl${OBJECT} pcre${OBJECT}
 # Perlmatch, libwww - deprecated. Use PCRE, CURL
 #	perlmatch${OBJEXT} libwww${OBJEXT}
 
-SUBDIR = slx gap regmatch wildmatch \
-	 xsbdoc justify clpqr curl pcre \
-	 minizinc
-# Disabled due to errors:
-#	 xmc xasp
-# Deprecated:
-#	 perlmatch libwww
+SUBDIR = slx gap regmatch wildmatch xasp \
+	 xsbdoc xmc justify clpqr curl pcre
+# Deprecated
+#	perlmatch libwww
 
 Option = [optimize]
 
@@ -98,19 +96,13 @@ iprolog::
 #	@echo ""
 #	cd perlmatch; make
 
-# Disabled until fixed:
-# Errors and warnings
-#xasp::
-#	@echo ""
-#	cd xasp; make
+xasp::
+	@echo ""
+	cd xasp; make
 
 gap::
 	@echo ""
 	cd gap; make
-
-minizinc::
-	@echo ""
-	cd minizinc; make
 
 regmatch::
 	@echo ""
@@ -120,12 +112,9 @@ wildmatch::
 	@echo ""
 	cd wildmatch; make
 
-# Disabled until fixed:
-# Error while compiling xlparse.c
-# Too many warnings during ompilation, both Prolog and main.c
-#xmc::
-#	@echo ""
-#	cd xmc; make
+xmc::
+	@echo ""
+	cd xmc; make
 
 justify::
 	@echo ""

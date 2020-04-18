@@ -33,7 +33,7 @@
 /*----------------------------------------------------------------------*/
 /* single clause predicate cases: no try/index instruction is needed.	*/
 /*----------------------------------------------------------------------*/
-:- mode makeindex(?,?,?,?,?,+).
+
 makeindex(Sym, [clause(_,_,crec(_,Label))], Pil, Pilr, _, Tabled) :- !,
 	( Tabled == 0 -> Pil = Pilr
 	; Tabled = tabled(Ind,_), sym_name(Sym, _, Arity),
@@ -65,7 +65,7 @@ makeindex(Sym, Clauses, Pil, Pilr, Prag, Tabled) :-
 	),
 	( Narg =:= 0 ->
 	    makeNOindex(Clauses, Arity, Pil, Pilr, Tabled)
-	; index_argpats(Clauses, Narg, Tabled, ArgList),
+	; index_argpats(Clauses, Narg, ArgList),
 	  index_split(ArgList, ArgListGroup),
 	  ( ArgListGroup = [_One] -> NeedLabel = 0, Pil2 = Pil
           ; index_extract_label_list(ArgListGroup, LabelList),
@@ -191,7 +191,6 @@ index_extract_label_list([arglabel(_,_,Label)|Rest], [Label|LRest]) :-
 /* index_split/2 is also used in cp_opt.P.  				*/
 /*======================================================================*/
 
-:- mode index_split(?,?).
 index_split(ArgPatterns, ArgGroups) :-
 	index_split0(ArgPatterns, ArgGroups0),
 	index_simplify_singleton(ArgGroups0, ArgGroups).
@@ -216,7 +215,7 @@ index_simplify_singleton([Group|Rest], [NGroup|NRest]) :-
 	index_simplify_singleton(Rest, NRest).
 
 /*======================================================================*/
-/* index_argpats(+Clauses, +IndexArg, +Tabled, -ArgPatList)		*/
+/* index_argpats(+Clauses, +IndexArg, -ArgPatList)			*/
 /*	IndexArg: the argument number to be indexed			*/
 /*	ArgPatList: a list of arglabel(Pattern, HashVal, Label)		*/
 /*	  where Label is the label for the clause			*/
@@ -233,21 +232,12 @@ index_simplify_singleton([Group|Rest], [NGroup|NRest]) :-
 /* affect cpo_index_argpats/3						*/
 /*======================================================================*/
 
-index_argpats([], _, _, []).
-index_argpats([clause(Arglist,Body,crec(_,L))|CRest], N, Tabled,
+index_argpats([], _, []).
+index_argpats([clause(Arglist,_,crec(_,L))|CRest], N, 
 	      [arglabel(Pattern,NewArg,L)|APatternRest]) :-
-    nthmember(Arg, Arglist, N),
-    (Tabled == 0, % seems to work only for untabled preds, should figure out why
-     Arg = varocc(VN),
-     first_goal(Body,inlinegoal(=,2,[varocc(VN),Arg1]))
-     ->	index_argpat(Arg1,Pattern,NewArg)
-        %%,standard:writeln(index_thru_var(VN,Arg1))
-     ;	index_argpat(Arg, Pattern, NewArg)
-    ),
-    index_argpats(CRest, N, Tabled, APatternRest).
-
-first_goal(and(Goal,_),Goal) :- !.
-first_goal(Goal,Goal).
+        nthmember(Arg, Arglist, N),
+	index_argpat(Arg, Pattern, NewArg),
+	index_argpats(CRest, N, APatternRest).
 
 index_argpat(constant(Sym), n, []) :- sym_name(Sym, [], 0).
 index_argpat(integer(X), i, X).

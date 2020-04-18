@@ -44,7 +44,6 @@
 :- import obsolete/2 from obsolete.
 
 
-:- mode unix(+).
 unix(Command) :- 
 	term_type(Command, T),
 	( T =:= 3 -> constr_command(Command, Command1), unix(Command1, Res)
@@ -57,7 +56,6 @@ constr_command([H|T], String) :-
 	constr_command(T, SubString),
 	str_cat(H, SubString, String).
 	
-:- mode unix(+,?).
 unix(Command, Result) :-
 	obsolete('unix/1, unix/2', 'shell/1, shell/2'),
 	term_type(Command, T),
@@ -67,7 +65,6 @@ unix(Command, Result) :-
 	).
 
 
-:- mode cd(+).
 cd(Path) :- 
 	obsolete('cd/1 in module unix', 'use cd/1 in module shell'),
 	( atom(Path) -> 
@@ -83,12 +80,10 @@ rename(Old, New) :-
 ls :-
 	unix('ls -F', Res), Res =:= 0.
 
-:- mode rm(+).
 rm(Name) :-
 	obsolete('rm/1 in module unix', 'use rm/1 in module shell'),
 	sys_unlink(Name, Res), Res =:= 0.
 
-:- mode edit(+).
 edit(File) :- 
 	obsolete('edit/1 in module unix', 'use edit/1 in module shell'),
 	expand_filename(File, FileName), 
@@ -97,24 +92,16 @@ edit(File) :-
 /*
 sys_exit() :- sys_syscall(1).
  */
-:- mode sys_link(+,+,?).
 sys_link(Source, Dest, Res) :-
 	obsolete('sys_link/3 in module unix',
 		 'use sys_link/3 in module shell'),
 	sys_syscall(  9, Res, Source, Dest).
-
 sys_unlink(Path, Res) 	    :- sys_syscall( 10, Res, Path).
-
-:- mode sys_chdir(+,-).
 sys_chdir(Dir, Res)	    :- sys_syscall( 12, Res, Dir).
-
-:- mode sys_access(+,+,?).
 sys_access(File, Mode, Res) :-
 	obsolete('sys_access/3 in module unix',
 		 'use sys_access/3 in module shell'),
 	sys_syscall( 33, Res, File, Mode).
-
-:- mode sys_stat(+,+,?).
 sys_stat(Path, Buff, Res)   :-
 	obsolete('sys_stat/1 in module unix',
 		 'use sys_stat/1 in module shell'),

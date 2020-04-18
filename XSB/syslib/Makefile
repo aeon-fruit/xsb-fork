@@ -36,10 +36,9 @@ ALL =	assert${OBJEXT} basics${OBJEXT} consult${OBJEXT} \
 	push_io${OBJEXT} \
 	setof${OBJEXT} shell${OBJEXT} standard${OBJEXT} std_xsb${OBJEXT} \
 	string${OBJEXT} subsumes${OBJEXT} sysinitrc${OBJEXT} tables${OBJEXT}  \
-	term_exp${OBJEXT} thread${OBJEXT} sub_atom${OBJEXT} write_term${OBJEXT} \
+	term_exp${OBJEXT} thread${OBJEXT} sub_atom${OBJEXT} \
 	unix${OBJEXT} x_interp${OBJEXT} xsb_hook${OBJEXT} xsb_read${OBJEXT}  \
-	xsb_writ${OBJEXT} xcallxsb${OBJEXT} ccallxsb${OBJEXT} increval${OBJEXT} \
-	open_url${OBJEXT}
+	xsb_writ${OBJEXT} xcallxsb${OBJEXT} ccallxsb${OBJEXT} increval${OBJEXT}
 
 EMU_INCLUDES = ../emu/builtin.h ../emu/celltags_xsb.h ../emu/flag_defs_xsb.h \
 	../emu/io_defs_xsb.h ../emu/syscall_xsb.h ../emu/sig_xsb.h \
@@ -52,8 +51,8 @@ Option = [sysmod,optimize,quit_on_error]
 
 #-------------------------------------------------------------------#
 #
-XSB=../bin/xsb
-#XSB=../config/x64-pc-windows/bin/xsb.exe
+#XSB=../bin/xsb
+XSB=../config/x64-pc-windows/bin/xsb.exe
 Prolog = $(XSB) -e "segfault_handler(warn)."
 #
 #-------------------------------------------------------------------#

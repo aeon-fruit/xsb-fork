@@ -64,7 +64,7 @@
 /*	symbol already exists in the symbol table, only the properties	*/
 /*	are added and the symbol Sym is returned.			*/
 /*======================================================================*/
-:- mode sym_insert(+,+,?,?,?).
+
 sym_insert(Name, Arity, Prop, SymTab, Sym) :-
 	SymTab = sym_tab(Count,_Completed,HashTab),
 	(var(Count)	% SymTab does not exist yet (is empty).
@@ -91,24 +91,8 @@ sym_inserti(Name, Arity, Prop, [Sym|_], Sym, Index) :-
 sym_inserti(Name, Arity, Prop, [_|SymTab], Sym, Index) :-
 	sym_inserti(Name, Arity, Prop, SymTab, Sym, Index).
 
-:- mode dispose_symtab(?).
 dispose_symtab(_).
 
-:- mode sym_find(+,+,?,?).
-sym_find(Name,Arity,SymTab,Sym) :-
-    SymTab = sym_tab(Count,_Completed,HashTab),
-    nonvar(Count),
-    log_ith(0,HashTab,HashSize),
-    term_hash(Name, HashSize, Hash0), Hash is Hash0+1,
-    log_ith(Hash, HashTab, Symlist),
-    sym_findi(Symlist,Name,Arity,Sym).
-
-sym_findi(Syms,_,_,_) :- var(Syms), !, fail.
-sym_findi([Sym0|Syms],Name,Arity,Sym) :-
-    (Sym0 = sym(Name,Arity,_,_)
-     ->	Sym = Sym0
-     ;	sym_findi(Syms,Name,Arity,Sym)
-    ).
 
 /*======================================================================*/
 /*  sym_complete(#SymTab)						*/
@@ -116,7 +100,7 @@ sym_findi([Sym0|Syms],Name,Arity,Sym) :-
 /*	concatenating all the hash buckets.				*/
 /* DSW: This should be done better using the log_ith structure...	*/
 /*======================================================================*/
-:- mode sym_complete(?).
+
 sym_complete(sym_tab(_Count,completed,HashTab)) :-
 	log_ith(0,HashTab,HashSize),
 	sym_complete1(1, HashSize, _, HashTab).
@@ -141,9 +125,8 @@ get_end_ith_bucket(BucketList, NextBucketList) :-
 /*	Returns the number of symbols NumberOfSymbols stored in the	*/
 /*	SymTab symbol table.						*/
 /*======================================================================*/
-:- mode sym_count(?,?).
-sym_count(sym_tab(Count,_,_), Count) :-
-    check_integer(Count,'sym_count/2',1).
+
+sym_count(sym_tab(Count,_,_), Count).
 
 
 /*======================================================================*/
@@ -154,7 +137,7 @@ sym_count(sym_tab(Count,_,_), Count) :-
 /*	backtracking, though the more efficient sym_gen/2 predicate is	*/
 /*	recommended for that purpose.					*/
 /*======================================================================*/
-:- mode sym_scan(?,?,?).
+
 sym_scan(Sym, Symtab, RestSymTab) :-
 	nonvar(Symtab),
 	( Symtab = [Sym|RestSymTab] ->
@@ -170,7 +153,7 @@ sym_scan(Sym, Symtab, RestSymTab) :-
 /*	Get an (arbitrary) symbol Sym from the symbol table SymTab.	*/
 /*	Best used to generate all symbols through backtracking.		*/
 /*======================================================================*/
-:- mode sym_gen(?,?).
+
 sym_gen(Sym, SymTab) :-
 	safe_sort_by_index(SymTab,Sort_tab),
 	sym_gen1(Sym, Sort_tab).
@@ -189,7 +172,7 @@ sym_gen1(Sym, Symlist) :-
 /*  sym_empty(+SymTab).							*/
 /*	Succeeds iff the symbol table SymTab is empty.			*/
 /*======================================================================*/
-:- mode sym_empty(?).
+
 sym_empty(SymTab) :- var(SymTab).
 
 
@@ -198,7 +181,7 @@ sym_empty(SymTab) :- var(SymTab).
 /*	Insert a list of additional properties PropList into the	*/
 /*	symbol's property list while checking for inconsistencies.	*/
 /*======================================================================*/
-:- mode sym_propin(?,?).
+
 sym_propin(Prop, sym(N, A, PropList, _)) :-
 	sym_propin(Prop, PropList, N, A).
 
@@ -257,7 +240,7 @@ get_and_inc_tabnum(N):-
 /*  sym_prop(+Prop, +Sym).						*/
 /*	Succeeds iff symbol Sym processes property Prop.		*/
 /*======================================================================*/
-:- mode sym_prop(?,?).
+
 sym_prop(X, sym(_,_,PropList,_)) :- sym_prop0(X, PropList).
 
 sym_prop0(pred, prop(Type,_,_,_,_,_)) :- !, Type == (pred).
@@ -277,13 +260,8 @@ sym_prop0(unused, prop(_,_,Used,_,_)) :- !, Used == unused.
 
 sym_prop0(ep(EP), prop(_,_,_,_,ep(EP),_)).
 
-sym_prop0(mode(M), prop(_,_,_,_,_,OtherList)) :- !, memberV(mode(M), OtherList).
 sym_prop0(Other, prop(_,_,_,_,_,OtherList)) :- membercheck(Other, OtherList).
 
-%% member over list with var tail.
-memberV(_,L) :- var(L), !, fail.
-memberV(X,[X|_]).
-memberV(X,[_|L]) :- memberV(X,L).
 
 /*======================================================================*/
 /*  extract_symlist(+Prop, -SymList, +SymTab).				*/
@@ -291,24 +269,12 @@ memberV(X,[_|L]) :- memberV(X,L).
 /*	procedure extracts symbols with certain properties and returns	*/
 /*	them in the list SymList.  SymTab must be closed.		*/
 /*======================================================================*/
-:- mode extract_symlist(?,?,?).
-extract_symlist(Prop, SymList, sym_tab(_,Comp,Hashtab)) :-
+
+extract_symlist(Prop, Symlist, sym_tab(_,Comp,Hashtab)) :-
 	nonvar(Comp),
-	log_ith(1, Hashtab, SymListAll),  % is list of syms, but open-tailed
-	extract_symlist1(SymListAll, Prop, SymList).
+	log_ith(1, Hashtab, Symtab),
+	extract_symlist1(Prop, Symlist, Symtab).
 
-extract_symlist1(SymListAll,_Prop,SymList) :- var(SymListAll), !, SymList = [].
-extract_symlist1([],_,[]).
-extract_symlist1([Sym|Rest],Prop,SymList) :-
-    Sym = sym(_,_,PropList,_),
-    copy_term(Prop,NProp),
-    (props_match(NProp,PropList)
-     ->	SymList = [Sym|SymList0]
-     ;	SymList = SymList0
-    ),
-    extract_symlist1(Rest,Prop,SymList0).
-
-/**
 extract_symlist1(_Prop, [], SymTab) :- var(SymTab), !.
 extract_symlist1(Prop, SymList, [Sym|Rest]) :- !,
 	extract_symlist1(Prop, SymList0, Rest),
@@ -317,16 +283,12 @@ extract_symlist1(Prop, SymList, [Sym|Rest]) :- !,
 	; SymList=SymList0
 	).
 extract_symlist1(_Prop, [], []) :- !.
-**/
 /* added last clause -- tls */
-
 
 props_match([], _PropList) :- !.
 props_match([One|Rest], PropList) :- !,
-    sym_prop0(One, PropList),
-    props_match(Rest, PropList).
-props_match(Prop, PropList) :-
-    sym_prop0(Prop, PropList).
+	sym_prop0(One, PropList), props_match(Rest, PropList).
+props_match(Prop, PropList) :- sym_prop0(Prop, PropList).
 
 
 /*======================================================================*/
@@ -341,7 +303,6 @@ safe_sort_by_index(sym_tab(_,_,HashTab), Sorted_SymList) :-
 	closetail(Safe_list),		% This closes the open-end of SymList.
 	sort_indices(Safe_list, Sorted_SymList).
 
-:- mode sort_by_index(?,?).
 sort_by_index(sym_tab(_,_,HashTab), Sorted_SymList) :-
 	log_ith(1, HashTab, SymList),	% Be careful; SymList is open-ended.
 	closetail(SymList),		% This closes the open-end of SymList.
@@ -381,14 +342,12 @@ split([Sym|Tail], Index, Small, Big) :-
 
 % Category or type
 %------------------
-:- mode typ_prop(?).
 typ_prop(pred).
 typ_prop(module).
 % typ_prop(dynamic).
 
 % Scope
 %-------
-:- mode env_prop(?).
 env_prop(ex).
 env_prop(im(_)).
 env_prop(global).
@@ -417,14 +376,12 @@ use_prop(unused).
 /*  sym_name(+Sym, -Name, -Arity).					*/
 /*	Return the name Name and the arity Arity of the symbol Sym.	*/
 /*======================================================================*/
-:- mode sym_name(?,?,?).
+
 sym_name(sym(P, A, _, _), P1, A) :-
 	(P = _Mod:P1
 	 ->	true
 	 ;	P1 = P
-	),
-	check_atom(P1,'sym_name/3',1),
-	check_integer(A,'sym_name/3',1).
+	).
 
 
 /*======================================================================*/
@@ -432,15 +389,14 @@ sym_name(sym(P, A, _, _), P1, A) :-
 /*	Return the offset Offset of the symbol Sym in the symbol table.	*/
 /*======================================================================*/
 
-:- mode sym_offset(?,?).
-sym_offset(sym(_,_,_,Offset), Offset) :- check_integer(Offset,'sym_offset/2',1).
+sym_offset(sym(_,_,_,Offset), Offset).
 
 
 /*======================================================================*/
 /*  sym_env(+Sym, -Scope).						*/
 /*	Return the scope Scope of the symbol Sym.			*/
 /*======================================================================*/
-:- mode sym_env(?,?).
+
 sym_env(sym(_, _, prop(_,Env,_,_,_,_), _), Env).
 
 
@@ -448,7 +404,7 @@ sym_env(sym(_, _, prop(_,Env,_,_,_,_), _), Env).
 /*  sym_category(+Sym, -Category).					*/
 /*	Return the category Category of the symbol Sym.			*/
 /*======================================================================*/
-:- mode sym_category(?,?).
+
 sym_category(sym(_,_,prop(Cat,_,_,_,_,_),_), Cat).
 
 
@@ -456,7 +412,7 @@ sym_category(sym(_,_,prop(Cat,_,_,_,_,_),_), Cat).
 /*  sym_type(+Sym, -Type).						*/
 /*	Return the type Type of the symbol Sym.				*/
 /*======================================================================*/
-:- mode sym_type(?,?).
+
 sym_type(sym(_,_,prop(_,_,_,_,_,Other),_), tabled(Ind,Arity)) :-
 	member2(tabled(Ind,Arity), Other),
 	!.
@@ -475,7 +431,7 @@ sym_type(sym(_,_,prop(_,_,_,_,_,Other),_), table_index(Index)) :-
 /*	Return the index argument of the symbol Sym.  Makes sense only	*/
 /*	for predicates.							*/
 /*======================================================================*/
-:- mode sym_index(?,?).
+
 sym_index(sym(_,_,prop(_,_,_,_,_,Other),_), Narg) :-
 	( member2(index(Narg), Other) -> true ; Narg = 1 ).
 
@@ -484,7 +440,7 @@ sym_index(sym(_,_,prop(_,_,_,_,_,Other),_), Narg) :-
 /*  sym_pass_thru(-Sym).						*/
 /*	Return the pass_thru symbol used in transformational indexing.  */
 /*======================================================================*/
-:- mode sym_pass_thru(?).
+
 sym_pass_thru(sym(pass_thru,-1,prop(junk,internal,junk,used,junk,[]),-1)).
 
 
@@ -492,11 +448,9 @@ sym_pass_thru(sym(pass_thru,-1,prop(junk,internal,junk,used,junk,[]),-1)).
 /* 	Routines to handle clauses.					*/
 /*======================================================================*/
 
-:- mode add_new_clause(?,?).
 add_new_clause(New,Clauses) :-
 	add_new_clause(New,Clauses,_).
 
-:- mode add_new_clause(?,?,?).
 add_new_clause(New,[X|L],K) :- 
 	var(X)
 	 ->	X=New,K=1	% first element
@@ -532,7 +486,6 @@ add_tree(New,[X|Y],N,K) :-
 		)
 	).
 
-:- mode clause_listify(?,?).
 clause_listify(Bl,L) :-
 	var(Bl)
 	 ->	L=[]

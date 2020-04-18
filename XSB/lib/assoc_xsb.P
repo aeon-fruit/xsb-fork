@@ -1,8 +1,7 @@
 /* File:      assoc_xsb.P
 ** Author(s): Mats Carlsson (see below)
 **	      (modified by Baoqiu Cui to make it work in XSB)
-**            David S. Warren for addkey and friends, from Bratko;
-**            David S. Warren for priority queues, from idea on web;
+**            David S. Warren (for addkey and friends, from Bratko)
 ** Contact:   xsb-contact@cs.sunysb.edu
 **
 ** This file is adapted from SICStus Prolog:
@@ -46,11 +45,6 @@
 	put_assoc/4.			% Key x Assoc x Val -> Assoc
 
 :- export addkey/4, find/3, updatevs/5.  % for 2-3 trees.
-
-:- export add_list_to_priority_queue/3, % for priority queues
-    peek_at_priority_queue/3,
-    add_to_priority_queue/4,
-    remove_from_priority_queue/4.
 
 :- import length/2 from basics.
 :- import compare/3, writeln/1 from standard.
@@ -586,101 +580,3 @@ cmb4(t(NT3a,Mb,NT3b),T1,M2,T2,M3,t(n2(T1,M2,T2),M3,n2(NT3a,Mb,NT3b))).
 
 cmb5(t(NT2),T1,M2,M3,T3,t(n3(T1,M2,NT2,M3,T3))).
 cmb5(t(NT2a,Mb,NT2b),T1,M2,M3,T3,t(n2(T1,M2,NT2a),Mb,n2(NT2b,M3,T3))).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-/* A priority queue is a data structure that allows you to maintain a
-set of key-value pairs, adding a new one in log time, and to determine
-the current smallest key (and its value) in constant time, and to
-remove the pair with the smallest key value in log time.  It uses a
-tree with nodes of the form
-pt(Key,Value,LeftTreeCnt,LeftTree,RightTreeCnt,RightTree), where the
-Cnts are the number of key-value pairs in the corresponding tree.  The
-properties of the tree is that it is "balanced" and the key at any
-node in the tree is smaller than (or equal to) the keys at the nodes
-of its immediate children.  (The empty priority queue is represented
-by the empty list.*/
-
-/* add_to_priority_queue take a Key and Value pair and a priority
-queue, and returns a new priority queue with that pair added. */
-
-add_to_priority_queue(K,V,[],pt(K,V,0,[],0,[])).
-add_to_priority_queue(K,V,pt(K1,V1,LCnt,Left,RCnt,Right),pt(NK,NV,NLCnt,NLeft,NRCnt,NRight)) :-
-    (K < K1
-     ->	NK = K,
-	NV = V,
-	(LCnt < RCnt
-	 -> NRight = Right, NRCnt = RCnt,
-	    NLCnt is LCnt + 1,
-	    add_to_priority_queue(K1,V1,Left,NLeft)
-	 ;  NLeft = Left, NLCnt = LCnt,
-	    NRCnt is RCnt + 1,
-	    add_to_priority_queue(K1,V1,Right,NRight)	
-	)
-     ;  NK = K1,
-	NV = V1,
-	(LCnt < RCnt
-	 -> NRight = Right, NRCnt = RCnt,
-	    NLCnt is LCnt + 1,
-	    add_to_priority_queue(K,V,Left,NLeft)
-	 ;  NLeft = Left, NLCnt = LCnt,
-	    NRCnt is RCnt + 1,
-	    add_to_priority_queue(K,V,Right,NRight)	
-	)
-    ).
-
-/* add_list_to_priority_queue adds a list of key-value pairs to a
-priority queue. */
-
-add_list_to_priority_queue([],Q,Q).
-add_list_to_priority_queue([K-V|L],Q0,Q) :-
-    add_to_priority_queue(K,V,Q0,Q1),
-    add_list_to_priority_queue(L,Q1,Q).
-
-/* peek_at_priority_queue(-K,-V,+Q) returns the smallest Key, K, and
-its value V, in the priority queue Q.  It fails if the queue is
-empty.  */
-
-peek_at_priority_queue(K,V,pt(K,V,_,_,_,_)).
-
-/* remove_from_priority_queue(-K,-V,+Q,-NQ) returns the smallest key K
-in the priority queue Q and its value in V, and returns the new queue
-in NQ.  If the queue Q is empty, it fails.  There may be multiple
-values with the same key.  If there are multiple values for the
-smallest key, one is arbitrarily chosen to be deleted and returned.
-*/
-
-remove_from_priority_queue(K,V,pt(K,V,LC,LQ,RC,RQ),NQ) :-
-    promote(LC,LQ,RC,RQ,NQ).
-
-promote(0,[],_RC,RQ,RQ) :- !.
-promote(_LC,LQ,0,[],LQ) :- !.
-promote(LC,LQ,RC,RQ,pt(NK,NV,NLC,NLQ,NRC,NRQ)) :-
-    LQ=pt(LK,LV,LLC,LLQ,LRC,LRQ),
-    RQ=pt(RK,RV,RLC,RLQ,RRC,RRQ),
-    (LK < RK			% pull from left
-     ->	NK = LK, NV = LV,	% new kv from left
-	NLC is LC - 1,		% removed from left
-	NRC = RC,
-	NRQ = RQ,
-	promote(LLC,LLQ,LRC,LRQ,NLQ)
-     ;	NK = RK, NV = RV,
-	NRC is RC-1,
-	NLC = LC,
-	NLQ = LQ,
-	promote(RLC,RLQ,RRC,RRQ,NRQ)
-    ).
-
-/*** debugging   ***
-:- export print_priority_queue/2.
-print_priority_queue([],_Ind).
-print_priority_queue(pt(K,V,LC,LT,RC,RT),Ind) :-
-    tab(Ind),
-    writeln(K-V),
-    Ind1 is Ind+2,
-    (LC > 0 -> tab(Ind1),writeln(cnt=LC) ; true),
-    print_priority_queue(LT,Ind1),
-    (RC > 0 -> tab(Ind1),writeln(cnt=RC) ; true),
-    print_priority_queue(RT,Ind1).
-****/

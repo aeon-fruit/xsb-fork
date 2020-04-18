@@ -24,9 +24,9 @@
 
 
 
-:- export push_stdin/2, pop_stdin/1.
-
 :- import abort/1, atom/1 from standard.
 :- import see/1, seeing/1, seen/0 from standard.
 :- import assert/1, retractall/1, (dynamic)/1 from assert.
-:- import check_atom/3 from error_handler.
+
+:- export push_stdin/2, pop_stdin/1.
+

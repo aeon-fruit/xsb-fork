@@ -47,19 +47,28 @@ test -f ../emu/private_builtin.c || \
    cp private_builtin.in ../emu/private_builtin.c
 
 makeargs=
+force_devel=
+if test -d CVS -a -f CVS/Entries; then
+    force_devel=yes
+fi
 
 for option
 do
     case $option in
       --conf*=* ) suffix=`echo $option | sed -e 's/-.*=/-/'`
       ;;
-      fast|devel|all|packages|module|dynmodule|smodels|install|clean|distclean|configclean|cygdll)
+      fast|devel|superdevel|all|packages|module|dynmodule|smodels|install|clean|distclean|configclean|cygdll)
+	 force_devel=
 	 makeargs="$makeargs $option"
       ;;
       *) makeargs="$makeargs $option"
       ;;
     esac
 done
+
+if test "$force_devel" = "yes"; then
+    makeargs="$makeargs devel"
+fi
 
 #config=`@topdir@/build/config.guess`
 #dir=@topdir@/config/`@topdir@/build/config.sub $config`${suffix}
@@ -68,20 +77,12 @@ config=`./config.guess`
 dir=../config/`./config.sub $config`${suffix}
 makefile=${dir}/topMakefile
 
-makeargs_stripped=`echo $makeargs | sed -e 's/ //g'`
 
 if test -r "$makefile" ; then
    echo ""
    echo "make -f ${makefile}  $makeargs"
    echo ""
    make -f ${makefile}  $makeargs
-   if test "@force_dynmodule@" = "yes" -a "$makeargs_stripped" != "clean" ; then
-       echo "make -f ${makefile} dynmodule"
-       make -f ${makefile} dynmodule
-   fi
-
-   ../bin/xsb --noprompt --quietload --nofeedback --nobanner -e "writeln('### Running XSB for the first time.\\n'), halt."
-
 else
    echo "${makefile}: does not exist or is not readable."
    echo "Have you configured XSB for this architecture?"

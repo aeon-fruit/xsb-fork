@@ -51,21 +51,21 @@ prepare :-
 
 
 /*----conlength---------------------------------------------------------*/
-:- mode conlength(+,?).
+
 conlength(Con, Length) :-
 	obsolete('conlength/2 in module prof_sbp',
 		 'use conlength/2 in module gensym'),
 	conname(Con, Name), str_len(Name, Len), Length = Len.
 
 /*----gennum------------------------------------------------------------*/
-:- mode gennum(?).
+
 gennum(N) :-
 	obsolete('gennum/1 in module prof_sbp',
 		 'use gennum/1 in module gensym'),
 	conget(gennum_val, O), N is O + 1, conset(gennum_val, N).
 
 /*----gensym------------------------------------------------------------*/
-:- mode gensym(+,?).
+
 gensym(R, C) :-
 	obsolete('gensym/2 in module prof_sbp',
 		 'use gensym/2 in module gensym'),
@@ -74,7 +74,7 @@ gensym(R, C) :-
 
 /*----copyterm----------------------------------------------------------*/
 /* Get a copy of the Term, with a new set of variables.			*/
-:- mode copyterm(?,?).
+
 copyterm(Term, NewTerm) :-
 	obsolete('copyterm/2 in module prof_sbp',
 		 'use copy_term/2 in module basics'),
@@ -96,19 +96,16 @@ copyterm_args(Term, NewTerm, N, VarDict) :-
 	N1 is N - 1,
 	copyterm_args(Term, NewTerm, N1, VarDict).
 
-:- mode conset(+,+).
 conset(Con, Val) :- 
 	obsolete('conset/2 in module prof_sbp',
 		 'use conset/2 in module gensym'),
 	conpsc(Con, Psc), psc_set_prop(Psc, Val).
 
-:- mode conget(+,?).
 conget(Con, Val) :- 
 	obsolete('conget/2 in module prof_sbp',
 		 'use conget/2 in module gensym'),
 	conpsc(Con, Psc), psc_prop(Psc, Val0), Val = Val0.
 
-:- mode coninc(+).
 coninc(Con) :-
 	obsolete('coninc/2 in module prof_sbp',
 		 'use coninc/2 in module gensym'),
@@ -119,7 +116,6 @@ coninc(Con) :-
 /* counter routines. A counter is a unary term.				*/
 /*======================================================================*/
 
-:- mode newcounter(?).
 newcounter(C) :-
 	obsolete('newcounter/1 in module prof_sbp',
 		 'use newcounter/1 in module gensym'),
@@ -130,28 +126,24 @@ newcounter(C) :-
 	),
 	psc_set_prop(Psc, V0).
 
-:- mode inccounter(+).
 inccounter(C) :- 
 	obsolete('inccounter/1 in module prof_sbp',
 		 'use inccounter/1 in module gensym'),
 	conpsc(C, Psc), psc_prop(Psc, V), 
 	V1 is V + 1, psc_set_prop(Psc, V1).
 
-:- mode getcounter(+).
 getcounter(C) :-
 	obsolete('getcounter/1 in module prof_sbp',
 		 'use getcounter/1 in module gensym'),
 	conpsc(C, Psc), psc_prop(Psc, V), arg(1, C, V).
 
 
-:- mode write_int(+).
 write_int(Num) :- 
 	obsolete('write_int/1 in module prof_sbp',
 		 'use write_int/1 in module xsb_writ'),
 	stat_flag(CURRENT_OUTPUT, File),
 	file_puttoken(File, 16, Num).
 
-:- mode write_float(+).
 write_float(Num) :- 
 	obsolete('write_float/1 in module prof_sbp',
 		 'use write_float/1 in module xsb_writ'),

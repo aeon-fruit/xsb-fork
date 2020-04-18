@@ -31,4 +31,4 @@
 :- import membercheck/2 from listutil.
 :- import sym_name/3, sym_insert/5, sym_pass_thru/1 from symtab.
 :- import integer/1, number/1, atom_codes/2, number_codes/2 from standard.
-:- import check_atom/3, check_number/3, check_integer/3 from error_handler.
+

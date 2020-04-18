@@ -158,12 +158,7 @@
 
 #define TN_UpgradeInstrTypeToSUCCESS(pTN,SymbolTag)	\
    if ( SymbolTag == XSB_STRING || SymbolTag == XSB_INT	\
-	|| SymbolTag == XSB_FLOAT ) \
-     TN_Instr(pTN) += 0x4
-
-#define TN_UpgradeInstrTypeToSUCCESS_wi(pTN,SymbolTag)	\
-   if ( SymbolTag == XSB_STRING || SymbolTag == XSB_INT	\
-	|| SymbolTag == XSB_FLOAT || (interning_terms && isinternstr(TN_Symbol(pTN))) ) \
+	|| SymbolTag == XSB_FLOAT || isinternstr(TN_Symbol(pTN)) ) \
      TN_Instr(pTN) += 0x4
 
 
@@ -644,9 +639,6 @@ extern void  hashify_children(CTXTdeclc BTNptr, int);
 #define CallTrieLeaf_SetSF(pBTN,pSF)     BTN_Child(pBTN) = (BTNptr)(pSF)
 #define CallTrieLeaf_GetSF(pBTN)         ((VariantSF)BTN_Child(pBTN))
 
-/* for leaves of the IDG */
-#define CallTrieLeaf_GetCallnode(pBTN)         ((callnodeptr)BTN_Child(pBTN))
-
 /* Allocating New BTNs
    ------------------- */
 #define BTNs_PER_BLOCK   2*K
@@ -1040,7 +1032,7 @@ subsumptive tables, which are private in the MT engine.
 /* Term Lookup
    ----------- */
 extern void *var_trie_lookup(CTXTdeclc void *, xsbBool *, Cell *);
-extern void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *,int);
+extern void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *);
 
 #define trie_escape_lookup(Root)		\
    ( IsEscapeNode(TN_Child((BTNptr)Root))	\

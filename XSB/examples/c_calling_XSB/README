@@ -59,5 +59,3 @@ done by running XSB and executing:
 and checking that the C compiler and flags are correct for the system
 you are running, and fixing them if not.
 
-To compile the cmain.c test, use the commands listed in the header of that file.
-To compile cregs.c, cfixedstring.c, cvarstring.c, start XSB and load make.P.

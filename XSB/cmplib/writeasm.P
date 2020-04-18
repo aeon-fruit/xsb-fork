@@ -24,7 +24,7 @@
 */
 
 
-:- mode write_asmheader(+,+,?,?,?).
+
 write_asmheader(AStr, ModName, _ModPars, SymTab, IsModule) :-
 	(IsModule =:= 1
 	 ->	write(AStr,module), sp(AStr), my_writeq(AStr,ModName)
@@ -60,7 +60,6 @@ write_symbol(AStr,Sym) :-
 	nl(AStr),
 	!.
 
-:- mode write_asm_instructions(+,?).
 write_asm_instructions(AStr,Insts) :-
 	write_asm_instructions(AStr,Insts,0).
 

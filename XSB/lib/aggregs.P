@@ -22,7 +22,6 @@
 */
 
 :- compiler_options([sysmod,optimize,xpp_on]).
-#include "table_status_defs.h"
 
 /*=======================================================================
 
@@ -517,37 +516,13 @@ filterPO1(Call,PO) :-
 
 %-----------------
 :- table table_once/1 as variant, opaque.
+%:- use_variant_tabling table_once(_).
 table_once(Call) :- 
 	'_$savecp'(Breg),
 	breg_retskel(Breg,1,Skel,Cs),
 	copy_term(Skel,Oskel),
 	call(Call),
 	(get_returns(Cs,Oskel,_Leaf) -> fail ; true).
-
-:- export table_random/1.
-%:- import between/3 from basics.
-:- import random/3 from random.
-:- import get_call/3,get_answer_number/2,table_status/5 from tables.
-%:- import writeln/1 from standard.
-:- import conget/2,conset/2,coninc/1 from gensym.
-table_random(Call) :- 
- 	table_status(table_random_1(Call), _PredTypeCode, _CallTypeCode, AnsSetStatusCode,_SF),
-	AnsSetStatusCode = UNDEFINED_ANSWER_SET,
-        table_random_1(Call),
-	fail.
-table_random(Call) :- 
-	get_call(table_random_1(Call),SF,_),
-	get_answer_number(SF,Number),Num1 is Number + 1,
-	random(1, Num1, Rand),
-	conset(table_random_ctr,1),
-	table_random_1(Call),
-	 conget(table_random_ctr,Ctr),
-	 (Ctr = Rand -> true 
-           ; coninc(table_random_ctr),fail),
-	 !.
-
-:- table table_random_1/1 as variant, opaque.
-table_random_1(Call):- call(Call).
 
 /*
 ** A built-in used in the implementation of aggregates.                   

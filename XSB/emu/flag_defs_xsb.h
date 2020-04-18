@@ -17,7 +17,7 @@
 **
 ** You should have received a copy of the GNU Library General Public License
 ** along with XSB; if not, write to the Free Software Foundation,
-** Inc., 59 Temple Place - Suite 330, Boston, MA 111-1307, USA.
+** Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 **
 **
 ** $Id: flag_defs_xsb.h,v 1.52 2013-02-14 22:03:54 tswift Exp $
@@ -167,9 +167,7 @@ interrupt flag
 #define MAX_TABLE_ANSWER_VAR_NUM        110
 #define MAX_MEMORY_ACTION               111
 #define ALTERNATE_SEMANTICS             112
-#define FLOAT_DISPLAY_FORMAT            113
-#define TOKENIZE_DQ_AS_ATOM		114 /* 0-usual "-strings go to lists; 1- "-qouted go to atoms (in tokenizer) */
-#define TOKENIZE_VARIABLES_AS_ATOMS	115 /* 0-usual 1-read variables as atoms with same name */
+
 #define MAX_FLAGS		 120
 
 #define MAXTOINDEX 20              /* maximum depth in term to go when using deep indexing; 
@@ -208,12 +206,9 @@ interrupt flag
 #define XSB_ABSTRACT         4
 #define XSB_BRAT             5
 #define XSB_SUSPEND          6
-#define XSB_CUSTOM           7
 
 /* for ALTERNATE_SEMANTICS */
 #define WFS_SEMANTICS        0
 #define GFP_SEMANTICS        1
 #define NAF_CS               2
 #define WEAK_CS              3
-
-#define DEFAULT_FLOAT_DISPLAY_FORMAT "%1.15g"

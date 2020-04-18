@@ -28,13 +28,9 @@
 /*	Tables every predicate defined in the module.			*/
 /*======================================================================*/
 
-/* Module, with many open-tailed lists, is *not* a ground term.  Could
-validate groundedness by calling ground/1 when indeed some subterm is
-ground, and then mode inference would be better.  */
-
-:- mode perform_table_all(?).
 perform_table_all(module(_,_,Preds,_,_)) :- table_all_predicates(Preds).
 
+:- mode table_all_predicates(+).
 
 table_all_predicates([]).
 table_all_predicates([pred(Sym,_,_)|Preds]) :-
@@ -49,7 +45,7 @@ table_all_predicates([pred(Sym,_,_)|Preds]) :-
 /*	are caused by immediately recursive predicates, these		*/
 /*	predicates are handled separately.				*/
 /*======================================================================*/
-:- mode perform_auto_table(?).
+
 perform_auto_table(module(SymTab,_,CL0,_,_)) :-
 	table_preds_in_tabling_meta_preds(SymTab, CL0, CL1),
 	table_immediate_recursions(CL1, CL2),
@@ -66,18 +62,21 @@ table_preds_in_tabling_meta_preds(SymTab, PredsIn, PredsOut) :-
 	; PredsOut = PredsIn
 	).
 
+:- mode table_preds_in_tabling_meta_preds(+).
 
 table_preds_in_tabling_meta_preds([]).
 table_preds_in_tabling_meta_preds([pred(_,Cls,_)|Preds]) :-
 	table_in_pred(Cls),
 	table_preds_in_tabling_meta_preds(Preds).
 
+:- mode table_in_pred(+).
 
 table_in_pred([]).
 table_in_pred([clause(_,Body,_)|Cls]) :-
 	table_in_clause(Body),
 	table_in_pred(Cls).
 
+:- mode table_in_clause(+).
 
 table_in_clause(and(G1,G2)) :- table_in_clause(G1), table_in_clause(G2).
 table_in_clause(or(G1,G2)) :- table_in_clause(G1), table_in_clause(G2).
@@ -95,6 +94,7 @@ table_in_clause(goal(GoalSym,Args)) :-
 
 goal_arg([_,Arg,_], Arg).	% to bypass a compiler register alloc bug
 
+:- mode table_arg(+,+,+).
 
 table_arg(varocc(_), _, _) :- !.
 table_arg(constant(Sym), N, A) :- !, table_sym_of_arg(Sym, N, A).
@@ -107,6 +107,7 @@ table_arg(Argument, N, A) :- ll_arg(1, Argument, T),
 /* table_immediate_recursions(+PredsIn, -PredsOut)			*/
 /*======================================================================*/
 
+:- mode table_immediate_recursions(+,-).
 
 table_immediate_recursions([], []).
 table_immediate_recursions([Pred|Preds], PredsOut) :-
@@ -134,6 +135,8 @@ needs_tabling(Pred) :-
 /*	Succeeds iff there exists a clause that contains a call to Sym.	*/
 /*----------------------------------------------------------------------*/
 
+:- mode clauses_call_sym(+,+).
+
 clauses_call_sym([Cl|Cls], Sym) :-
         Cl = clause(_,Body,_),
 	( body_calls_sym(Body, Sym) -> true ; clauses_call_sym(Cls, Sym) ).
@@ -142,6 +145,8 @@ clauses_call_sym([Cl|Cls], Sym) :-
 /* body_calls_sym(+Body, +Sym)						*/
 /*	Succeeds iff Body contains a call to Sym.			*/
 /*----------------------------------------------------------------------*/
+
+:- mode body_calls_sym(+,+).
 
 body_calls_sym(and(Goal1,Goal2), Sym) :-
 	( body_calls_sym(Goal1, Sym) -> true ; body_calls_sym(Goal2, Sym) ).
@@ -156,10 +161,14 @@ body_calls_sym(goal(GoalSym,GoalArgs), Sym) :-
 	; is_meta_pred(GoalSym), call_in_meta_pred(GoalArgs, Sym)
 	).
 
+:- mode call_in_meta_pred(+,+).
+
 call_in_meta_pred([Arg], Sym) :-       % call/1 and not/1
 	call_in_arg(Arg, Sym).
 call_in_meta_pred([_,Arg,_], Sym) :-   % findall/3, setof/3 and bagof/3
 	call_in_arg(Arg, Sym).
+
+:- mode call_in_arg(+,+).
 
 call_in_arg(constant(Sym), Sym).
 call_in_arg(structure(StructSym,StructArgs), Sym):-
@@ -178,11 +187,15 @@ proven_terminating(pred(Sym,Cls,_)) :-
 	sym_prop(mode(Mode), Sym),	% if no mode is known fail.
 	terminating_clauses(Cls, Sym, Mode).
 
+:- mode terminating_clauses(+,+,+).
+
 terminating_clauses([], _, _).
 terminating_clauses([Cl|Cls], Sym, Mode) :-
 	Cl = clause(HeadArgs,Body,_),
 	terminating_body(Body, HeadArgs, Sym, Mode),
 	terminating_clauses(Cls, Sym, Mode).
+
+:- mode terminating_body(+,+,+,+).
 
 terminating_body(and(Goal1,Goal2), HeadArgs, Sym, Mode) :-
 	terminating_body(Goal1, HeadArgs, Sym, Mode),
@@ -202,6 +215,8 @@ terminating_body(goal(GoalSym,GoalArgs), HeadArgs, Sym, Mode) :-
 	; true
 	).
 
+:- mode decreasing_ground_arg(+,+,+,+).
+
 decreasing_ground_arg([GoalArg|GoalArgs], [HeadArg|HeadArgs], I, Mode) :-
 	( ll_arg(I, Mode, (+)), goal_arg_smaller(GoalArg, HeadArg), !
 	; I1 is I+1, decreasing_ground_arg(GoalArgs, HeadArgs, I1, Mode)
@@ -213,8 +228,12 @@ decreasing_ground_arg([GoalArg|GoalArgs], [HeadArg|HeadArgs], I, Mode) :-
 /*	Currently partially implemented but works well in practice!.	*/
 /*----------------------------------------------------------------------*/
 
+:- mode goal_arg_smaller(+,+).
+
 goal_arg_smaller(varocc(X), structure(_,StructArgs)) :-
 	var_in_structure(X, StructArgs).
+
+:- mode var_in_structure(+,+).
 
 var_in_structure(X, [varocc(X)|_]) :- !.
 var_in_structure(X, [structure(_,Args)|_]) :- var_in_structure(X, Args), !.
@@ -241,7 +260,7 @@ table_to_break_all_loops(Preds) :-
 /*	broken by this time.						*/
 /*----------------------------------------------------------------------*/
 
-:- mode call_themselves(?,?,?).
+:- mode call_themselves(+,-,+).
 
 call_themselves([], [], _).
 call_themselves([Pred|Preds], LoopPreds, AllPreds) :-
@@ -261,7 +280,7 @@ path(Sym1, Sym2, Preds) :-
 
 /* 2-parameter Sym1 is needed to exclude immediate recursion */
 
-%%:- mode path_in_clauses(+,+,+,+).
+:- mode path_in_clauses(+,+,+,+).
 
 path_in_clauses([clause(_,Body,_)|Cls], Sym1, Sym2, Preds) :-
 	( path_in_body(Body, Sym1, Sym2, Preds) -> true
@@ -271,7 +290,7 @@ path_in_clauses([clause(_,Body,_)|Cls], Sym1, Sym2, Preds) :-
 /*----------------------------------------------------------------------*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode path_in_body(+,+,+,+).
+:- mode path_in_body(+,+,+,+).
 
 path_in_body(and(Goal1,Goal2), Sym1, Sym, Preds) :-
 	( path_in_body(Goal1, Sym1, Sym, Preds) -> true
@@ -294,7 +313,7 @@ path_in_body(goal(GoalSym,GoalArgs), Sym1, Sym, Preds) :-
 	; path(GoalSym, Sym, Preds)
 	).
 
-%%:- mode path_in_meta_pred_args(+,+,+,+).
+:- mode path_in_meta_pred_args(+,+,+,+).
 
 path_in_meta_pred_args([Arg], Sym0, Sym, Preds) :-      % call/1 and not/1
 	path_in_meta_pred_arg(Arg, Sym0, Sym, Preds).
@@ -328,7 +347,7 @@ path_in_meta_pred_arg(structure(Sym1,Args), Sym0, Sym, Preds) :-
 /*	correct (very close to the actual ones) !!			*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode lp(+,+,-).
+:- mode lp(+,+,-).
 
 lp([], _, []).
 lp([Pred|Preds], AllPreds, [loop_participation(Sym,N)|L1]) :-
@@ -336,7 +355,7 @@ lp([Pred|Preds], AllPreds, [loop_participation(Sym,N)|L1]) :-
 	lp_sym(AllPreds, Pred, AllPreds, 0, N),
 	lp(Preds, AllPreds, L1).
 
-%%:- mode lp_sym(+,+,+,+,-).
+:- mode lp_sym(+,+,+,+,-).
 
 lp_sym([], _, _, N, N).
 lp_sym([pred(Sym1,_,_)|Preds], Pred, AllPreds, Nin, Nout) :-
@@ -348,7 +367,7 @@ lp_sym([pred(Sym1,_,_)|Preds], Pred, AllPreds, Nin, Nout) :-
 	),
 	lp_sym(Preds, Pred, AllPreds, Nmid, Nout).
 
-%%:- mode lp_num(+,+,+,+,+,-).
+:- mode lp_num(+,+,+,+,+,-).
 
 lp_num([], _, _, _, N, N).
 lp_num([pred(Sym2,Cls2,_)|Preds], Sym, Sym1, AllPreds, Nin, Nout) :-
@@ -370,14 +389,14 @@ lp_num([pred(Sym2,Cls2,_)|Preds], Sym, Sym1, AllPreds, Nin, Nout) :-
 /*	implemented for Datalog.					*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode optimal_sym(+,+,-).
+:- mode optimal_sym(+,+,-).
 
 optimal_sym([], loop_participation(Sym,_), Sym).
 optimal_sym([LP|LPs], LPin, Sym) :-
 	'two way choice'(LP, LPin, Chosen),
 	optimal_sym(LPs, Chosen, Sym).
 
-%%:- mode 'two way choice'(+,+,-).
+:- mode 'two way choice'(+,+,-).
 
 'two way choice'(X, Y, Chosen) :-
 	X = loop_participation(SymX,LPX),
@@ -426,7 +445,6 @@ is_meta_pred(Sym) :-
 /* Auxiliary predicates.						*/
 /*----------------------------------------------------------------------*/
 
-:- mode table_it(?).
 table_it(Sym) :-
 	sym_propin(tabled, Sym),
 	sym_name(Sym, Name, Arity),
@@ -450,6 +468,8 @@ tabling_meta_predicate_exists(SymTab) :-
 	),
 	!.
 
+:- mode remove_tabled_preds(+,-).
+
 remove_tabled_preds([], []).
 remove_tabled_preds([Pred|Preds], PredsOut) :-
 	Pred = pred(Sym,_,_),
@@ -458,6 +478,7 @@ remove_tabled_preds([Pred|Preds], PredsOut) :-
 	),
 	remove_tabled_preds(Preds, P).
 
+:- mode exclude(+,+,-,-).
 
 exclude([], _, _, []).
 exclude([Pred|Preds], Sym, Cls, PredsOut) :-

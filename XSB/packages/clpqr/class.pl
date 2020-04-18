@@ -61,9 +61,9 @@
 
 :- use_module(ordering,
 	[
-	    combine/3 %%,
-	    %%ordering/1,
-	    %%arrangement/2
+	    combine/3,
+	    ordering/1,
+	    arrangement/2
 	]).
 
 :- import append/3 from basics.

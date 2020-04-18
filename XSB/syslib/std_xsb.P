@@ -23,12 +23,7 @@
 ** 
 */
 
-:- mode standard_symbol(?,?,?).
-:- mode standard_metapredicate(?,?,?).
-:- mode standard_metapredicate_template(?,?,?).
-:- mode standard_dynamic_symbol(?,?).
-
-standard_symbol(abolish, 1, assert). % ISO
+standard_symbol(abolish, 1, assert).                               % ISO
 standard_metapredicate(abolish,1,1).
 
 standard_symbol(abolish, 2, assert).			 %????
@@ -66,7 +61,6 @@ standard_metapredicate(abolish_table_subgoal,2,1).
 standard_metapredicate_template(abolish_table_subgoal,2,(:,*)).
 
 standard_symbol(abolish_table_pred, 1, tables).		
-standard_metapredicate(abolish_table_pred,1,1).		
 standard_symbol(abolish_table_pred, 2, tables).		
 standard_symbol(abolish_table_index_pred, 1, standard).
 standard_symbol(table_index, 2, standard).
@@ -157,6 +151,8 @@ standard_metapredicate_template(call_cleanup,2,(0,0)).
 standard_symbol(callable, 1, standard).
 standard_metapredicate(callable,1,1).
 standard_symbol(char_code,2,standard).
+standard_symbol(current_input_port, 1, curr_sym).
+standard_symbol(current_output_port, 1, curr_sym).
 standard_symbol(catch, 3, standard).
 standard_metapredicate(catch,3,1).
 standard_metapredicate(catch,3,3).
@@ -202,8 +198,6 @@ standard_symbol(current_predicate, 1, curr_sym).
 standard_symbol(current_predicate, 2, curr_sym).
 standard_symbol(current_prolog_flag, 2, curr_sym).	% ISO
 standard_symbol(set_prolog_flag, 2, curr_sym).	% ISO
-standard_symbol(current_xsb_param, 2, curr_sym).
-standard_symbol(set_xsb_param, 2, curr_sym).	
 
 standard_symbol(debug, 0, debugger).
 standard_symbol(debug_ctl, 2, debugger).
@@ -292,7 +286,6 @@ standard_symbol(variant_get_residual, 2, tables).
 standard_symbol(get_returns, 2, tables).
 standard_symbol(get_returns, 3, tables).
 standard_symbol(get_returns_for_call, 2, tables).
-standard_symbol(get_sdg_info, 1, tables).
 
 standard_symbol(halt, 0, standard).
 standard_symbol(halt, 1, standard).
@@ -325,7 +318,6 @@ standard_symbol(listing, 0, standard).
 standard_symbol(listing, 1, standard).
 standard_symbol(load_dyn, 1, consult).			% Not ISO
 standard_symbol(load_dync, 1, consult).			% Not ISO
-standard_symbol(load_dynca, 1, consult).			% Not ISO
 standard_symbol(read_canonical, 1, consult).
 standard_symbol(read_canonical, 2, consult).
 standard_symbol(ls, 0, shell).
@@ -445,7 +437,6 @@ standard_symbol(not_exists, 1, tables).
 standard_metapredicate_template(sk_not,1,(0)).
 
 standard_symbol(sleep, 1, shell).
-standard_symbol(sleep_ms, 1, shell).
 standard_symbol(skip, 1, standard).  	 	% TLS do we need this one?
 standard_symbol(sort, 2, setof).
 standard_symbol(spawn_process, 5, shell).
@@ -464,8 +455,6 @@ standard_symbol(string_substitute, 4, string).
 standard_symbol(structure, 1, standard).
 standard_symbol(substring, 4, string).
 standard_symbol(sub_atom, 5, sub_atom).
-standard_symbol(subgoal_property, 2, curr_sym).
-standard_symbol(variant_subgoal_property, 2, curr_sym).
 standard_symbol(sys_exit, 1, shell).
 
 standard_symbol(tab, 1, standard).
@@ -588,6 +577,7 @@ standard_symbol(write_canonical, 1, standard).
 standard_symbol(write_canonical, 2, standard).
 standard_symbol(write_prolog, 1, standard).
 standard_symbol(write_prolog, 2, standard).
+standard_symbol(write_term, 1, write_term).	% ISO
 standard_symbol(write_term, 2, write_term).	% ISO
 standard_symbol(write_term, 3, write_term).	% ISO
 standard_symbol(writeln, 1, standard).		% Not ISO
@@ -602,35 +592,35 @@ standard_symbol((attribute), 1, atts).
 standard_symbol(('_$cutto'), 1, standard).	% Not ISO
 standard_symbol(('_$savecp'), 1, standard).	% Not ISO
 
-standard_symbol(((\+)), 1, standard).
-standard_metapredicate_template((\+),1,(0)).
+standard_symbol((('\+')), 1, standard).
+standard_metapredicate_template(('\+'),1,(0)).
 
-standard_symbol(!, 0, standard).
-standard_symbol((=:=), 2, standard).
-standard_symbol((=\=), 2, standard).
-standard_symbol((<), 2, standard).
-standard_symbol((>), 2, standard).
-standard_symbol((=<), 2, standard).
-standard_symbol((>=), 2, standard).
-standard_symbol((=), 2, standard).
-standard_symbol((\=), 2, standard).
-standard_symbol((=..), 2, standard).
-standard_symbol((^=..), 2, standard).
-standard_symbol((==), 2, standard).
-standard_symbol((@=), 2, standard).
-standard_symbol((\==), 2, standard).
-standard_symbol((@<), 2, standard).
-standard_symbol((@>), 2, standard).
-standard_symbol((@=<), 2, standard).
-standard_symbol((@>=), 2, standard).
+standard_symbol('!', 0, standard).
+standard_symbol(('=:='), 2, standard).
+standard_symbol(('=\='), 2, standard).
+standard_symbol(('<'), 2, standard).
+standard_symbol(('>'), 2, standard).
+standard_symbol(('=<'), 2, standard).
+standard_symbol(('>='), 2, standard).
+standard_symbol(('='), 2, standard).
+standard_symbol(('\='), 2, standard).
+standard_symbol(('=..'), 2, standard).
+standard_symbol(('^=..'), 2, standard).
+standard_symbol(('=='), 2, standard).
+standard_symbol(('@='), 2, standard).
+standard_symbol(('\=='), 2, standard).
+standard_symbol(('@<'), 2, standard).
+standard_symbol(('@>'), 2, standard).
+standard_symbol(('@=<'), 2, standard).
+standard_symbol(('@>='), 2, standard).
 standard_symbol(('.'), 2, consult).
 standard_symbol((';'), 2, standard).
 standard_metapredicate_template((';'),2,(0,0)).
 standard_symbol((','), 2, standard).
 standard_metapredicate_template((','),2,(0,0)).
 
-standard_symbol((->), 2, standard).
-standard_metapredicate_template((->),2,(0->0)).
+standard_symbol(('->'), 2, standard).
+standard_metapredicate_template(('->'),2,(0->0)).
 
 standard_symbol((do_all), 1, standard).
 standard_metapredicate_template((do_all),1,(0)).
@@ -641,18 +631,11 @@ standard_symbol((:), 2, standard).
 standard_metapredicate((:),2,2).
 %standard_metapredicate_template((:),2,2). ???????????
 
-standard_symbol((^), 2, setof).
+standard_symbol(('^'), 2, setof).
 standard_symbol((:-), 2, usermod).
 standard_symbol((?-), 1, usermod).
 standard_symbol((-->), 2, usermod).
-standard_symbol((?=),2,standard).
-
-/*standard_symbol(reinitialize_undefineds,0,xsbbrat).
-standard_symbol(brat_undefined,0,xsbbrat).
-standard_symbol(floundered_undefined,1,xsbbrat).
-standard_symbol(cs_undef,0,xsbbrat).
-standard_symbol(restraint_number_of_answers,0,xsbbrat).
-*/
+standard_symbol(('?='),2,standard).
 
 /*
 % PM: keep the old standard_metapredicate/3 predicate for now in

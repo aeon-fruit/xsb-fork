@@ -86,12 +86,13 @@
    ------------------------------------------ */
 #ifdef BITS64
 #ifdef SHARED_COMPL_TABLES
-#define PDL_DEFAULT_SIZE         (64*2)
-#define GLSTACK_DEFAULT_SIZE    (K*8)
-#define TCPSTACK_DEFAULT_SIZE   (K*8)
-#define COMPLSTACK_DEFAULT_SIZE  (64*2)
+#define PDL_DEFAULT_SIZE         (8*2)
+#define GLSTACK_DEFAULT_SIZE    (96*2)
+#define TCPSTACK_DEFAULT_SIZE   (96*2)
+#define COMPLSTACK_DEFAULT_SIZE  (8*2)
 #else /* SEQUENTIAL OR CONC_COMPL */
 #define PDL_DEFAULT_SIZE         (64*2)
+//#define GLSTACK_DEFAULT_SIZE    (K*2)
 #define GLSTACK_DEFAULT_SIZE    (K*8)
 #define TCPSTACK_DEFAULT_SIZE   (K*2)
 #define COMPLSTACK_DEFAULT_SIZE  (64*2)
@@ -113,12 +114,8 @@
 #ifndef fileno				/* fileno may be a  macro */
 extern int    fileno(FILE *f);	        /* this is defined in POSIX */
 #endif
-#ifdef WIN_NT
 /* In WIN_NT, this gets redefined into _fdopen by wind2unix.h */
-__declspec(dllimport) FILE * __cdecl fdopen(int fildes, const char *type);
-#else
 extern FILE *fdopen(int fildes, const char *type);
-#endif
 
 #if defined(GENERAL_TAGGING)
 extern void extend_enc_dec_as_nec(void *,void *);
@@ -239,6 +236,7 @@ static void parameter_error(char * param) {
 }
 
 /*==========================================================================*/
+
 /* Initialize System Flags
    ----------------------- */
 static void init_flags(CTXTdecl)
@@ -270,7 +268,7 @@ static void init_flags(CTXTdecl)
   flags[MAX_SCC_SUBGOALS_ACTION] = XSB_ERROR;
   flags[MAX_TABLE_ANSWER_METRIC] = MY_MAXINT;
   flags[MAX_TABLE_ANSWER_ACTION] = XSB_ERROR;
-  flags[MAX_ANSWERS_FOR_SUBGOAL] = 0;
+  flags[MAX_ANSWERS_FOR_SUBGOAL] = MY_MAXINT;
   flags[MAX_ANSWERS_FOR_SUBGOAL_ACTION] = XSB_ERROR;
   flags[MAX_TABLE_SUBGOAL_VAR_NUM] = 64000;
   flags[MAX_TABLE_ANSWER_VAR_NUM] = 64000;
@@ -448,7 +446,7 @@ static int process_long_option(CTXTdeclc char *option,int *ctr,char *argv[],int 
   } else if (!strcmp(option,"max_subgoal_size")) {
     if ((int) (*ctr) < argc) {
       (*ctr)++;
-      if (sscanf(argv[*ctr], "%" Intfmt, (Integer*) &flags[MAX_TABLE_SUBGOAL_SIZE]) < 1)
+      if (sscanf(argv[*ctr], "%d", (int*) &flags[MAX_TABLE_SUBGOAL_SIZE]) < 1)
 	xsb_warn(CTXTc "Invalid size value for --max_subgoal_size");
     }
     else xsb_warn(CTXTc "Missing size value for --max_subgoal_size");
@@ -887,7 +885,7 @@ char *init_para(CTXTdeclc int flag, int argc, char *argv[]) {
   } /* for */
   /* Done with command line arguments */
 
-  /* User home dir or install dir, if home is undefined */
+  /* This is where we will be looking for the .xsb directory */
   flags[USER_HOME] = (Cell) mem_alloc(strlen(user_home_gl) + 1,OTHER_SPACE);
   strcpy( (char *)flags[USER_HOME], user_home_gl );
 
@@ -1020,8 +1018,7 @@ char *init_para(CTXTdeclc int flag, int argc, char *argv[]) {
 
 void init_thread_structures(CTXTdecl)
 {
-  int i;
-  
+
   asynint_code = 0;
   asynint_val = 0;
 
@@ -1041,10 +1038,6 @@ void init_thread_structures(CTXTdecl)
   funstk = NULL;
   opstk = NULL;
   rc_vars = (struct vartype *)mem_alloc(MAXVAR*sizeof(struct vartype),OTHER_SPACE);
-
-  /* vars for eval stack */
-  eval_stk_size = 0;
-  eval_stk = NULL;
 
   /* vars for token_xsb_XXX */
   token = (struct xsb_token_t *)mem_alloc(sizeof(struct xsb_token_t),OTHER_SPACE);
@@ -1243,10 +1236,6 @@ void init_thread_structures(CTXTdecl)
 
   incr_hashtable_chain = NULL;
 
-  sched_heap = NULL;
-  sched_heap_size = 0;
-  num_in_sched_heap = 0;
-
   /***************/
 
 /* This is here just for the first thread - others initialize its xsb tid
@@ -1263,9 +1252,6 @@ void init_thread_structures(CTXTdecl)
   pthread_cond_init( &th->cond_var, NULL );
 #endif
   th->cond_var_ptr = NULL;
-
-  for (i = 0;i <= 20;i++) 
-    bioldarg[i] = i;
 
 }
 
@@ -1549,8 +1535,6 @@ Psc make_code_psc_rec(CTXTdeclc char *name, int arity, Psc mod_psc) {
 
 /*==========================================================================*/
 
- char cyclic_string_array[10];
- 
 /* Initialize Standard PSC Records and Thread Attributes
    ------------------------------- */
 void init_symbols(CTXTdecl)
@@ -1621,13 +1605,8 @@ void init_symbols(CTXTdecl)
 
   true_psc = make_code_psc_rec(CTXTc "true", 0, standard_psc);
   true_string = get_name(true_psc);
-  strcpy(float_format,DEFAULT_FLOAT_DISPLAY_FORMAT);
-  flags[FLOAT_DISPLAY_FORMAT] = (Cell) float_format;
-  strcpy(cyclic_string_array,"<cyclic>");
-  cyclic_string = cyclic_string_array;
   cut_string = string_find("!",1);
-  //  flags[FLOAT_DISPLAY_FORMAT] = (Cell)  string_find("%1.16g", 1);
-  //  cyclic_string = (char *) string_find(,"<cyclic>"1);
+  cyclic_string = (char *) string_find("<cyclic>",1);
 
   visited_psc = make_code_psc_rec(CTXTc "_$visited", 0, standard_psc);
 

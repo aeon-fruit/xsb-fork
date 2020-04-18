@@ -203,7 +203,7 @@ inline static xsbBool file_function(CTXTdecl)
     char string_mode[3];
 
     tmpstr = ptoc_longstring(CTXTc 2);
-    pterm = ptoc_tag(CTXTc 3);
+    pterm = reg_term(CTXTc 3);
 
     SYS_MUTEX_LOCK( MUTEX_IO );
 
@@ -367,7 +367,7 @@ inline static xsbBool file_function(CTXTdecl)
 			-BytesWritten) */
     /* Write ByteCount bytes into IOport from String beginning with Offset in
        that string	      */
-    pterm = ptoc_tag(CTXTc 4);
+    pterm = reg_term(CTXTc 4);
     if (islist(pterm))
       addr = 
 	p_charlist_to_c_string(CTXTc pterm,&VarBuf,"FILE_PUTBUF","input string");
@@ -491,7 +491,7 @@ inline static xsbBool file_function(CTXTdecl)
   /* Like FILE_PUTBUF, but ByteCount=Line length. Also, takes atoms and lists
      of characters: file_function(11, +IOport, +String, +Offset) */
   case FILE_WRITE_LINE:
-    pterm = ptoc_tag(CTXTc 3);
+    pterm = reg_term(CTXTc 3);
     if (islist(pterm))
       addr =
 	p_charlist_to_c_string(CTXTc pterm,&VarBuf,"FILE_WRITE_LINE","input string");
@@ -513,7 +513,7 @@ inline static xsbBool file_function(CTXTdecl)
   case FILE_REOPEN: 
     /* file_function(FILE_REOPEN, +Filename,+Mode,+IOport,-ErrorCode) */
     tmpstr = ptoc_string(CTXTc 2);
-    pterm = ptoc_tag(CTXTc 3);
+    pterm = reg_term(CTXTc 3);
     if (isointeger(pterm))
       mode = (int)oint_val(pterm);
     else if (isstring(pterm)) {
@@ -597,7 +597,7 @@ inline static xsbBool file_function(CTXTdecl)
     prolog_term dest_fptr_term;
 
     src_xsb_fileno = (int)ptoc_int(CTXTc 2);
-    dest_fptr_term = ptoc_tag(CTXTc 3);
+    dest_fptr_term = reg_term(CTXTc 3);
     XSB_STREAM_LOCK(src_xsb_fileno);
     XSB_STREAM_LOCK(int_val(dest_fptr_term));
     SET_FILEPTR(src_fptr, src_xsb_fileno);
@@ -703,7 +703,7 @@ inline static xsbBool file_function(CTXTdecl)
     int fd_flags;
 #endif
     pipe_fd = (int)ptoc_int(CTXTc 2); /* the C file descriptor */
-    pterm = ptoc_tag(CTXTc 4);
+    pterm = reg_term(CTXTc 4);
 
     if (isstring(pterm)) {
       if ((string_val(pterm))[0] == 'u') {
@@ -1060,7 +1060,7 @@ inline static xsbBool file_function(CTXTdecl)
 
   case FILE_SET_CHARACTER_SET: {
     char *charset_str;
-    int charset = UTF_8;
+    int charset;
     charset_str = ptoc_string(CTXTc 3);
     if (!strcmp(charset_str,"LATIN_1")) charset = LATIN_1;
     else if (!strcmp(charset_str,"latin_1")) charset = LATIN_1;
@@ -1073,54 +1073,6 @@ inline static xsbBool file_function(CTXTdecl)
     io_port = (int)ptoc_int(CTXTc 2);
     //printf("Setting port %d to charset %d\n",io_port,charset);
     open_files[io_port].charset = charset;
-#ifdef WIN_NT
-    if (io_port == 0) {
-      if (charset == UTF_8) SetConsoleCP(65001);
-      else SetConsoleCP(1252);
-      //printf("set console input %d\n",charset);
-    } else if (io_port == 1) {
-      if (charset == UTF_8) SetConsoleOutputCP(65001);
-      else SetConsoleOutputCP(1252);
-      //printf("set console output %d\n",charset);
-    }
-#endif
-    break;
-  }
-
-  case GET_FLOAT_DISPLAY_FORMAT: {
-    //    printf("flag: %s\n",(char *)flags[FLOAT_DISPLAY_FORMAT]);
-    ctop_string(CTXTc 2,(char *)flags[FLOAT_DISPLAY_FORMAT]);
-    break;
-  }
-
-  case PUT_FLOAT_DISPLAY_FORMAT: {
-    //    printf("before %s\n",    flags[FLOAT_DISPLAY_FORMAT]);
-    strcpy(float_format,ptoc_string(CTXTc 2));
-    //    printf("after %s\n",    flags[FLOAT_DISPLAY_FORMAT]);
-    break;
-  }
-
-  case WRITE_FLOAT_VAR_FORMAT: {
-    FILE* fptr;
-    int io_port = (int)ptoc_int(CTXTc 2);
-    SET_FILEPTR(fptr, io_port);
-    char format[] = "%          ";
-    //    printf("prec %d\n",(int) ptoc_int(CTXTc 4));
-    //    printf("width %d\n",(int) ptoc_int(CTXTc 5));
-    //    printf("spec %c\n",(int) ptoc_int(CTXTc 6));
-    sprintf(&format[1],"%d.%d%c",(int) ptoc_int(CTXTc 5),(int) ptoc_int(CTXTc 4),(int) ptoc_int(CTXTc 6));
-    //printf("wfvp %s\n",format);
-    fprintf(fptr,"%s",cvt_float_to_str_with_fmt(CTXTc ptoc_float(CTXTc 3),format));
-    break;
-  }
-  case WRITE_RADIX: {
-    FILE* fptr;
-    int io_port = (int)ptoc_int(CTXTc 2);
-    SET_FILEPTR(fptr, io_port);
-    if (ptoc_int(CTXTc 4) == XSB_HEXIDECIMAL) 
-      fprintf(fptr,"%" Intxfmt,ptoc_int(CTXTc 3));
-    else	      
-      fprintf(fptr,"%" Intofmt,ptoc_int(CTXTc 3));
     break;
   }
 

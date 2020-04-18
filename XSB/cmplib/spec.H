@@ -33,6 +33,5 @@
 :- import sym_name/3, sym_insert/5, sym_prop/2, sym_propin/2,
 	  sym_type/2, add_new_clause/2, clause_listify/2
      from symtab.
-:- import check_atomic/3, check_integer/3 from error_handler.
 
 /*----------------------- end of file spec.H ---------------------------*/

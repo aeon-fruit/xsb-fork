@@ -29,14 +29,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* cinterf.h is necessary for the XSB API, as well as the path manipulation routines
-and if compiling for windows, need to set define WINDOWS_IMP*/
+/* cinterf.h is necessary for the XSB API, as well as the path manipulation routines*/
 #include "cinterf.h"
-
+#include "varstring_xsb.h"
 extern char *xsb_executable_full_path(char *);
 extern char *strip_names_from_path(char*, int);
- _declspec(dllimport) struct varstr_ops VarStrOps;
-//struct varstr_ops VarStrOps;
+extern struct varstr_ops VarStrOps;
 
 /* context.h is necessary for the type of a thread context. */
 #include "context.h"
@@ -55,13 +53,11 @@ int main(int argc, char *argv[])
 
   strcpy(init_string,strip_names_from_path(xsb_executable_full_path(argv[0]),3));
 
-  printf("Calling init_string\n");
   if (xsb_init_string(init_string)) {
     fprintf(stderr,"%s initializing XSB: %s\n",xsb_get_init_error_type(),
 	    xsb_get_init_error_message());
     exit(XSB_ERROR);
   }
-  printf("initted\n");
 
 #ifdef MULTI_THREAD
   th_context *th = xsb_get_main_thread();

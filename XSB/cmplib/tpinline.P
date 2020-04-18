@@ -34,7 +34,6 @@
 /*======================================================================*/
 %:- import console_writeln/1 from standard.
 
-:- mode geninline(+,?,?,+,?,?,?,?,?).
 geninline(true, [], _, _, Pil, Pil, T, T, _).
 geninline(fail, [], _, _, [fail|Pil], Pil, T, T, _).
 geninline(halt, [], _, _, [halt|Pilr], Pilr, T, T, _).
@@ -44,7 +43,9 @@ geninline('_$savecp', [Arg], _, _, Pil, Pilr, Tin, Tout, _) :-
 	geninline_savecp(Arg, Pil, Pilr, Tin, Tout).
 geninline('_$cutto', [Arg], HoldR, ARSize, Pil, Pilr, Tin, Tout, _) :-
 	geninline_cutto(Arg, HoldR, ARSize, Pil, Pilr, Tin, Tout).
+
 geninline(is, [Arg1,Arg2], HoldR, _, Pil, Pilr, Tin, Tout, EPN) :-
+%	console_writeln(geninline_isindeed(Arg1, Arg2, HoldR, Pil, Pilr, Tin, Tout, EPN)),
 	geninline_isindeed(Arg1, Arg2, HoldR, Pil, Pilr, Tin, Tout, EPN).
 geninline(@=, [Arg1,Arg2], _HoldR, _, Pil, Pilr, Tin, Tout, _EPN) :-
 	geninl_load_lhs(Arg1, R1, Pil, Pilm, Tin, Tmid, _),
@@ -63,7 +64,8 @@ geninline(=, [Lhs,Rhs], HoldR, _, Pil, Pilr, Tin, Tout, _) :-
 		geninl_unload_lhs(Lhs, R, HoldR, Tmid3, Tout)
 	).
 geninline(Op, [Arg1,Arg2], HoldR, _, Pil, Pilr, Tin, Tout, EPN) :-
-	arithrelop(Op),	!,
+	arithrelop(Op),
+	!,
 	eval_relop(Op, Arg1, Arg2, HoldR, abs(-1),
 		   Pil, Pilr, Tin, Tout, EPN).
 geninline(TermCompOp, [Arg1,Arg2], HoldR, _, Pil, Pilr, Tin, Tout, _) :-
@@ -81,50 +83,8 @@ geninline(Cof, [Arg], HoldR, _, Pil, Pilr, Tin, Tout, _EPN) :-
 			[jumpcof(CofNum,R,abs(-1))|Pilr], Tin, Tmid, _),
 	geninl_unload_lhs(Arg, R, HoldR, Tmid, Tout).
 
-geninline(BiPred, [], _HoldR, _, Pil, Pilr, Tin, Tin, _EPN) :-
-    builtin_instr(BiPred,0,_), inline_builtin(BiPred,0,BiNum), !,
-%%    standard:writeln(userout,gen_biinstr(BiPred,0)),
-    Pil = [bi_instr(BiNum,0,0,0,0)|Pilr].
-geninline(BiPred, [Arg1], HoldR, _, Pil, Pilr, Tin, Tout, _EPN) :-
-    builtin_instr(BiPred,1,_), inline_builtin(BiPred,1,BiNum), !,
-%%    standard:writeln(userout,gen_biinstr(BiPred,1)),
-    geninl_load_lhs(Arg1, R1, Pil,
-		    [bi_instr(BiNum,R1,0,0,0)|Pilr], Tin, Tout1, _),
-    geninl_unload_lhs(Arg1, R1, HoldR, Tout1, Tout).
-geninline(BiPred, [Arg1,Arg2], HoldR, _, Pil, Pilr, Tin, Tout, _EPN) :-
-    builtin_instr(BiPred,2,_), inline_builtin(BiPred,2,BiNum), !,
-%%    standard:writeln(userout,gen_biinstr(BiPred,2)),
-    geninl_load_lhs(Arg1, R1, Pil, Pilm, Tin, Tmid, _),
-    geninl_load_lhs(Arg2, R2, Pilm,
-		    [bi_instr(BiNum,R1,R2,0,0)|Pilr], Tmid, Tout1, _),
-    geninl_unload_lhs(Arg1,R1,HoldR,Tout1,Tout2),
-    geninl_unload_lhs(Arg2,R2,HoldR,Tout2,Tout).
-geninline(BiPred, [Arg1,Arg2,Arg3], HoldR, _, Pil, Pilr, Tin, Tout, _EPN) :-
-    builtin_instr(BiPred,3,_), inline_builtin(BiPred,3,BiNum), !,
-%%    standard:writeln(userout,gen_biinstr(BiPred,3)),
-    geninl_load_lhs(Arg1, R1, Pil, Pilm, Tin, Tmid, _),
-    geninl_load_lhs(Arg2, R2, Pilm, Pilm1, Tmid, Tmid1, _),
-    geninl_load_lhs(Arg3, R3, Pilm1,
-		    [bi_instr(BiNum,R1,R2,R3,0)|Pilr], Tmid1, Tout1, _),
-    geninl_unload_lhs(Arg1,R1,HoldR,Tout1,Tout2),
-    geninl_unload_lhs(Arg2,R2,HoldR,Tout2,Tout3),
-    geninl_unload_lhs(Arg3,R3,HoldR,Tout3,Tout).
-geninline(BiPred, [Arg1,Arg2,Arg3,Arg4], HoldR, _, Pil, Pilr, Tin, Tout, _EPN) :-
-    builtin_instr(BiPred,4,_), inline_builtin(BiPred,4,BiNum), !,
-%%    standard:writeln(userout,gen_biinstr(BiPred,4)),
-    geninl_load_lhs(Arg1, R1, Pil, Pilm, Tin, Tmid, _),
-    geninl_load_lhs(Arg2, R2, Pilm, Pilm1, Tmid, Tmid1, _),
-    geninl_load_lhs(Arg3, R3, Pilm1, Pilm2, Tmid1, Tmid2, _),
-    geninl_load_lhs(Arg4, R4, Pilm2,
-		    [bi_instr(BiNum,R1,R2,R3,R4)|Pilr], Tmid2, Tout1, _),
-    geninl_unload_lhs(Arg1,R1,HoldR,Tout1,Tout2),
-    geninl_unload_lhs(Arg2,R2,HoldR,Tout2,Tout3),
-    geninl_unload_lhs(Arg3,R3,HoldR,Tout3,Tout4),
-    geninl_unload_lhs(Arg4,R4,HoldR,Tout4,Tout).
-
 /*======================================================================*/
 /*======================================================================*/
-:- mode geninl_load_lhs(?,?,?,?,?,?,?).
 geninl_load_lhs(Term,R,Pil,Pilr,Tin,Tout,SaveR) :-
 	(Term = varocc(_Vid,Prag)
 	 ->	alloc_reg(Prag, Tin, Tmid), vprag_type(Prag, T),
@@ -137,9 +97,8 @@ geninl_load_lhs(Term,R,Pil,Pilr,Tin,Tout,SaveR) :-
 			 ->	SaveR = []
 			 ;	SaveR = [R]
 			)
-		 ;	 getreg(Tmid, R), hold(R, Tmid, Tout), SaveR = []
+		 ;      getreg(Tmid, R), hold(R, Tmid, Tout), SaveR = []
 		),
-		check_integer(R,'putvarinst/5',2),
 		putvarinst(Prag, R, Pil, Pilr,0)
 /* it seems unlikely we'll get a putdval here, so tabled = 0 */
 	; getreg(Tin, R), hold(R, Tin, Tmid), SaveR = [],
@@ -155,8 +114,7 @@ geninl_load_lhs(Term,R,Pil,Pilr,Tin,Tout,SaveR) :-
 
 geninl_unload_lhs(Term, R, HoldR, Tin, Tout) :-
 	( Term = varocc(Vid,Prag) -> 
-
-	    release_if_done(Vid, R, Prag, HoldR, Tin, Tout)
+		release_if_done(Vid, R, Prag, HoldR, Tin, Tout)
 	; release(R, Tin, Tout)
 	).
 
@@ -192,8 +150,7 @@ get_max([N|R],M0,M) :-
 /*======================================================================*/
 
 release_if_tvar_if_done(varocc(Vid,Prag),N,HoldR,Tin,Tout) :- !,
-    %% Vid may be a variable here, and it must be passed to release_if_done???
-    release_if_done(Vid,N,Prag,HoldR,Tin,Tout).
+	release_if_done(Vid,N,Prag,HoldR,Tin,Tout).
 release_if_tvar_if_done(_,_,_HoldR,Tin,Tin).
 
 if_void_var(varocc(_,Prag)) :- vprag_occ(Prag,v).

@@ -18,26 +18,42 @@
 ** along with XSB; if not, write to the Free Software Foundation,
 ** Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 **
+** $Id: cmain.c,v 1.9 2010-08-19 15:03:38 spyrosh Exp $
+** 
 */
 
 /***   Simple example file showing how to call XSB from C   ***/
 
 /*
  * This file contains the C "main()" function.  To create an executable,
- * Windows:
- *   cl.exe cmain.c /F2000000 /DWINDOWS_IMP /Ih:..\..\emu /Ih:..\..\config\x64-pc-windows ..\..\config\x64-pc-windows\bin\xsb.lib
- * or use the makefile:
- *   nmake /f cmain.mak
+ * link this with the XSB code:
+ * 1. compile cmain to create cmain.o
+ * 2. build the regular xsb system
+ *      (really just interested in the object files)
+ * 3. link together cmain.o, from step (1) above, with XSB's object
+ *    files, from step (2) above, EXCEPT for the file xmain.o--this is
+ *    used to create a "standard" XSB executable--into a new executable,
+ *    say, cmain.  Remember to include any necessary linking options.
+ *    For example, here's how one would create an executable for a
+ *    Sun Microsystems machine running Solaris:
+ *      gcc -o cmain cmain.o <XSB object files> -lm -lnsl -ldl -lsocket
  *
- * Linux (Mac with gcc is similar, but change the architecture dir to something like  i386-apple-darwin17.3.0):
- *   gcc -I../../emu -I../../config/x86_64-unknown-linux-gnu -Wall C_calling_xsb.c ../../config/x86_64-unknown-linux-gnu/saved.o/xsb.o -L../../config/x86_64-unknown-linux-gnu/lib -lm -ldl -Wl,-export-dynamic -lpthread
+ * A good idea would be to look at the make file in this directory.
+ * Note: the XSB executable must be in the directory
+ *    	      <xsb install dir>/config/<your architecture>/bin/
  *
  */
 
+/* on Windows, be sure to set the cinterf.h include file path
+correctly, and also myargv[0].  When compiling this file, be sure to
+include the XSB_DLL or XSB_DLL_C flag as was included when the xsb.dll
+was compiled.  */
+
 #include <stdio.h>
 
-/* The following includes are necessary to get the macros and routine headers */
-#include "xsb_config.h"
+/* The following include is necessary to get the macros and routine
+   headers */
+
 #include "cinterf.h"
 extern char *xsb_executable_full_path(char *);
 extern char *strip_names_from_path(char*, int);
@@ -53,8 +69,8 @@ int main(int argc, char *argv[])
      program is sitting in the directory .../examples/c_calling_xsb/
      To get installation directory, we strip 3 file names from the path. */
   myargv[0] = strip_names_from_path(xsb_executable_full_path(argv[0]), 3);
-  myargv[1] = "-e";
-  myargv[2] = "writeln('*** Hello'), writeln('*** Hi again').";
+  myargv[1] = "-n";
+  myargv[2] = "-e writeln(hello). writeln(kkk).";
 
   /* Initialize xsb */
   xsb_init(myargc,myargv);  /* depend on user to put in right options (-n) */

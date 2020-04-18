@@ -33,7 +33,6 @@
 /*	segment contains information about the symbols in the module.	*/
 /*======================================================================*/
 
-:- mode asm_gendata(+,?).
 asm_gendata(OStr,SymList) :- 
 	(member(Sym, SymList),	% Non-deterministically get a symbol
 	 asm_putsym(OStr,Sym),
@@ -65,8 +64,6 @@ asm_putsym(OStr,Sym) :-
 	 ->	DomCode2 is DomCode1 \/ 64 %%T_TABLED_SUB_LOADFILE
 	 ; sym_prop(tabled(_,_),Sym)
 	 ->	(sym_prop(defined,Sym)
-		 ->	true
-		 ; sym_prop((dynamic),Sym)
 		 ->	true
 		 ; sym_prop(defined(_,_),Sym)
 		 ->	true
@@ -100,7 +97,6 @@ asm_putsym(OStr,Sym) :-
 % with length 255 and higher, the escape byte 255 is used and the
 % length of the atom is written as an integer (next 4 bytes).
 
-:- mode asm_putlength(+,+).
 asm_putlength(OStr,L) :-
 	( L < 255 -> file_put(OStr,L) ; file_put(OStr,255), write_int(OStr,L) ).
 
@@ -124,7 +120,6 @@ category_code(module, T_MODU).
 /*	out of the PilCode by predicate asm_get_index/5 of asm).	*/
 /*======================================================================*/
 
-:- mode asm_gentext(+,?,?).
 asm_gentext(OStr, Program, LabelTab) :-
 	member(Inst, Program),
 	asm_gentext_inst(OStr, Inst, LabelTab),
@@ -159,15 +154,14 @@ asm_genarg(OStr,n(I), _) :-
 		 	(I < 0 -> II = -2147483647 ; II = 2147483647),
 			 write_int(OStr,II)
 		)
-	 ;  check_number(I,'asm_genarg/3',2),
-	    write_float(OStr,I)
+	 ;	write_float(OStr,I)
 	).
-asm_genarg(OStr,d(I), _) :- check_number(I,'asm_genarg/3',2),write_double(OStr,I).
-asm_genarg(OStr,i(I), _) :- check_integer(I,'asm_genarg/3',2),write_int(OStr,I).
-asm_genarg(OStr,l(L), LabelTab) :- hashed_find_label((L,I), LabelTab), check_integer(I,'asm_genarg/3',2), write_int(OStr,I).
-asm_genarg(OStr,r(I), _) :- check_integer(I,'asm_genarg/3',2),file_put(OStr,I).
-asm_genarg(OStr,v(I), _) :- check_integer(I,'asm_genarg/3',2),file_put(OStr,I).
-asm_genarg(OStr,a(I), _) :- check_integer(I,'asm_genarg/3',2),file_put(OStr,I).
+asm_genarg(OStr,d(I), _) :- write_double(OStr,I).
+asm_genarg(OStr,i(I), _) :-  write_int(OStr,I).
+asm_genarg(OStr,l(L), LabelTab) :- hashed_find_label((L,I), LabelTab), write_int(OStr,I).
+asm_genarg(OStr,r(I), _) :- file_put(OStr,I).
+asm_genarg(OStr,v(I), _) :- file_put(OStr,I).
+asm_genarg(OStr,a(I), _) :- file_put(OStr,I).
 asm_genarg(OStr,t(T), _) :- write(OStr,T).
 
 
@@ -177,8 +171,6 @@ asm_genarg(OStr,t(T), _) :- write(OStr,T).
 /*	index code for a single predicate block is generated.		*/
 /*======================================================================*/
 
-%% IndexCode has Sym's so is not ground!
-:- mode asm_genindex(+,?,?).  
 asm_genindex(OStr, IndexCode, LabelTab) :-
 	member(Inst, IndexCode),
 	asm_proc_index(OStr,Inst, LabelTab),

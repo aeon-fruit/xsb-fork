@@ -97,7 +97,7 @@
 		serialized/2
 	]).
 
-:- import notify/2 /*,subscribe/4, unsubscribe/2*/ from clp_events.
+:- import notify/2,subscribe/4,	unsubscribe/2 from clp_events.
 
 :- import member/2, memberchk/2,between/3,append/3 from basics.
 :- import setarg/3,maplist/3,unifiable/2,freeze/2 from swi.
@@ -1857,13 +1857,12 @@ trigger_exp(serialized(Duration,Left,Right), X) :-
 	myserialized(Duration, Left, Right, X).
 
 
-/**
 memberchk_eq(X,[Y|Ys],Z) :-
    (   X == Y ->
        Z = Y
    ;   memberchk_eq(X,Ys,Z)
    ).
-**/
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -81,8 +81,6 @@
 
 /* #undef CONC_COMPL */
 
-/* #undef XSB_STDCALL */
-
 /* Define if you have the gethostbyname function.  */
 #define HAVE_GETHOSTBYNAME 1
 
@@ -111,4 +109,4 @@
 /* GC on SLG-WAM! ;) */
 #define SLG_GC 1
 
-/* #undef NON_OPT_COMPILE */
+#define NON_OPT_COMPILE 1

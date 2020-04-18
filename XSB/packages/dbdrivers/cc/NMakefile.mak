@@ -20,13 +20,13 @@ CLEAN :
 	-@if exist "$(INTDIR)\*.exp" erase "$(INTDIR)\*.exp"
 
 
-CPP_PROJ=/nologo /MD /W3 /EHsc /O2 /I "$(ARCHDIR)" \
+CPP_PROJ=/nologo /MT /W3 /EHsc /O2 /I "$(ARCHDIR)" \
 		 /I "$(XSBDIR)\emu" /I "$(XSBDIR)\prolog_includes" \
 		 /D "WIN32" /D "WIN_NT" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" \
 		 /Fo"$(ARCHOBJDIR)\\" /Fd"$(ARCHOBJDIR)\\" /c 
 	
 SOURCE=$(MYPROGRAM).c
-"$(ARCHOBJDIR)\$(MYPROGRAM).obj" : $(SOURCE) "$(INTDIR)" $(ARCHDIR)\xsb_config.h
+"$(ARCHOBJDIR)\$(MYPROGRAM).obj" : $(SOURCE) "$(INTDIR)"
 	$(CPP) $(CPP_PROJ) $(SOURCE)
 
 LINK_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib \

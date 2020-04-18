@@ -35,9 +35,9 @@
 
 :- import  ca/2, date/1, sysin/2 from scrptutl.
 :- import concat_atom/2, concat_atom/3 from string.
-:- import member/2, ground/1 from basics.
+:- import member/2 from basics.
 :- import atom_codes/2, arg/3, number_codes/2, name/2, integer/1,
-	throw/1, atom/1, \= /2
+	throw/1, atom/1, '\='/2
 	from standard.
 :- import cwd/1, cd/1 from shell.
 
@@ -51,7 +51,6 @@
 :- import list_directory/2 from shell.
 
 % I always want this in UNIX.
-:- mode whats_new(+,+,?).
 whats_new(Directory,Date,List):-
 	directory(Directory,List1),
 	transform_date(Date,Date1),
@@ -87,7 +86,6 @@ dt_gt(Date1,Date2):- Date1 @> Date2.
 
 
 % replicates some functionality of unix find command.
-:- mode find_file(?).
 find_file(File):-
 	find_file_1('.',File).
 	
@@ -101,16 +99,11 @@ find_file_1(Argument,File):-
 	; 
 	 	File = File1).
 
-:- mode get_file_name(+,?).
 get_file_name(File,Name):- arg(7,File,Name).
-
-:- mode get_file_date(+,?).
 get_file_date(File,Date):- arg(6,File,Date).
 
-:- mode is_directory(+).
 is_directory(File):-
 	arg(1,File,Permissions),
-	atom(Permissions),
 	atom_codes(Permissions,[100|_]).
 
 directory(Argument,Dir):-
@@ -120,7 +113,6 @@ directory(Argument,Dir):-
 	date(date(Year,Month,Day,_,_,_)),
 	directory_1(List,date(Year,Month,Day),Dir).
 
-:- mode short_directory(+,?).
 short_directory(Arg,Out) :-
 	list_directory(Arg,Out).
 
@@ -170,10 +162,10 @@ process_date(_,M_in,D,Y,date(Y,Month,D,0,0,0)):-
 %	number_codes(Minute,[M1,M2]).
 %process_time_year(TY,year(TY1)):- aton(TY,TY1).
 
-:- mode canonical_pathname(+,?).
+
 canonical_pathname(Path,CPath) :-
 	(   var(CPath),
-	    ground(Path)
+	    nonvar(Path)
 	->  cwd(OldCWD),
 %	    sys_chdir(Path,_),
 	    cd(Path),
@@ -187,7 +179,6 @@ canonical_pathname(Path,CPath) :-
 %% split_dirs(+Path,-Drive,-LDirs)
 %% accepts a (canonical) path, and returns the list of directories
 %% that form the path.
-:- mode split_dirs(+,?,?).
 split_dirs(Path,Drive,LDirs) :-
 	(   atom(Path)
 	->  atom_codes(Path,CPath)
@@ -205,11 +196,11 @@ path([],LDirs) -->
 path([],[Dir|LDirs]) -->
 	dir(DirL),
 	dirs(LDirs),
-	{ground(DirL),atom_codes(Dir,DirL)}.
+	{atom_codes(Dir,DirL)}.
 
 disk(Drive) -->
 	[LDrive], ":",
-	{(LDrive > 90 -> LDriveUC is LDrive - 32 ; integer(LDrive),LDriveUC = LDrive),
+	{(LDrive > 90 -> LDriveUC is LDrive - 32 ; LDriveUC = LDrive),
 	 atom_codes(Drive,[LDriveUC])}.
 
 dirs([]) --> opt_slash, [].
@@ -217,7 +208,7 @@ dirs([Dir|Dirs]) -->
 	slash,
 	dir(LDir),
 	dirs(Dirs),
-	{ground(LDir),atom_codes(Dir,LDir)}.
+	{atom_codes(Dir,LDir)}.
 
 slash --> [92], opt_slash. % 0'\
 slash --> [47], opt_slash. % 0'/
@@ -232,7 +223,7 @@ letter(X) --> [X], {X \= 92, X \= 47, X \= 58}.
 
 %% rel_path(+Dest, -RelPath) makes filename +Dest relative to the
 %%  current directory
-:- mode rel_path(+,?).
+
 rel_path(Dest, RelPath) :-
 	cwd(Orig),
 	rel_path(Orig, Dest, RelPath).
@@ -240,7 +231,7 @@ rel_path(Dest, RelPath) :-
 %% rel_path(+Orig, +Dest, -RelPath)
 %% Makes RelPath a relative path to Dest from Orig. If drive names are
 %% given, and they are different, RelPath = Dest.
-:- mode rel_path(+,+,?).
+
 rel_path(Orig, Dest, RelPath) :-
 	split_dirs(Orig,ODrive,ODirs),
 	split_dirs(Dest,DDrive,DDirs),

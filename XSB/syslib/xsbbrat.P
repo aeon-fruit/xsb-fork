@@ -7,9 +7,6 @@
 :- export cs_undef/0.
 :- export restraint_number_of_answers/0.
 
-:- import (tnot)/1 from tables.
-:- import (table)/1 from standard.
-
 :- table brat_undefined/0 as opaque.
 brat_undefined :- tnot(brat_undefined).
 
@@ -17,7 +14,6 @@ brat_undefined :- tnot(brat_undefined).
 restraint_number_of_answers :- tnot(restraint_number_of_answers).
 
 :- table floundered_undefined/1 as opaque.
-:- mode floundered_undefined(+).
 floundered_undefined(a) :- tnot(floundered_undefined(a)).
 
 :- table cs_undef/0 as opaque.

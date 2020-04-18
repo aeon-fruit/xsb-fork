@@ -713,7 +713,7 @@ typedef enum Search_Strategy_Mode {
   MATCH_SYMBOL_EXACTLY, MATCH_WITH_TRIEVAR
 } SearchMode;
 
-void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *pathType,int lookup_type) {
+void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *pathType) {
 
   BTNptr pParentBTN;
 
@@ -789,8 +789,7 @@ void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *pathType,int 
 	 *  binding of a trievar.  Our last alternative is to bind an
 	 *  unbound trievar to this constant.
 	 */
-      if (lookup_type == CALL_TRIE_LOOKUP)
-	NonVarSearchChain_UnboundTrievar(subterm,variableChain);
+      NonVarSearchChain_UnboundTrievar(subterm,variableChain);
       break;
 
 
@@ -814,15 +813,13 @@ void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *pathType,int 
 	pCurrentBTN = variableChain;
 	SetNoVariant(pParentBTN);
       }
-
       NonVarSearchChain_BoundTrievar(subterm,pCurrentBTN,variableChain);
 	/*
 	 *  We've failed to find an exact match of the function expression
 	 *  with a binding of a trievar.  Our last alternative is to bind
 	 *  an unbound trievar to this subterm.
 	 */
-      if (lookup_type == CALL_TRIE_LOOKUP)
-	NonVarSearchChain_UnboundTrievar(subterm,variableChain);
+      NonVarSearchChain_UnboundTrievar(subterm,variableChain);
       break;
 
       
@@ -855,8 +852,7 @@ void *iter_sub_trie_lookup(CTXTdeclc void *trieNode, TriePathType *pathType,int 
 	 *  of a trievar.  Our last alternative is to bind an unbound
 	 *  trievar to this subterm.
 	 */
-      if (lookup_type == CALL_TRIE_LOOKUP)
-	NonVarSearchChain_UnboundTrievar(subterm,variableChain);
+      NonVarSearchChain_UnboundTrievar(subterm,variableChain);
       break;
       
 

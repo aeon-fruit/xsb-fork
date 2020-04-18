@@ -30,7 +30,7 @@ ALL =	asm${OBJEXT} asm_inst${OBJEXT} asm_opt${OBJEXT} asmpass2${OBJEXT} \
 	ciao_directives${OBJEXT} \
 	compile${OBJEXT} config${OBJEXT} cp_opt${OBJEXT} cutcheck${OBJEXT} \
 	flatten${OBJEXT} inprog${OBJEXT} \
-	listutil${OBJEXT} modeinf${OBJEXT} \
+	listutil${OBJEXT} makemode${OBJEXT} modeinf${OBJEXT} modes${OBJEXT} \
 	parse${OBJEXT} peephole${OBJEXT} \
 	pre_cond${OBJEXT} preproc${OBJEXT} printres${OBJEXT} \
 	prof_sbp${OBJEXT} sanity${OBJEXT} \
@@ -46,13 +46,12 @@ EMU_INCLUDES = ../emu/builtin.h ../emu/celltags_xsb.h ../emu/flag_defs_xsb.h \
 	../emu/system_defs_xsb.h ../emu/socket_xsb.h 
 PROLOG_INCLUDES = ../prolog_includes/char_defs.h ../prolog_includes/standard.h
 
-#Option = [sysmod,optimize,spec_repr,quit_on_error,modeinfer]
 Option = [sysmod,optimize,spec_repr,quit_on_error]
 
 #-------------------------------------------------------------------#
 #
-XSB=../bin/xsb
-#XSB=../config/x64-pc-windows/bin/xsb.exe
+#XSB=../bin/xsb
+XSB=../config/x64-pc-windows/bin/xsb.exe
 Prolog = $(XSB) -e "segfault_handler(warn)."
 #
 #-------------------------------------------------------------------#

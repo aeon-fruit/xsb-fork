@@ -36,7 +36,6 @@
 /*	W: is get or put						*/
 /*======================================================================*/
 
-:- mode tgoalargs(?,+,?,?,?,?,+).
 tgoalargs([],_,Pil,Pil,T,T,_Tabled).
 tgoalargs([Arg|Args],N,Pil,Pilr,Tin,Tout,Tabled) :-
 	((\+ reg_unchanged(Arg,N), rval_needed(Arg,Args,N)) % (reg is not released)
@@ -97,7 +96,6 @@ load_from_nreg([structure(Sym,Sargs)|Args],[structure(Sym,Nsargs)|Nargs],
 load_from_nreg([Arg|Args],[Arg|Nargs],N,Reg) :-
 	load_from_nreg(Args,Nargs,N,Reg).
 
-:- mode tputpar(?,+,?,?,?,?,+).
 tputpar(integer(V),N,[putnumcon(N,V)|Pil],Pil,Tin,Tin,_Tab).
 tputpar(real(V),N,[putdfloat(N,V)|Pil],Pil,Tin,Tin,_Tab).
 tputpar(constant(Sym),N,[putcon(N,Sym)|Pil],Pil,Tin,Tin,_Tab).
@@ -133,9 +131,8 @@ tbldpars([Subpar|Subpars],Pil,Pilr,T1,T2) :-
 tbldpar(varocc(Vid,Prag),Pil,Pilr,Tin,Tout) :-
 	bldvarinst(Prag,Pil,Pilr,Tin,Tmid),
 	(temp_and_releasable(Prag,Loc)
-	 -> %% Vid may be variable?!?
-	    release_if_done(Vid,Loc,Prag,[],Tmid,Tout)
-	 ;  Tmid = Tout
+	 ->	release_if_done(Vid,Loc,Prag,[],Tmid,Tout)
+	 ;	Tmid = Tout
 	).
 tbldpar(integer(V),[bldnumcon(V)|Pilr],Pilr,T,T).
 tbldpar(real(V),[bldfloat(V)|Pilr],Pilr,T,T).
@@ -145,15 +142,14 @@ temp_and_releasable(Prag,Loc) :-
 	vprag_type(Prag,t),	% temp
 	vprag_loc(Prag,Loc),
 	vprag_use(Prag,Use),
-	\+ (append(_,[Loc|Rest],Use),member(Loc,Rest)), % not used elsewhere
-	check_integer(Loc,'temp_and_releasable/2',1).
+	\+ (append(_,[Loc|Rest],Use),member(Loc,Rest)). % not used elsewhere
 
 /*======================================================================*/
 /* tgetpar(+HeadArg, +Reg, -Pil, -Pilr, +TRin, -TRout)			*/
 /*	Generates head-get* instructions for the case where no or hash	*/
 /*	based indexing is used.						*/
 /*======================================================================*/
-:- mode tgetpar(?,+,?,?,?,?).
+
 tgetpar(integer(V), N, [getnumcon(N,V)|Pil], Pil, Tin, Tin).
 %%tgetpar(real(V), N, [getfloat(N,V)|Pil], Pil, Tin, Tin).
 tgetpar(real(V), N, [getdfloat(N,V)|Pil], Pil, Tin, Tin).
@@ -199,9 +195,8 @@ tunipars([Subpar|Subpars], Pil, Pilr, T1, T2) :-
 tunipar(varocc(Vid,Prag), Pil, Pilr, Tin, Tout) :-
 	univarinst(Prag, Pil, Pilr, Tin, Tmid), 
 	(temp_and_releasable(Prag, Loc)
-	 -> %% Vid may be a variable
-	    release_if_done(Vid, Loc, Prag, [], Tmid, Tout)
-	 ;  Tmid = Tout
+	 ->	release_if_done(Vid, Loc, Prag, [], Tmid, Tout)
+	 ;	Tmid = Tout
 	).
 tunipar(integer(V), [uninumcon(V)|Pilr], Pilr, T, T).
 tunipar(real(V), [unifloat(V)|Pilr], Pilr, T, T).

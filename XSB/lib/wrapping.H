@@ -32,6 +32,6 @@
 :- import fmt_write/2 from file_io.
 :- import xsb_configuration/2 from xsb_configuration.
 :- import throw/1, (index)/2 from standard.
-:- import syntax_error/1, check_ground/3 from error_handler.
+:- import syntax_error/1 from error_handler.
 :- import (:-)/1 from usermod.
 

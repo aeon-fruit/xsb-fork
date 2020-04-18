@@ -54,8 +54,7 @@
 :- import file_write/2 from xsb_writ.
 
 :- import domain_error/4, existence_error/4, instantiation_error/2,
-   check_atom/3, permission_error/4, type_error/4, check_ground/3
-   from error_handler.
+		  permission_error/4, type_error/4 from error_handler.
 
 :- import concat_atom/2 from string.
 
@@ -66,9 +65,7 @@
 	  path_sysop/2, path_sysop/3,
 	  copyIOport/2,
   file_seek/4, file_truncate/3,
-  file_pos/2, file_size/2,
-  file_time/2,
-  file_time_ns/3,
+  file_pos/2, file_size/2, file_time/2,
   file_open/3, file_open/4, file_close/1, file_close/2,
 	  file_get/2,file_get_code/2,file_get_byte/2, file_get_char/2, 
 		  file_put/2, file_put_code/2,file_put_char/2, 

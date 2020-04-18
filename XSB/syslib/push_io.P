@@ -25,7 +25,6 @@
 :- compiler_options([sysmod]).
 
 :- dynamic input_streams/2.
-:- mode_on_success(input_streams(+,+)).
 
 :- export get_stdin/2.
 
@@ -38,12 +37,13 @@ get_stdin(Stack,Stream):- input_streams(Stack,Stream).
    Instead, it pushes the current stream on the stack.
    pop_stdin/1 pops the stream back up.
 */
-:- mode push_stdin(+,+).
+push_stdin(Stack,_) :-
+	\+atom(Stack),
+	abort('PUSH_STDIO: First argument (stack name) must be an atom').
 push_stdin(Stack,Stream) :- 
-	check_atom(Stack,'push_stdin/2',1),
 	seeing(Input),
 	see(Stream),
-	(input_streams(Stack,L)
+	(input_streams(Stack,L) 
 	-> retractall(input_streams(Stack,_))
 	; L = []
 	),
@@ -52,7 +52,6 @@ push_stdin(Stack,Stream) :-
 %% fails if the IO stack is empty
 %% Pops up the previously saved stream from the stack and "see's" it.
 %% Closes the current stream
-:- mode pop_stdin(+).
 pop_stdin(Stack) :-
 	\+atom(Stack),
 	abort('[POP_STDIO] First argument (stack name) must be an atom').

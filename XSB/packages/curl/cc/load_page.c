@@ -5,17 +5,19 @@
 ** 
 ** Copyright (C) The Research Foundation of SUNY, 2010
 ** 
-** Licensed under the Apache License, Version 2.0 (the "License");
-** you may not use this file except in compliance with the License.
-** You may obtain a copy of the License at
-**
-**      http://www.apache.org/licenses/LICENSE-2.0
-**
-** Unless required by applicable law or agreed to in writing, software
-** distributed under the License is distributed on an "AS IS" BASIS,
-** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-** See the License for the specific language governing permissions and
-** limitations under the License.
+** XSB is free software; you can redistribute it and/or modify it under the
+** terms of the GNU Library General Public License as published by the Free
+** Software Foundation; either version 2 of the License, or (at your option)
+** any later version.
+** 
+** XSB is distributed in the hope that it will be useful, but WITHOUT ANY
+** WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+** FOR A PARTICULAR PURPOSE.  See the GNU Library General Public License for
+** more details.
+** 
+** You should have received a copy of the GNU Library General Public License
+** along with XSB; if not, write to the Free Software Foundation,
+** Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 **
 */
 
@@ -26,7 +28,6 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 #include "load_page.h"
-#include "basicdefs.h"
 
 struct result_t
 {
@@ -119,21 +120,8 @@ load_page (char *source, curl_opt options, curl_ret *ret_vals)
   curl_easy_setopt(curl, CURLOPT_USERAGENT, options.user_agent);
 
   /* Post Data */
-  if (options.header) {
-    curl_easy_setopt (curl, CURLOPT_HTTPHEADER, options.header); 
-  }
-  if(strlen(options.post_data)>0) {
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, options.post_data);
-  }
-  if(strlen(options.put_data)>0) {
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, options.put_data);
-  }
-  if(options.delete) {
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-    // MAYBE also indicate that there is no returned data
-    //curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-  }
+  if(strlen(options.post_data)>0)
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, options.post_data);
 
   /* Allow curl to perform the action */
   curl_easy_perform (curl);
@@ -214,16 +202,13 @@ curl_opt init_options() {
 
   curl_opt options;
   options.redir_flag = 1;
-  options.secure.flag = 0;
+  options.secure.flag = 1;
   options.secure.crt_name = "";
   options.auth.usr_pwd = "";
   options.timeout = 0;
   options.url_prop = 0;
   options.user_agent = "http://xsb.sourceforge.net/";
   options.post_data = "";
-  options.put_data = "";
-  options.header = NULL;
-  options.delete = FALSE;
 
   return options;
 }

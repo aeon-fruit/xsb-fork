@@ -63,7 +63,7 @@
 #endif
 #endif
 
-char *cvt_float_to_str_with_fmt(CTXTdeclc Float, char *);
+char *cvt_float_to_str(CTXTdeclc Float);
 
 /*
   This was the old test for being a kosher Prolog string
@@ -328,19 +328,6 @@ DllExport char* call_conv p2c_string(prolog_term term)
     return string_val(t);
 }
 
-DllExport Integer call_conv p2c_varnum(CTXTdeclc prolog_term term)
-{
-    Cell t = (Cell)term;
-    XSB_Deref(t);
-    if ((CPtr)t >= (CPtr)glstack.low && (CPtr)t <= (CPtr)top_of_heap)
-      // positive if heap variable
-      return ((Integer)t - (Integer)glstack.low)/sizeof(void *);
-    else if ((CPtr)t >= top_of_localstk && (CPtr)t <= (CPtr)glstack.high)
-      // negative if local stack variable
-      return ((Integer)((CPtr)t - (CPtr)glstack.high - 1))/sizeof(CPtr);
-    else return (Integer)t;   /* Should never happen */
-}
-
 DllExport char* call_conv p2c_functor(prolog_term term)
 {
     Cell t = (Cell)term;
@@ -360,17 +347,6 @@ DllExport prolog_term call_conv p2p_arg(prolog_term term, int argno)
     Cell t = (Cell)term;
     XSB_Deref(t);
     t = get_str_arg(t,argno);
-    XSB_Deref(t);
-    return (prolog_term)t;
-}
-
-/* Returns the dereferenced variable part of the attvar.  
-   Used to assert attvars, and probably not for more general use. */
-DllExport prolog_term call_conv p2p_attvar(prolog_term term)
-{
-    Cell t = (Cell)term;
-    XSB_Deref(t);
-    t = get_str_arg(t,0);
     XSB_Deref(t);
     return (prolog_term)t;
 }
@@ -1116,7 +1092,7 @@ int ptoc_term(CTXTdeclc char *fmt, char *c_dataptr, reg_num regnum)
 **
 */
 
-DllExport int call_conv c2p_term(CTXTdeclc char *fmt, char *c_dataptr, prolog_term variable)
+int c2p_term(CTXTdeclc char *fmt, char *c_dataptr, prolog_term variable)
 {
     int my_errno;
     char *subformat[10];
@@ -1131,7 +1107,7 @@ DllExport int call_conv c2p_term(CTXTdeclc char *fmt, char *c_dataptr, prolog_te
 **
 */
 
-DllExport int call_conv p2c_term(CTXTdeclc char *fmt, char *c_dataptr, prolog_term variable)
+int p2c_term(CTXTdeclc char *fmt, char *c_dataptr, prolog_term variable)
 {
     int my_errno;
     char *subformat[10];
@@ -1236,9 +1212,7 @@ DllExport void call_conv print_pterm(CTXTdeclc prolog_term term, int toplevel,
     sprintf(tempstring,"%d", (int) p2c_int(term));
     XSB_StrAppend(straddr,tempstring);
   } else if (is_float(term)) {
-    XSB_StrAppend(straddr,cvt_float_to_str_with_fmt(CTXTc ofloat_val(term),(char *)flags[FLOAT_DISPLAY_FORMAT]));
-    // This is the old call; the new one is above
-    //XSB_StrAppend(straddr,cvt_float_to_str(CTXTc ofloat_val(term)));
+    XSB_StrAppend(straddr,cvt_float_to_str(CTXTc ofloat_val(term)));
   } else if (is_nil(term)) {
     XSB_StrAppend(straddr,"[]");
   } else if (is_string(term)) {
@@ -1275,17 +1249,6 @@ DllExport void call_conv print_pterm(CTXTdeclc prolog_term term, int toplevel,
       XSB_StrAppend(straddr, ")");
   }
 }
-
-
-#define StrArgBuf (*tsgSBuff2)
-DllExport char * call_conv print_pterm_fun(CTXTdeclc prolog_term term)
-{
-  XSB_StrSet(&StrArgBuf,"");
-  print_pterm(CTXTc term, TRUE, &StrArgBuf);
-  return StrArgBuf.string;
-}
-
-
 /************************************************************************/
 /*                                                                      */
 /*	xsb_answer_string copies an answer from reg 2 into ans.		*/
@@ -1463,25 +1426,22 @@ DllExport int call_conv xsb_init(int argc, char *argv[])
 
   // updateWarningStart();
   if (!xsb_initted_gl) {
-    /* This relies on the caller to tell us in argv[0] the absolute
-       or relative path name to the XSB installation directory.
-       TLS: added error check.*/
-    if (MAXPATHLEN < 
-        snprintf(executable1, MAXPATHLEN, "%s%cconfig%c%s%cbin%cxsb",
-                 argv[0], SLASH, SLASH, FULL_CONFIG_NAME, SLASH, SLASH))
+	/* we rely on the caller to tell us in argv[0]
+	the absolute or relative path name to the XSB installation directory.
+	TLS: added error check.*/
+    if (MAXPATHLEN <  snprintf(executable1, MAXPATHLEN, "%s%cconfig%c%s%cbin%cxsb",
+		 argv[0], SLASH, SLASH, FULL_CONFIG_NAME, SLASH, SLASH))
       xsb_abort("Cannot initialize: pathname %s%cconfig%c%s%cbin%cxsb "
 		"exceeds maximum pathlength (%d)\n",
-		argv[0], SLASH,SLASH, FULL_CONFIG_NAME, SLASH,SLASH,MAXPATHLEN);
+		argv[0], SLASH, SLASH, FULL_CONFIG_NAME, SLASH, SLASH,MAXPATHLEN);
     expfilename = expand_filename(executable1);
     strcpy(executable_path_gl, expfilename);
     mem_dealloc(expfilename,MAXPATHLEN,OTHER_SPACE);
 
-
-    /* catch XSB_C_INIT exceptions */
-    if ((rc = setjmp(ccall_init_env))) return rc;
+    if ((rc = setjmp(ccall_init_env))) return rc;  /* catch XSB_C_INIT exceptions */
 
     if (0 == (rc = xsb(CTXTc XSB_C_INIT,argc,argv)))  {   /* initialize xsb */
-      if (0 == (rc = xsb(CTXTc XSB_EXECUTE,0,0))) /* enter xsb to set up regs */
+      if (0 == (rc = xsb(CTXTc XSB_EXECUTE,0,0)))       /* enter xsb to set up regs */
 	xsb_initted_gl = 1;
     }
     return(rc);
@@ -1904,7 +1864,7 @@ DllExport int call_conv xsb_query_string(CTXTdeclc char *goal)
 /*                                                                      */
 /************************************************************************/
 
-DllExport int call_conv xsb_query_string_string(CTXTdeclc char *goal,
+int call_conv xsb_query_string_string(CTXTdeclc char *goal,
 				      VarString *ans, char *sep)
 {
   int rc;
@@ -1929,7 +1889,7 @@ static XSB_StrDefine(last_answer_lc);
 #define last_answer (&last_answer_lc)
 #endif
 
-DllExport int call_conv xsb_query_string_string_b(CTXTdeclc
+int call_conv xsb_query_string_string_b(CTXTdeclc
 	     char *goal, char *buff, int buflen, int *anslen, char *sep)
 {
   int rc;

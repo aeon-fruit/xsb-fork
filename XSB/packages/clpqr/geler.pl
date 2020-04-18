@@ -41,11 +41,10 @@
 	    project_nonlin/3,
 	    collect_nonlin/3.
 
-:- import maplist/2, ignore/1 from swi.
+:- import maplist/2,term_variables/2, ignore/1 from swi.
 :- import del_attr/2, install_verify_attribute_handler/4 from machine.
 :- import nf_r_transg/3 from nf_r.
 
-/**
 % l2conj(List,Conj)
 %
 % turns a List into a conjunction of the form (El,Conj) where Conj
@@ -73,7 +72,7 @@ nonexhausted(run(Mutex,G)) -->
 nonexhausted((A,B)) -->
 	nonexhausted(A),
 	nonexhausted(B).
-***/
+
 
 :- install_verify_attribute_handler(geler,Attr,Other,attr_unify_hook(Attr,Other)).
 attr_unify_hook(g(CLP,goals(Gx),_),Y) :-

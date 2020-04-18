@@ -1,3 +1,0 @@
-
-test:- 
-        [inc_trie_alt_1],test_seq.

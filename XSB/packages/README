@@ -32,7 +32,3 @@ packages are installed.
 
 Your bootstrapping code might assert other things there, such as
 package_configuration(version(<packageName>), <version-number>).
-
-Several packages are distributed under the Apache 2.0 License rather
-than the GNU Library General Public License.  If so, a package will
-include an Apache LICENSE file in their subdirectory.

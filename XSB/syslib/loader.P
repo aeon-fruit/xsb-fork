@@ -56,6 +56,7 @@
 %% The *_loader version is needed  here because we can''t import 
 %% them from xsb_configuration this early. 
 
+
 windows_os_loader :-  stat_flag(CONFIG_NAME, ConfigurationC),
 	%% convert C string to Prolog
 	intern_string(ConfigurationC, Configuration),
@@ -116,10 +117,6 @@ unstructure_modname(PModName,ModName,ModPars,ModTerm) :-
 			 ;	ModTerm =.. [ModName|StrModPars],
 				atomize_pars(StrModPars,AtomModPars),
 				ModPars =.. [ModName|AtomModPars]
-			),
-			(atom(ModName)
-			 -> true
-			 ;  throw(error(type_error(atom,ModName),'Illegal module specification'))
 			)
 		 ;	ModName = PModName,
 			ModPars = PModName
@@ -184,7 +181,6 @@ site_specific_init(_catchall).
  *  emulator.
  */
 
-:- mode set_inthandler(?,+).
 set_inthandler(Handler, Number) :-
 	Flag is Number + INT_HANDLERS_FLAGS_START,
 	term_psc(Handler, PSC),
@@ -264,6 +260,8 @@ load_library_directories :-
 	%% Construct site init file name
 	xsb_configuration(site_dir, SiteDir),
 	local_fmt_write_string(SiteFileName,'%s%ssiteinitrc', f(SiteDir,Slash)),
+%%	str_cat(SiteFileName, XSB_SRC_EXTENSION_ATOM, SiteFileNameP),
+%%	str_cat(SiteFileName, XSB_OBJ_EXTENSION_ATOM, SiteFileNameO),
 	%% Site init file isn't mandatory
 	( (local_file_exists([SiteFileName,XSB_SRC_EXTENSION_ATOM])
 	   ; local_file_exists([SiteFileName,XSB_OBJ_EXTENSION_ATOM])) ->
@@ -272,8 +270,10 @@ load_library_directories :-
 	),
 	%%
 	%% Construct user''s .xsb/xsbrc.P
-	xsb_configuration(user_auxdir, UsrAuxDir),
-	local_fmt_write_string(UsrFileN, '%s%sxsbrc', f(UsrAuxDir,Slash)),
+	xsb_configuration(user_home, HomeDir),
+	local_fmt_write_string(UsrFileN, '%s%s.xsb%sxsbrc', f(HomeDir,Slash,Slash)),
+%%	str_cat(UsrFileN, XSB_SRC_EXTENSION_ATOM, UserFileNameP),
+%%	str_cat(UsrFileN, XSB_OBJ_EXTENSION_ATOM, UserFileNameO),
 	%% User init file isn't mandatory
 	( (local_file_exists([UsrFileN, XSB_SRC_EXTENSION_ATOM])
 	   ; local_file_exists([UsrFileN, XSB_OBJ_EXTENSION_ATOM])) ->
@@ -298,8 +298,10 @@ load_library_directories :-
 
 execute_command_module :-
 	stat_flag(CMD_LOOP_DRIVER, InputFilePtr_INT),
-	intern_string(InputFilePtr_INT,ModName),
-	load(ModName,1,0).	% command module from OBJEXT
+	load(InputFilePtr_INT).
+
+
+
 
 /*************************************************************************
 
@@ -329,7 +331,6 @@ XSB's in-lined predicates, builtins, and functions.
  */
 
 :- import conset/2,conget/2 from gensym.
-:- mode '_$load_undef'(?).
 '_$load_undef'(Term) :-
 	term_type(Term, Type),
 	( Type =:= XSB_STRUCT -> term_psc(Term, PSC)
@@ -345,7 +346,6 @@ XSB's in-lined predicates, builtins, and functions.
 	     handle_undefined_pred(PSC,Term)
 	).
 
-:- mode load_pred(+).
 load_pred(PSC) :- \+ (\+ (load_pred0(PSC))).
 
 load_pred0(PSC) :- 
@@ -397,11 +397,9 @@ load_pred1(PSC) :-
 wcs_undefined(Term):- not_exists(wcs_undefined(Term)).
 
 :- import arg/3 from standard.
-:- import '_$multifile_comp'/2 from standard.
 handle_undefined_pred(PSC,Term) :-
         psc_name(PSC,Name),psc_arity(PSC,Arity),
 	psc_env(PSC, Env), 
-	\+ '_$multifile_comp'(Term,_),
 	(Env =:= T_UNLOADED
 	 ->	% is "imported"
 		psc_mod(PSC, ModPSC),
@@ -478,12 +476,7 @@ not_handling_undef_pred :- conget('_$_$_undefhook',0).
  *  Loads and executes the directives of a module.  The file(s) containing
  *  the module is constructed using search_file/3, below.
  */
-:- mode load(+).
-load(PModName) :- load(PModName,0,0).
-
-/* IfCmd =:= 1 if this is the command (top-loop) module; =:= 0 otw.
-   ToLoc =:= 0 -> load .xwam; =:= 1 -> load private bc file */
-load(PModName,IfCmd,ToLoc) :-
+load(PModName) :-
 	stat_flag(DEBUG_ON, Debug_on),
 	(Debug_on =:= 1, atom(PModName)
 	 ->	local_fmt_write(STDMSG, "[ load module %S ]\n", arg(PModName))
@@ -491,7 +484,21 @@ load(PModName,IfCmd,ToLoc) :-
 	),
 	unstructure_modname(PModName,ModName,ModPars,ModTerm),
 
-	(find_ofile_and_load(ModName,PModName,ModPars,IfCmd,ToLoc)
+	(search_file(ModName, [FileName_O,FileName_H|SourceFileNames],
+		     [XSB_OBJ_EXTENSION_ATOM,XSB_HDR_EXTENSION_ATOM,XSB_SRC_EXTENSION_ATOM,'.pl','.prolog','.c',
+		      '.cpp']), % search_file below for null suffix
+	 (local_file_exists(FileName_O),
+	  %% byte-code file exists
+	  (system_mod(FileName_O)	% Always load byte-code file from system
+	   ->	  load_object_file(FileName_O,ModPars) % (allows self recompile, could just exempt cmplib and syslib)
+	   ;	  check_times_and_load(FileName_O,FileName_H,SourceFileNames,PModName,ModPars)
+	  )
+	  ;
+	  %% no byte-code file, compile sourcefile
+	  local_member(FileName_X,SourceFileNames),
+	  local_file_exists(FileName_X),
+	  compile_and_load(FileName_X,PModName)
+	 )
 	 ->	true
 	 ; (ModTerm = usermod(_),
 	    search_file(ModName, [FileName], ['']),
@@ -503,48 +510,6 @@ load(PModName,IfCmd,ToLoc) :-
 		existence_error(module,ExpandedModName,load,1)
 	).
 
-find_ofile_and_load(ModName,PModName,ModPars,IfCmd,ToLoc) :-
-    search_file(ModName, [FileName_O,FileName_H|SourceFileNames],
-		[XSB_OBJ_EXTENSION_ATOM,XSB_HDR_EXTENSION_ATOM,XSB_SRC_EXTENSION_ATOM,'.pl','.prolog','.c',
-		 '.cpp']),	% search_file below for null suffix
-    (ToLoc =:= 1,
-     private_obj_filename_list(FileName_O,FileName_Olocal),
-     local_file_exists(FileName_Olocal) % local proc-specific obj file exists, load it.
-     ->	load_object_file(FileName_Olocal,ModPars,IfCmd,0)
-     ; local_file_exists(FileName_O) % byte-code file exists
-     ->	(FileName_O = [Dir|_],
-	 system_mod(Dir) % Always load byte-code file from system
-	 -> load_object_file(FileName_O,ModPars,IfCmd,0) % (allows self recompile, could just exempt cmplib, syslib and lib)
-	 ;  check_times_and_load(FileName_O,FileName_H,SourceFileNames,PModName,ModPars)
-	)
-     ; local_member(FileName_X,SourceFileNames), % no byte-code file
-       local_file_exists(FileName_X)	      % but sourcefile exists
-     ->	compile_and_load(FileName_X,PModName) % so compile it and try again
-     ;	fail				      % give up
-    ).
-
-private_obj_filename_list([FN,FNB,_],[FN,FNB,ExtPrivatized]) :-
-    obj_ext_privatizer(ExtPrivatizer),
-    str_cat(XSB_OBJ_EXTENSION_ATOM,ExtPrivatizer,ExtPrivatized).
-
-/* From object filename, generate unique filename by appending hostname and pid */
-private_obj_filename(OFile,UFile) :-
-    obj_ext_privatizer(Privatizer),
-    str_cat(OFile,Privatizer,UFile).
-
-obj_ext_privatizer(ExtPrivatizer) :-
-    local_pid(Pid),
-    local_number_codes(Pid,PidC),
-    local_atom_codes(PidA,PidC),
-    local_hostname(HostName),
-    str_cat_list(['.',HostName,'-',PidA],ExtPrivatizer).
-
-local_pid(Pid) :- local_sys_syscall(SYS_getpid,Pid,_,_).
-local_hostname(HostName) :- local_sys_syscall(SYS_gethostname,_,HostName,_).
-
-local_atom_codes(_A, _L) :- '_$builtin'(ATOM_CODES).
-local_number_codes(_A, _L) :- '_$builtin'(NUMBER_CODES).
-
 check_times_and_load(FileName_O,FileName_H,SourceFileNames,PModName,ModPars) :-
 	(local_member(FileName_X,SourceFileNames),
 	 local_file_exists(FileName_X)
@@ -552,86 +517,51 @@ check_times_and_load(FileName_O,FileName_H,SourceFileNames,PModName,ModPars) :-
 		 ->	compile_and_load(FileName_X,PModName)
 		 ;	(local_file_exists(FileName_H),local_newerthan(FileName_H,FileName_O))
 		 ->	compile_and_load(FileName_X,PModName)
-		 ;	load_object_file(FileName_O,ModPars,0,0) % load byte-code, it's newest
+		 ;	load_object_file(FileName_O,ModPars) % load byte-code, it's newest
 		)
-	 ;	load_object_file(FileName_O,ModPars,0,0) % load byte-code, no source-file
+	 ;	load_object_file(FileName_O,ModPars) % load byte-code, no source-file
 	).
 
-load_object_file(FileName_O,ModPars,IfConsult) :-
-    load_object_file(FileName_O,ModPars,0,IfConsult).
+load_object_file(FileName_O) :-
+	load_object_file(FileName_O,dummypars).
 
-%% Do actual load the byte-code file.
-%% IfConsult=1 if loading consulted file; to globalize exported preds.
-%%          =0 if initial loading, or loading through import.
-%% IfCmd=1 if loading the command file from cmd line (calling its main will not return!)
-%%      =0 if normal load (so do cd before call to main)
-%% Must be careful that when called with IfConsult=0, no imported predicates can be used.  (Bootstrapping)
-load_object_file(FileName_O,ModPars,IfCmd,IfConsult) :-
-    %%local_fmt_write(STDMSG, "Loading: %S, %S, %d\n", arg(FileName_O,ModPars,IfConsult)),
-    (IfConsult =\= 0 -> cputime(LoadStartTime) ; true),
-    code_load(FileName_O, Init, IfConsult, ModPars), % use the C loader
-    ((Init > 4 ; Init < 0)			% Prolog bc successfully loaded
-     ->	print_load_msg(IfConsult,LoadStartTime,ModPars), 
-	dir_from_filename(FileName_O,Dir),
-	(IfConsult =\= 0
-	 -> concat_atom(FileName_O,FullFile),
-	    push_loaded_file(FullFile,Rand)
-	 ;  true
-	),
-	local_cwd(CurDir),
-	(IfCmd =:= 0 -> local_cd(Dir) ; true), % cmd never returns from ll_code_call so don't cd
-	(system_mod(Dir)	% cant use catch during system startup
-	 -> ll_code_call(Init, true, 2) % '_$main'
-	 ;  catch(
-		  ll_code_call(Init, true, 2), % '_$main'
-		  Ball,
-		  local_cd_throw(FileName_O,CurDir,Ball)
-		 )
-	),
-	local_cd(CurDir),
-	(IfConsult =\= 0
-	 -> pop_loaded_file(Rand)
-	 ;  true
-	),
-	unload_seg(Init)	% delete code for '_$main'
-     ; Init =:= 4		% load foreign obj code succeeded
-     ->	print_load_msg(IfConsult,LoadStartTime,ModPars)
-     ; Init =:= 0		% load failed for some reason
-     ->	abort(['Error in loading file ',FileName_O])
-     ; Init =:= 2 		% not loaded, attempted reload of immutable
-     ->	true			% silence
-     ;	abort(('Unknown return code when loading ',FileName_O,': ',Init))
-    ).
+% actually load the byte-code file
+load_object_file(FileName_O,ModPars) :-
+	%local_fmt_write(STDMSG, "Loading: %S\n", arg(FileName_O)),
+	code_load(FileName_O, Init, 0, ModPars), % use the C loader
+	(Init =\= 0		% load succeeded
+	 ->	(Init =\= 4 % prolog byte-code succeeded
+		 ->	(FileName_O = [Dir,_,_]
+			 ->	local_cwd(CurDir),
+				local_cd(Dir),
+				%local_fmt_write(STDMSG, "calling main for: %S\n", arg(FileName_O)),
+				(system_mod(FileName_O) % cant use catch during system startup
+				 ->	ll_code_call(Init, true, 2) % '_$main'
+				 ;	catch(
+					      ll_code_call(Init, true, 2), % '_$main'
+					      Ball,
+					      local_cd_throw(CurDir,Ball)
+					     )
+				),
+				%local_fmt_write(STDMSG, "returned from main for: %S\n", arg(FileName_O)),
+				local_cd(CurDir)
+			 ;	ll_code_call(Init, true, 2) % call '_$main'
+			),
+			unload_seg(Init) % delete code for '_$main'
+		 ;	true	% load foreign obj code succeeded
+		)
+	).
 
 local_cwd(Name) :- local_sys_syscall(SYS_cwd, Res, Name, _), Res =:= 0.
 
 local_cd(Dir) :- local_sys_syscall(SYS_chdir, Res, Dir, _), Res =:= 0.
 
-local_cd_throw(FileName_O,Dir,Ball) :-
+local_cd_throw(Dir,Ball) :-
+	local_fmt_write(STDMSG, "Caught: %s, %S\n", arg(Dir,Ball)),
 	local_cd(Dir),
-	concat_atom(FileName_O,UFile),
-	(concat_atom([OFileN,XSB_OBJ_EXTENSION_ATOM,'.',_],UFile)
-	 -> concat_atom([OFileN,XSB_OBJ_EXTENSION_ATOM],OFile),
-	    rename_private_obj_file(UFile,OFile)
-	 ;  true
-	),
 	throw(Ball).
 
 local_is_directory(File) :- sys_system(IS_DIRECTORY, File,_,_,_,_,_).
-
-print_load_msg(IfConsult,LoadStartTime,ModName) :-
-    (IfConsult =:= 1, \+banner_control(quietload)
-     ->	cputime(LoadFinishTime), LoadTime is LoadFinishTime-LoadStartTime,
-	file_write0(STDMSG, '['), file_write0(STDMSG, ModName),
-	(LoadStartTime =:= LoadFinishTime
-	 -> file_write0(STDMSG, ' loaded]')
-	 ;  file_write0(STDMSG, ' loaded, cpu time used: '),
-	    fmt_write(STDMSG, '%1.3f', a(LoadTime)),
-	    file_write0(STDMSG, ' seconds]')
-	),
-	file_nl(STDMSG)
-     ;	true
-    ).
 
 %% compile the source file, and then reload the module
 compile_and_load(FileNameList,PModName) :-
@@ -642,28 +572,9 @@ compile_and_load(FileNameList,PModName) :-
 		 ;	call_c(LoadFile)
 		)
 	 ;	str_cat_list(FileNameList,FileName_P),
-		compile_opt_checked(FileName_P,[],1), %to temp, dont rename
-		load(PModName,0,1),
-		rename_private_objfile_list(FileNameList)
+		compile(FileName_P),
+		load(PModName)
 	).
-
-rename_private_objfile_list(FileNameList) :-
-    private_obj_filename_list(FileNameList,LFileNameObjList),
-    str_cat_list(LFileNameObjList,FileName_LObj),
-    FileNameList = [Dir,Base,_],
-    str_cat_list([Dir,Base,XSB_OBJ_EXTENSION_ATOM],FileName_Obj),
-    rename_private_obj_file(FileName_LObj,FileName_Obj).
-
-rename_private_obj_file(UFile,OFile) :-
-    (local_file_exists(UFile)
-     ->	local_sys_syscall(SYS_rename,Res,UFile,OFile),
-	(Res =:= 0
-	 -> true
-	 ;  local_sys_syscall(SYS_unlink,_Res0,UFile,_) % dont leave private around if rename failed
-	)
-     ;  true
-    ).
-%%    local_fmt_write(STDMSG, "obj renamed %s to %s\n", arg(UFile,OFile)).
 
 term_new_mod_inline(Mod,Term,NewTerm) :- term_new_mod_inline(Mod, Term, NewTerm).
 
@@ -688,10 +599,8 @@ ll_code_call(A,B,C) :- code_call(A,B,C).
  *  or in system directories.
  */
 
-:- mode search_file(+,?,?).
-search_file(ModName, AbsFileNames, Extensions) :-
-	%% turn string address into string; for initial load file
-	%%(integer(ModName0) -> intern_string(ModName0,ModName) ; ModName = ModName0),
+search_file(ModName0, AbsFileNames, Extensions) :-
+	(integer(ModName0) -> intern_string(ModName0,ModName) ; ModName = ModName0),
 	(atom(ModName)
 	 ->	true
 	 ;	throw(error(type_error(atom,ModName),'Illegal module specification'))
@@ -709,30 +618,11 @@ app_list([Extension|Extensions],WholePath,[AbsFileName|AbsFileNames]) :-
 	local_append(WholePath,[Extension],AbsFileName),
 	app_list(Extensions,WholePath,AbsFileNames).
 
-system_mod(FileName) :- 
+system_mod([FileName|_]) :- 
 	stat_flag(INSTALL_DIR,InstallDir1),
 	intern_string(InstallDir1, InstallDir),
 	str_match(InstallDir,FileName,f,0,End), End1 is End+1,
 	\+ str_match('packages',FileName,f,End1,_).  % but recompile packages
-
-dir_from_filename([Dir,_Base,_Ext],Dir) :- !.
-dir_from_filename([DirBase,_Ext],Dir) :- !,
-    parse_dir(DirBase,Dir).
-dir_from_filename(DirBaseExt,Dir) :- !,
-    parse_dir(DirBaseExt,Dir).
-dir_from_filename(Filename,Filename) :-
-    local_fmt_write(STDMSG,"OOPS: %S\n",Filename).
-
-parse_dir(DirStuff,Dir) :-
-    local_atom_codes(DirStuff,DirStuffC),
-    (local_lappend(DirC,[Sep|_BaseC],DirStuffC),
-     (Sep =:= 0'\\ ; Sep =:= 0'/)
-     ->	local_atom_codes(Dir,DirC)
-     ;	Dir = './'
-    ).
-     
-local_lappend([X|L1],L2,[X|L3]) :- local_lappend(L1,L2,L3).
-local_lappend([],L,L).	  
 
 /*
  *  Used in searching for a file.  Directory paths are returned in the
@@ -741,10 +631,9 @@ local_lappend([],L,L).
  *      Return in the order specified through the predicate
  *	library_directory/1, followed by the default paths
  *      in this default order:
- *	  syslib/   cmplib/   lib/   ./
+ *	  lib/   syslib/   cmplib/   ./
  */
 
-:- mode libpath(?).
 libpath(P) :- libraries_loaded, 
 	      library_directory(Dir), 
 	      expand_filename(Dir, P1),
@@ -773,7 +662,7 @@ libpath(P) :- stat_flag(INSTALL_DIR, InstallDir1),  % get the installation dir
 libpath(P) :- slash(Slash), str_cat('.', Slash,P).
 
 /*
- *  Determine whether the ~/.xsb/xsbrc.P module has been loaded.
+ *  Determine whether the ~/.xsbrc module has been loaded.
  */
 
 libraries_loaded :- 

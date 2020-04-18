@@ -25,32 +25,30 @@
 
 
 :- export
-   compile_cH/7,
-   compile_so/3,
-   runtime_loader_flag/3,
-   foreign_module_library_extension/2,
-   compile_windows_c_to_exe/1,
-   compile_windows_c_to_dll/1.
+	compile_cH/6,
+	compile_so/3,
+	runtime_loader_flag/3,
+	foreign_module_library_extension/2.
 
 :- import asm_magic/2 from asm.
 :- import asm_putlength/2 from asmpass2.
 :- import assert/1, retractall/1 from assert.
 :- import message/1, time_message/2 from auxlry.
+:- import misc_error/1 from error_handler.
 :- import memberchk/2 from basics.
 :- import current_compiled_module/1 from compile.
 :- import engine_mode_magic_num/3 from consult.
 :- import conset/2, conget/2 from gensym.
-:- import misc_error/1, check_atom/3, check_integer/3, check_ground/3
-   from error_handler.
 :- import
 	file_close/1,
 	fmt_write_string/3, file_put/2
    from file_io.
 :- import attach/2, length/2 from listutil.
-:- import stat_flag/2 from machine.
 :- import
-        str_length/2, str_cat/3, substring/4
-   from string.
+	stat_flag/2,
+	str_len/2, str_cat/3
+   from machine.
+:- import substring/4 from machine.
 :- import parse_filename/4 from machine.
 :- import
 	check_xpp_process_status/3,
@@ -58,15 +56,13 @@
    from parse.
 :- import shell/1 from shell.
 :- import read/1, see/1, seen/0, open/3, close/1, tell/1, told/0, repeat/0,
-	atom_codes/2, warning/1,
+	atom_codes/2,
 	write/2, atom/1, file_exists/1, cputime/1, abort/1, seeing/1, telling/1
      from standard.
 :- import str_sub/2 from string.
-:- import str_repl/4 from string.
 :- import concat_atom/2 from string.
 :- import write_header/0, process_from/3 from wrapping.
 :- import write_int/2 from xsb_writ.
 :- import xsb_configuration/2 from xsb_configuration.
-:- import private_obj_filename/2 from loader.
 
 :- import banner_control/1 from banner.

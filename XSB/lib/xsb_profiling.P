@@ -33,7 +33,6 @@ print out a profile of percentage of time spent in each predicate.  It
 uses a "sampling" method so the results may vary some from run to
 run.*/
 
-:- mode profile_call(?).
 profile_call(Goal) :-
 	%% test xsb_configuration(xsb-profiling) so works when running with nonprof xsb
 	cputime(T0),
@@ -74,9 +73,7 @@ get_profile_tuple(Node,Tuple,NNode) :- prof_cmd(3,Node,Tuple,NNode).
 start_profiling :- prof_cmd(1).
 stop_profiling :- prof_cmd(2).
 
-:- mode prof_cmd(+).
 prof_cmd(_CODE) :- '_$builtin'(237).
-:- mode prof_cmd(+,+,?,?).
 prof_cmd(_Code,_Node,_Tuple,_NNode) :- '_$builtin'(237).
 
 profile_tuple(Tuple) :-
@@ -113,12 +110,9 @@ dump_profile([],Total,OPSC,OMPSC,OCnt,ACnt) :-
 	 ->	OPName = 'Garbage Collecting', OPArity = ('')
 	 ;	psc_name(OPSC,OPName),psc_arity(OPSC,OPArity)
 	),
-	(OCnt * 1000 >= Total  % print only if >= .1% of total
-	 -> Percent is (OCnt*200+Total) // (2*Total),
-	    tab(20), write(Percent),write('%'),write(' '(OCnt)),tab(2),
-	    write(OPName),write('/'),writeln(OPArity)
-	 ;  true
-	),
+	Percent is (OCnt*200+Total) // (2*Total),
+	tab(20), write(Percent),write('%'),write(' '(OCnt)),tab(2),
+	write(OPName),write('/'),writeln(OPArity),
 	MPercent is (ACnt*200+Total) // (2*Total),
 	write(MPercent),write('%'),write(' '(ACnt)),tab(2),
 	(OMPSC =:= 0
@@ -134,12 +128,9 @@ dump_profile([p(PSC,MPSC,Cnt)|STuples],Total,OPSC,OMPSC,OCnt,ACnt) :-
 	 ->	OPName = 'Garbage Collecting', OPArity = ('')
 	 ;	psc_name(OPSC,OPName),psc_arity(OPSC,OPArity)
 	),
-	(OCnt * 1000 >= Total  % print only if >= .1% of total
-	 -> Percent is (OCnt*200+Total) // (2*Total),
-	    tab(20), write(Percent),write('%'),write(' '(OCnt)),tab(2),
-	    write(OPName),write('/'),writeln(OPArity)
-	 ;  true
-	),
+	Percent is (OCnt*200+Total) // (2*Total),
+	tab(20), write(Percent),write('%'),write(' '(OCnt)),tab(2),
+	write(OPName),write('/'),writeln(OPArity),
 	(MPSC =\= OMPSC
 	 ->	MPercent is (ACnt*200+Total) // (2*Total),
 		write(MPercent),write('%'),write(' '(ACnt)),tab(2),
@@ -155,13 +146,11 @@ dump_profile([p(PSC,MPSC,Cnt)|STuples],Total,OPSC,OMPSC,OCnt,ACnt) :-
 
 
 :- dynamic modes_called/2.
-:- mode_on_success(modes_called(+,+)).
 :- index(modes_called/2,trie).
 
 profile_mode_init :-
 	retractall(modes_called(_,_)).
 
-:- mode profile_mode_call(?).
 profile_mode_call(Term) :-
 	term_psc(Term,PSC),
 	term_new(PSC,ModeTerm),
@@ -199,7 +188,6 @@ gen_mode_term(Arity,Term,ModeTerm) :-
 	).
 
 
-:- mode profile_unindexed_calls(?).
 %profile_unindexed_calls(X): X=off, X=on, X=once, X=Skel
 profile_unindexed_calls(off) :- !,
 	stat_set_flag(LOG_UNINDEXED,0).  % set off

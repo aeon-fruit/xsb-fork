@@ -392,13 +392,13 @@ void construct_answer_template(CTXTdeclc Cell callTerm, SubProdSF producer,
  */
 
 // If passed a NULL retTerm, dont bother to build it
-VariantSF get_call(CTXTdeclc Cell callTerm, Cell *retTerm,int *incr_dyn_leaf_flag,callnodeptr * callnode) {
+VariantSF get_call(CTXTdeclc Cell callTerm, Cell *retTerm) {
 
   Psc  psc;
   TIFptr tif;
   int arity;
   BTNptr root, leaf;
-  VariantSF sf = 0;
+  VariantSF sf;
   Cell callVars[MAX_VAR_SIZE + 1];
 
   //  printf("get_call ");printterm(stddbg,callTerm,25);fprintf(stddbg,"\n");
@@ -410,7 +410,8 @@ VariantSF get_call(CTXTdeclc Cell callTerm, Cell *retTerm,int *incr_dyn_leaf_fla
 
   tif = get_tip(CTXTc psc);
   if ( IsNULL(tif) )
-    xsb_permission_error(CTXTc "table access","non-tabled predicate",callTerm,"get_call",3);
+    xsb_permission_error(CTXTc "table access","non-tabled predicate",callTerm,
+			   "get_call",3);
   root = TIF_CallTrie(tif);
   if ( IsNULL(root) )
     return NULL;
@@ -419,26 +420,27 @@ VariantSF get_call(CTXTdeclc Cell callTerm, Cell *retTerm,int *incr_dyn_leaf_fla
   leaf = variant_trie_lookup(CTXTc root, arity, clref_val(callTerm) + 1, callVars);
   if ( IsNULL(leaf) )
     return NULL;
+  else {
 
-  if ( !TIF_IncrDynLeaf(tif) ) {
     sf = CallTrieLeaf_GetSF(leaf);
-    *callnode = subg_callnode_ptr(sf);
-    if ( IsProperlySubsumed(sf) ) 
+
+    /* incremental evaluation: check introduced as because of fact
+       predicates  */
+    
+    if(IsNonNULL(sf) && get_incr(psc) && IsNULL(sf->callnode)) 
+      return NULL;
+    
+    /* incremental evaluation end */
+
+    if ( IsProperlySubsumed(sf) )
       construct_answer_template(CTXTc callTerm, conssf_producer(sf), callVars);
+
+    if (retTerm) 
+      *retTerm = build_ret_term(CTXTc (int)callVars[0],&callVars[1]);
+
+    return sf;
   }
-  else { // dyn leaves do not have sf
-    *incr_dyn_leaf_flag = 1;
-    *callnode = CallTrieLeaf_GetCallnode(leaf);
-  }
-
-  if (retTerm) 
-    *retTerm = build_ret_term(CTXTc (int)callVars[0],&callVars[1]);
-
-  //  printterm(stdout, retTerm, 20);
-
-  return sf;
 }
-
 
 /*======================================================================*/
 /*
@@ -586,7 +588,6 @@ void abolish_release_all_dls_shared(CTXTdeclc ASI asi)
   DE de, tmp_de;
   DL dl, tmp_dl;
 
-  //  print_subgoal(stddbg,asi_subgoal(asi));printf(" arads \n");
   dl = asi_dl_list(asi);
   SYS_MUTEX_LOCK( MUTEX_DELAY ) ;
   while (dl) {
@@ -937,7 +938,7 @@ answers: delay dependencies may be corrupted flags %d.\n",
 	  //	  if (incr) hashtable1_destroy(pSF->callnode->outedges->hasht,0);
 	  free_answer_list(pSF);
 	  FreeProducerSF(pSF);
-	  } /* callTrie node is leaf */
+	} /* callTrie node is leaf */
 	else 
 	  push_node(BTN_Child(node));
       } /* there is a child of "node" */
@@ -953,7 +954,7 @@ answers: delay dependencies may be corrupted flags %d.\n",
 /* Low-level abolish, called by abolish_table_predwhen it is now known
    whether a predicate is variant or subsumptive.  Assumes incremental
    check has already been made.*/
-void delete_predicate_table(CTXTdeclc TIFptr tif, xsbBool warn) {
+  void delete_predicate_table(CTXTdeclc TIFptr tif, xsbBool warn) {
   if ( TIF_CallTrie(tif) != NULL ) {
     SET_TRIE_ALLOCATION_TYPE_TIP(tif);
     if ( IsVariantPredicate(tif) ) {
@@ -1662,7 +1663,7 @@ Integer new_private_trie(CTXTdeclc int props) {
     itrie_array_first_trie = index;
 
     if IS_INCREMENTAL_TRIE(props) {
-	itrie_array[index].callnode = makecallnode(CTXTc NULL,1,0);
+	itrie_array[index].callnode = makecallnode(CTXTc NULL);
 	(itrie_array[index].callnode)->is_incremental_trie = 1;
 	//	printf("callnode %p\n",itrie_array[index].callnode);
 	initoutedges(CTXTc (callnodeptr)itrie_array[index].callnode);
@@ -2424,13 +2425,11 @@ Psc get_psc_for_trie_cp(CTXTdeclc CPtr cp_ptr, BTNptr trieNode) {
     LocNodePtr    = (BTNptr) *(cp_ptr + CP_SIZE);
     return TIF_PSC(subg_tif_ptr(BTN_Parent(LocNodePtr)));
   } else {
-#if NON_OPT_COMPILE
       if (trie_warning_message_array[TN_NodeType(trieNode)][TN_TrieType(trieNode)] == 0) {
 	fprintf(stderr,"Non-answer trie instr in cp stack: TN Root Node type: %s Trie type %s\n",
 		trie_node_type_table[TN_NodeType(trieNode)], trie_trie_type_table[TN_TrieType(trieNode)]);
 	trie_warning_message_array[TN_NodeType(trieNode)][TN_TrieType(trieNode)] = 1;
       }
-#endif
     return NULL;
   }
 }
@@ -3877,7 +3876,7 @@ static inline void abolish_table_pred_single(CTXTdeclc TIFptr tif, int cps_check
     fprintf(fview_ptr,"ta(pred('/'(%s,%d)),%d).\n",get_name(TIF_PSC(tif)), get_arity(TIF_PSC(tif)),ctrace_ctr++);
   }
 
- if (flags[NUM_THREADS] == 1 || !get_shared(TIF_PSC(tif))) {
+  if (flags[NUM_THREADS] == 1 || !get_shared(TIF_PSC(tif))) {
     if (cps_check_flag) action = abolish_table_pred_cps_check(CTXTc TIF_PSC(tif));
     else action = TIF_Mark(tif);  /* 1 = CANT_RECLAIM; 0 = CAN_RECLAIM */
   }
@@ -3977,23 +3976,18 @@ inline void abolish_table_predicate_switch(CTXTdeclc TIFptr tif, Psc psc, int in
     }
 }
 
-/* When calling a_t_p_switch, cps_check_flag are set from the second argument from Prolog:
-  invocation_flag = Arg2 & 3.
-  cps_check_flag is set off (0) if (Arg2 & 4) == 4 (to preserve default.)
-*/
+/* When calling a_t_p_switch, cps_check_flag is set to true, to ensure a check. 
+ invocation_flag (default, transitive) has been set on Prolog side. */
 
 inline void abolish_table_predicate(CTXTdeclc Psc psc, int invocation_flag) {
   TIFptr tif;
-  int cps_check_flag;
   declare_timer
 
-  if (invocation_flag & 4) cps_check_flag = FALSE; else cps_check_flag = TRUE;
-  invocation_flag = invocation_flag & 3;
   tif = get_tip(CTXTc psc);
 
   start_table_gc_time(timer);
 
-  if (cps_check_flag) gc_tabled_preds(CTXT);  // DSW can be quadratic...
+  gc_tabled_preds(CTXT);
   if ( IsNULL(tif) ) {
     xsb_abort("[abolish_table_pred] Attempt to delete non-tabled predicate (%s/%d)\n",
 	      get_name(psc), get_arity(psc));
@@ -4010,7 +4004,7 @@ inline void abolish_table_predicate(CTXTdeclc Psc psc, int invocation_flag) {
   }
 
   /* Check CPS stack = TRUE, ERROR if table is incomplete */
-  abolish_table_predicate_switch(CTXTc tif, psc, invocation_flag, cps_check_flag,ERROR_ON_INCOMPLETE);
+  abolish_table_predicate_switch(CTXTc tif, psc, invocation_flag, TRUE,ERROR_ON_INCOMPLETE);
 
   end_table_gc_time(timer);
 
@@ -4376,7 +4370,6 @@ int abolish_nonincremental_tables(CTXTdeclc int incomplete_action)
 	if (type == T_DYNA || type == T_PRED) {
 	  if (!get_data(psc) || isstring(get_data(psc)) ||!strcmp(get_name(get_data(psc)),"usermod") ||  !strcmp(get_name(get_data(psc)),"global"))
 	    if (get_tabled(psc) && !get_incr(psc)) {
-	      //	      printf("%s/%d tabled %d incr %d\n",get_name(psc),get_arity(psc),get_tabled(psc),get_incr(psc));
 	      tif = get_tip(CTXTc psc);
 	      if (tif) {
 		if (IsVariantPredicate(tif)) {
@@ -4734,8 +4727,7 @@ int index =  itrie_array_first_trie;
  if (index >= 0) {
    do {
      if (itrie_array[index].incremental == 1) {
-       itrie_array[index].callnode = makecallnode(CTXTc NULL,1,0);
-       (itrie_array[index].callnode)->is_incremental_trie = 1;
+       itrie_array[index].callnode = makecallnode(CTXTc NULL);
        //       printf("reinitizlizing incremental trie %d %p\n",index,itrie_array[index].callnode);
        initoutedges(CTXTc (callnodeptr)itrie_array[index].callnode);
      }
@@ -4880,7 +4872,6 @@ void abolish_all_tables(CTXTdeclc int action) {
   }
   reset_freeze_registers;
   openreg = COMPLSTACKBOTTOM;
-  level_num = 0;
   hashtable1_destroy_all(CTXTc 0);             /* free all incr hashtables in use */
   release_all_tabling_resources(CTXT);
   current_call_node_count_gl = 0; current_call_edge_count_gl = 0;
@@ -4898,21 +4889,16 @@ void abolish_all_tables(CTXTdeclc int action) {
 
 /* Checks are either done in abolish_call or in throw
    Do not delete branch here, as this may be called by gc. */
-void abolish_incremental_call_single_nocheck_no_nothin(CTXTdeclc VariantSF subgoal, int cond_warn_flag) {
+void abolish_incremental_call_single_nocheck_no_nothin(CTXTdeclc VariantSF goal, int cond_warn_flag) {
   #ifdef DEBUG_ABOLISH
-  abolish_dbg(("abolish incr call single: %p ",subgoal)); print_subgoal(CTXTc stddbg,subgoal); 
+  abolish_dbg(("abolish incr call single: %p ",goal)); print_subgoal(CTXTc stddbg,goal); 
   //  printf("(id %d flag %d)\n",callnode->id,invalidate_flag);
   //  print_call_list(CTXTc affected_gl," affected_gl ");
   #endif
-  SET_TRIE_ALLOCATION_TYPE_SF(subgoal); // set smBTN to private/shared
+  SET_TRIE_ALLOCATION_TYPE_SF(goal); // set smBTN to private/shared
   //  tif = subg_tif_ptr(goal);
   //  delete_branch(CTXTc goal->leaf_ptr, &tif->call_trie,VARIANT_EVAL_METHOD); /* delete call */
-  if (IsVariantSF(subgoal)) {
-    delete_variant_call(CTXTc subgoal,cond_warn_flag); // delete answers + subgoal
-  }
-  else {
-    delete_subsumptive_call(CTXTc (SubProdSF) subgoal);
-  }
+  delete_variant_call(CTXTc goal,cond_warn_flag); // delete answers + subgoal
   abolish_dbg(("end aics\n"));
 }
 
@@ -4930,7 +4916,7 @@ void maybe_detach_incremental_call_single(CTXTdeclc VariantSF goal, int invalida
     invalidate_call(CTXTc callnode,ABOLISHING);
   }
   deleteoutedges(CTXTc callnode);
-  delete_dependency_edges(CTXTc callnode);
+  deleteinedges(CTXTc callnode);
   deletecallnode(CTXTc callnode);
   //  SET_TRIE_ALLOCATION_TYPE_SF(goal); // set smBTN to private/shared
   //  tif = subg_tif_ptr(goal);
@@ -5023,7 +5009,9 @@ void remove_incomplete_tries(CTXTdeclc CPtr bottom_parameter)
     openreg += COMPLFRAMESIZE;
   }
   //  printf("new complstacksize %d\n",COMPLSTACKSIZE);
-  reset_level_num(openreg);
+  if (openreg < COMPLSTACKBOTTOM) 
+      level_num = compl_level(openreg);
+  else level_num = 0;
 }
 
 
@@ -5559,7 +5547,7 @@ int return_ans_depends_scc_list(CTXTdeclc SCCNode * nodes, Integer num_nodes){
     cur_node++;
   } while (cur_node  < num_nodes);
   follow(oldhreg) = makenil;                // cdr points to next car
-  return unify(CTXTc ptoc_tag(CTXTc 3),ptoc_tag(CTXTc 4));
+  return unify(CTXTc reg_term(CTXTc 3),reg_term(CTXTc 4));
 }
 
 extern void *  search_some(struct hashtable*, void *);
@@ -5786,89 +5774,89 @@ int table_inspection_function( CTXTdecl ) {
   switch (ptoc_int(CTXTc 1)) {
 
 #ifdef UNDEFINED
-    //  case FIND_COMPONENTS: {
-    //    int new;    Psc sccpsc;
-    //    Cell temp;
+  case FIND_COMPONENTS: {
+//    int new;    Psc sccpsc;
+    Cell temp;
 
-    //    dfn = 0;
-    //    component_stack_top = 0;
-    //    done_answer_stack_top = 0;
-    //    table_component_check(CTXTc (NODEptr) ptoc_int(CTXTc 2));
-    //    print_done_answer_stack(CTXT);
-    //    alt_print_done_answer_stack(CTXT);
-    //    unfounded_component(CTXT);
-    //    printf("done w. unfounded component\n");
+    dfn = 0;
+    component_stack_top = 0;
+    done_answer_stack_top = 0;
+    table_component_check(CTXTc (NODEptr) ptoc_int(CTXTc 2));
+    print_done_answer_stack(CTXT);
+    alt_print_done_answer_stack(CTXT);
+    unfounded_component(CTXT);
+    printf("done w. unfounded component\n");
     //    print_done_answer_stack(CTXT);
 
-    //    bind_list(&temp,hreg);                 //[ 
-    // bld_list(hreg,hreg+2);    hreg++;      // [
-    //     new_heap_nil(hreg);                    //]
-    // bld_int(hreg,0);  hreg++;              //   0
-    // bld_list(hreg,hreg+2); hreg++;         //    ,
-    // bld_list(hreg,hreg+2);    hreg++;      //     [
-    // bld_list(hreg,hreg+2);    hreg++;      //  
-    // new_heap_nil(hreg);                    // ]
-    // bld_int(hreg,1);  hreg++;              //      1
-    // bld_list(hreg,hreg+2);    hreg++;      //       ,
-    // bld_list(hreg,hreg+2);    hreg++;      //         [
-    // bld_int(hreg,2);  hreg++;              //          2
-    // bld_list(hreg,hreg+2);    hreg++;
-    // bld_list(hreg,hreg+2);    hreg++;
-    // bld_int(hreg,3);  hreg++;              //          2
-    // bld_list(hreg,hreg+2);    hreg++;
-    // bld_list(hreg,hreg+2);    hreg++;
-    // bld_int(hreg,4);  hreg++;              //          2
-    // new_heap_nil(hreg);
+    bind_list(&temp,hreg);                 //[ 
+    bld_list(hreg,hreg+2);    hreg++;      // [
+    new_heap_nil(hreg);                    //]
+    bld_int(hreg,0);  hreg++;              //   0
+    bld_list(hreg,hreg+2); hreg++;         //    ,
+    bld_list(hreg,hreg+2);    hreg++;      //     [
+    bld_list(hreg,hreg+2);    hreg++;      //  
+    new_heap_nil(hreg);                    // ]
+    bld_int(hreg,1);  hreg++;              //      1
+    bld_list(hreg,hreg+2);    hreg++;      //       ,
+    bld_list(hreg,hreg+2);    hreg++;      //         [
+    bld_int(hreg,2);  hreg++;              //          2
+    bld_list(hreg,hreg+2);    hreg++;
+    bld_list(hreg,hreg+2);    hreg++;
+    bld_int(hreg,3);  hreg++;              //          2
+    bld_list(hreg,hreg+2);    hreg++;
+    bld_list(hreg,hreg+2);    hreg++;
+    bld_int(hreg,4);  hreg++;              //          2
+    new_heap_nil(hreg);
     //    ctop_tag(CTXTc 3, temp);
 
     break;
   }
 #endif
 
-  //  case FIND_FORWARD_DEPENDENCIES: {
-  //  DL delayList;
-  //  DE delayElement;
-  //  BTNptr as_leaf, new_answer;
-  //  struct answer_dfn stack_node;
+  case FIND_FORWARD_DEPENDENCIES: {
+  DL delayList;
+  DE delayElement;
+  BTNptr as_leaf, new_answer;
+  struct answer_dfn stack_node;
 
-  //  printf("find foward dependencies \n");
-  //  done_answer_stack_top = 0; dfn = 0;
-  //  as_leaf = (NODEptr) ptoc_int(CTXTc 2);
-  //  if (is_conditional_answer(as_leaf)) {
-  //    push_comp_node_1(as_leaf);
-  //    while (component_stack_top != 0) {
-  //      print_comp_stack(CTXT);
-  //    pop_comp_node(stack_node);
-  //as_leaf = stack_node.answer;
-  //      push_done_node((component_stack_top),component_stack[component_stack_top].dfn);
-  // print_subgoal(CTXTc stddbg, asi_subgoal((ASI) Child(as_leaf)));printf("\n");
-  //    delayList = asi_dl_list((ASI) Child(as_leaf));
-  //  while (delayList) {
-  //	delayElement = dl_de_list(delayList);
-  //	while (delayElement) {
-  //      if (de_ans_subst(delayElement)) {
-  //          if (!VISITED_ANSWER(de_ans_subst(delayElement)))
-  //	      push_comp_node_1(de_ans_subst(delayElement));
-  //      } else {
-  //	    new_answer = traverse_subgoal(de_subgoal(delayElement));
-  //	    if (!VISITED_ANSWER(new_answer)) 
-  //	      push_comp_node_1(new_answer);
-  //	    }
-  //	    delayElement = de_next(delayElement);
-  //	  }
-  //	  delayList = de_next(delayList);
-  //	}
-  //      }
-  //    printf("component stack %p\n",component_stack);
-  //    deallocate_comp_stack;
-  //    print_done_answer_stack(CTXT);
-  // Don't deallocte done stack until done with its information.
-  //  reset_done_answer_stack();
-  //    return 0;
-  //  }
-  //  else  printf("found unconditional answer %p\n",as_leaf);
-  //    break;
-  //  }
+  printf("find foward dependencies \n");
+  done_answer_stack_top = 0; dfn = 0;
+  as_leaf = (NODEptr) ptoc_int(CTXTc 2);
+  if (is_conditional_answer(as_leaf)) {
+    push_comp_node_1(as_leaf);
+    while (component_stack_top != 0) {
+      //      print_comp_stack(CTXT);
+      pop_comp_node(stack_node);
+      as_leaf = stack_node.answer;
+      push_done_node((component_stack_top),component_stack[component_stack_top].dfn);
+      // print_subgoal(CTXTc stddbg, asi_subgoal((ASI) Child(as_leaf)));printf("\n");
+      delayList = asi_dl_list((ASI) Child(as_leaf));
+      while (delayList) {
+	delayElement = dl_de_list(delayList);
+	while (delayElement) {
+	  if (de_ans_subst(delayElement)) {
+	    if (!VISITED_ANSWER(de_ans_subst(delayElement)))
+	      push_comp_node_1(de_ans_subst(delayElement));
+	  } else {
+	    new_answer = traverse_subgoal(de_subgoal(delayElement));
+	    if (!VISITED_ANSWER(new_answer)) 
+	      push_comp_node_1(new_answer);
+	    }
+	    delayElement = de_next(delayElement);
+	  }
+	  delayList = de_next(delayList);
+	}
+      }
+    printf("component stack %p\n",component_stack);
+    deallocate_comp_stack;
+    print_done_answer_stack(CTXT);
+    // Don't deallocte done stack until done with its information.
+    reset_done_answer_stack();
+    return 0;
+  }
+  else  printf("found unconditional answer %p\n",as_leaf);
+    break;
+  }
 
   case GET_CALLSTO_NUMBER: {
     VariantSF subgoal_frame;
@@ -5920,9 +5908,9 @@ int table_inspection_function( CTXTdecl ) {
     break;
   }
 
-    //  case FIND_ANSWERS: {
-    //    return find_pred_backward_dependencies(CTXTc get_tip(CTXTc term_psc(ptoc_tag(CTXTc 2))));
-    //  }
+  case FIND_ANSWERS: {
+    return find_pred_backward_dependencies(CTXTc get_tip(CTXTc term_psc(ptoc_tag(CTXTc 2))));
+  }
 
 /********************************************************************
 
@@ -5983,7 +5971,7 @@ case CALL_SUBS_SLG_NOT: {
   break;
     }
 
- case GET_PRED_CALLTRIE_PTR: {  /* used for changing table properties */
+  case GET_PRED_CALLTRIE_PTR: {
     
     Psc psc = (Psc)ptoc_int(CTXTc 2);
     if (get_tip(CTXTc psc))
@@ -5994,8 +5982,7 @@ case CALL_SUBS_SLG_NOT: {
   }
  
   case START_FOREST_VIEW: {
-    char *filename = ptoc_string(CTXTc 2);    
-    //    printf("fl = %d\n",(int) flags[CTRACE_CALLS]);
+    char *filename = ptoc_string(CTXTc 2);
     if (!(strcmp(filename,"userout")))
       fview_ptr = stdout; 
     else fview_ptr = fopen(filename,"w");
@@ -6018,7 +6005,7 @@ case CALL_SUBS_SLG_NOT: {
     break;
   }
 
- case TNOT_SETUP: {  /* table_state optimized for tnot. */
+  case TNOT_SETUP: {
     Cell goalTerm;
     TableStatusFrame TSF;
 
@@ -6048,11 +6035,11 @@ case CALL_SUBS_SLG_NOT: {
     break;
   } 
 
- case GET_CURRENT_SCC: {  /* used by table_dump */
+  case GET_CURRENT_SCC: {
     VariantSF subgoal_frame;
     subgoal_frame = (VariantSF) ptoc_int(CTXTc 2);
     if (subg_is_completed(subgoal_frame) || subg_is_ec_scheduled(subgoal_frame)) return FALSE;
-    ctop_int(CTXTc 3, compl_leader_level(subg_compl_stack_ptr(subgoal_frame)));
+    ctop_int(CTXTc 3, compl_level(subg_compl_stack_ptr(subgoal_frame)));
     break;
   }
 
@@ -6094,6 +6081,7 @@ case CALL_SUBS_SLG_NOT: {
     break;
   }
 
+
   case CHECK_VARIANT: {
     //    CPtr addr, val;
     Psc psc;
@@ -6101,7 +6089,6 @@ case CALL_SUBS_SLG_NOT: {
     int dont_cares;
     PrRef prref;
     BTNptr Paren, leaf;
-    CPtr ta_clref;
     term = ptoc_tag(CTXTc 2);
     dont_cares = (int)ptoc_int(CTXTc 3);
     if (isconstr(term)) {
@@ -6112,11 +6099,8 @@ case CALL_SUBS_SLG_NOT: {
       return 0; /* purely to quiet compiler */
     }
     prref = get_prref(CTXTc psc);
-    ta_clref = trie_asserted_clref((CPtr) prref);
-    if ( !ta_clref ) return FALSE;
-    //    printf("tac %p\n",trie_asserted_clref((CPtr) prref));
     // prref points to a clref which *then* points to the root of the trie.
-    Paren = (BTNptr)*(ta_clref + 3);
+    Paren = (BTNptr)*(trie_asserted_clref((CPtr) prref) + 3);
     //    printf("new psc %p, prref %p parent %p\n",psc,get_prref(CTXTc psc),Paren);
     //    val = (CPtr) *(reg+2);
     //    XSB_Deref_with_address(val,addr);
@@ -6153,20 +6137,12 @@ case CALL_SUBS_SLG_NOT: {
       break;
     }
     if ((tip = get_tip(CTXTc psc)) ) {
-      if (property == SUBGOAL_SIZE) 
+      if (property == SUBGOAL_DEPTH) 
 	TIF_SubgoalDepth(tip) = val;
-      else if (property == ANSWER_SIZE) 
+      else if (property == ANSWER_DEPTH) 
 	TIF_AnswerDepth(tip) = val;
       else if (property == INTERNING_GROUND)
 	TIF_Interning(tip) = val;
-      else if (property == TIF_ANSWER_SUBSUMPTION)
-	TIF_AnswerSubsumption(tip) = val;
-      else if (property == TIF_MAX_ANSWERS)
-	TIF_MaxAnswers(tip) = val;
-      else if (property == TIF_ALTERNATE_SEMANTICS) {
-	TIF_AlternateSemantics(tip) = val;
-	flags[ALTERNATE_SEMANTICS] = NAF_CS;
-      }
     }
     else  /* cant find tip */
       xsb_permission_error(CTXTc "set property","tif",term,
@@ -6192,18 +6168,12 @@ case CALL_SUBS_SLG_NOT: {
       break;
     }
     if ((tip = get_tip(CTXTc psc)) ) {
-      if (property == SUBGOAL_SIZE) 
+      if (property == SUBGOAL_DEPTH) 
 	ctop_int(CTXTc 4,TIF_SubgoalDepth(tip));
-      else if (property == ANSWER_SIZE) 
+      else if (property == ANSWER_DEPTH) 
 	ctop_int(CTXTc 4,TIF_AnswerDepth(tip));
       else if (property == INTERNING_GROUND)
 	ctop_int(CTXTc 4,TIF_Interning(tip));
-      else if (property == TIF_ANSWER_SUBSUMPTION)
-	ctop_int(CTXTc 4,TIF_AnswerSubsumption(tip));
-      else if (property == TIF_MAX_ANSWERS)
-	ctop_int(CTXTc 4,TIF_MaxAnswers(tip));
-      else if (property == TIF_ALTERNATE_SEMANTICS)
-	ctop_int(CTXTc 4,TIF_AlternateSemantics(tip));
     }
     else  /* cant find tip */
       return FALSE;
@@ -6211,7 +6181,6 @@ case CALL_SUBS_SLG_NOT: {
     break;
   }
 
-    /* finds all delay lists for a given ansewr; used by get_sccs */
   case IMMED_ANS_DEPENDS_PTRLIST: {
     ASI asi;
     DL current_dl = NULL;
@@ -6258,7 +6227,7 @@ case CALL_SUBS_SLG_NOT: {
       follow(oldhreg) = makenil;
     else
       reg[3] = makenil;
-  return unify(CTXTc ptoc_tag(CTXTc 3),ptoc_tag(CTXTc 4));
+  return unify(CTXTc reg_term(CTXTc 3),reg_term(CTXTc 4));
   break;
   }
   
@@ -6268,7 +6237,7 @@ case CALL_SUBS_SLG_NOT: {
   }
 
   case SET_FOREST_LOGGING_FOR_PRED: {
-   //    Psc psc =  term_psc((Cell)(ptoc_tag(CTXTc 2)));
+    //    Psc psc =  term_psc((Cell)(ptoc_tag(CTXTc 2)));
     Psc psc =  (Psc)(ptoc_int(CTXTc 2));
     if (get_tabled(psc)) {
       TIF_SkipForestLog(get_tip(CTXTc psc)) = (ptoc_int(CTXTc 3) & 1);
@@ -6281,7 +6250,7 @@ case CALL_SUBS_SLG_NOT: {
     return abolish_nonincremental_tables(CTXTc (int)ptoc_int(CTXTc 2));
   }
 
- case INCOMPLETE_SUBGOAL_INFO: {      /* for get_sdg_info */
+  case INCOMPLETE_SUBGOAL_INFO: {
     CPtr newcsf;
     CPtr csf = (CPtr) ptoc_int(CTXTc 2);
     if (openreg == COMPLSTACKBOTTOM) { 
@@ -6293,7 +6262,7 @@ case CALL_SUBS_SLG_NOT: {
     if (newcsf >= COMPLSTACKBOTTOM) newcsf = NULL;
     ctop_int(CTXTc 3,(Integer)newcsf);
     if (csf != NULL) {
-      ctop_int(CTXTc 4,compl_leader_level(csf));
+      ctop_int(CTXTc 4,compl_level(csf));
       ctop_int(CTXTc 5,(Integer)compl_subgoal_ptr(csf));
       ctop_int(CTXTc 6,subg_callsto_number(compl_subgoal_ptr(csf)));
       ctop_int(CTXTc 7,subg_ans_ctr(compl_subgoal_ptr(csf)));
@@ -6329,7 +6298,7 @@ case CALL_SUBS_SLG_NOT: {
     return TRUE;
   }
 
-  case GET_POS_AFFECTS: {  /* used for get_sdg_inf */
+  case GET_POS_AFFECTS: {
   CPtr oldhreg = NULL;
   int count = 0;
     VariantSF subgoal = (VariantSF) ptoc_int(CTXTc 2);
@@ -6354,9 +6323,9 @@ case CALL_SUBS_SLG_NOT: {
       follow(oldhreg) = makenil;
     else
       reg[4] = makenil;
-    return unify(CTXTc ptoc_tag(CTXTc 3),ptoc_tag(CTXTc 4));
+    return unify(CTXTc reg_term(CTXTc 3),reg_term(CTXTc 4));
   }
-  case GET_NEG_AFFECTS: {   /* used for get_sdg_inf */
+  case GET_NEG_AFFECTS: {
   CPtr oldhreg = NULL;
   int count = 0;
     VariantSF subgoal = (VariantSF) ptoc_int(CTXTc 2);
@@ -6379,7 +6348,7 @@ case CALL_SUBS_SLG_NOT: {
       follow(oldhreg) = makenil;
     else
       reg[4] = makenil;
-    return unify(CTXTc ptoc_tag(CTXTc 3),ptoc_tag(CTXTc 4));
+    return unify(CTXTc reg_term(CTXTc 3),reg_term(CTXTc 4));
   }
   case PSC_IMMUTABLE: {
     Psc psc = (Psc)ptoc_int(CTXTc 2);
