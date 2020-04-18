@@ -51,3 +51,5 @@ typedef struct {
 #define isfiint(firec) firec.fitype
 
 #define isfiflt(firec) firec.fitype == 0
+
+int xsb_eval(CTXTdeclc Cell exp, FltInt *value);

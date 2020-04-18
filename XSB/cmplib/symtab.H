@@ -29,7 +29,6 @@
 	  sym_type/2, sym_insert/5, sym_scan/3, sym_gen/2, 
 	  sym_count/2, sort_by_index/2, sym_complete/1, sym_index/2,
 	  sym_pass_thru/1, typ_prop/1, env_prop/1, dispose_symtab/1.
-:- export sym_find/4.
 :- export add_new_clause/2, clause_listify/2.
 :- export add_new_clause/3.
 :- import memberchk/2, member/2 from basics.
@@ -41,4 +40,4 @@
 :- import term_hash/3, parsort/4, term_set_arg/4
      from machine.
 :- import copy_term/2 from basics.
-:- import check_atom/3, check_integer/3 from error_handler.
+

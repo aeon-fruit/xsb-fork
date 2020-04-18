@@ -25,10 +25,8 @@
 :- compiler_options([sysmod]).
 
 %% Insert this in obsolete predicates.
-:- mode obsolete(+,+).
 obsolete(Msg1, Msg2) :-
 	add_xsb_hook(xsb_exit_hook(obsolete_warn(Msg1, Msg2))).
 
-:- mode obsolete_warn(+,+).
 obsolete_warn(Msg1, Msg2) :-
 	warning((Msg1, ': Obsolete predicate. Use: ', Msg2, ' instead')).

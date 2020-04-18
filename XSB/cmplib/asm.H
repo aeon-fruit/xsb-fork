@@ -41,4 +41,4 @@
 :- import (=..)/2 from standard.
 :- import conget/2 from gensym.
 :- import term_to_atom/3 from string.
-:- import check_integer/3 from error_handler.
+

@@ -23,7 +23,7 @@
 */
 
 
-:- mode dump_module(+,?).
+
 dump_module(SpecFile, module(SymTab,_DC,CL,QR,_Pars)) :-
 	open(SpecFile,write,SStr),
 	write_envs(SStr,SymTab), write_queries(SStr,QR), write_preds(SStr,CL),
@@ -64,7 +64,6 @@ write_queries(OStr,[pred(_PredSym,QrCls,_)|_]) :- 'write queries'(OStr,QrCls).
 /*----------------------------------------------------------------------*/
 /*----------------------------------------------------------------------*/
 
-:- mode write_preds(+,?).
 write_preds(_OStr,[]).
 write_preds(OStr,[Pred|Preds]) :-
 	Pred = pred(Sym,ClauseList,_Pragma),
@@ -118,7 +117,7 @@ write_body(OStr,if_then_else(G1,G2,G3)) :-
 	write_body(OStr,G2), nl(OStr), 
 	write(OStr,' ; '), nl(OStr), 
 	write_body(OStr,G3), write(OStr,' )'), nl(OStr).
-write_body(OStr,not(G)) :- write(OStr,'\\+ '), write_body(OStr,G).
+write_body(OStr,not(G)) :- write(OStr,'\+ '), write_body(OStr,G).
 write_body(OStr,goal(Sym,GoalArgs)) :-
 	write(OStr,'        '), 
 	sym_name(Sym, Name, Arity),

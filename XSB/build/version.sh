@@ -1,7 +1,7 @@
 #! /bin/sh
 
 # Do not touch xsb_patch_date! It should be updated by SVN (does not currently)
-xsb_patch_date='$Date$'
+xsb_patch_date='$Date: 2017-10-23 17:43:39 -0400 (Mon, 23 Oct 2017) $'
 
 xsb_build_date=`date +"%Y-%m-%d" || status=failed`
 if test -n "$status"; then

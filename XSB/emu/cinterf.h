@@ -89,7 +89,6 @@ extern "C" {
 **  		p2c_int:	prolog_term -> prolog_int
 **  		p2c_float:	prolog_term -> prolog_float
 **  		p2c_string:	prolog_term -> string
-**  		p2c_varnum:	prolog_term -> int
 **  		p2c_functor:	prolog_term -> string
 **  		p2c_arity:	prolog_term -> int
 **  	    Prolog to Prolog:
@@ -195,7 +194,6 @@ extern "C" {
 #define extern_p2c_string(term) p2c_string(term)
 
 #define extern_p2p_arg(term,argno) p2p_arg(term,argno)
-#define extern_p2p_attvar(term) p2p_attvar(term)
 #define extern_p2p_car(term) p2p_car(term)
 #define extern_p2p_cdr(term) p2p_cdr(term)
 #define extern_p2p_deref(term) p2p_deref(term)
@@ -203,7 +201,6 @@ extern "C" {
 #define extern_p2p_unify(term1, term2) p2p_unify(CTXTc term1, term2)
 
 #define extern_print_pterm(Cell, int, VS) print_pterm(CTXTc Cell, int, VS)
-#define extern_print_pterm_fun(Cell) print_pterm_fun(CTXTc Cell)
 
 #define extern_reg_term(regnum) reg_term(CTXTc regnum)
 
@@ -271,7 +268,6 @@ DllExport extern int      call_conv p2c_arity(prolog_term);
 DllExport extern char*    call_conv p2c_chars(CTXTdeclc prolog_term,char *,int);
 
 DllExport extern prolog_term call_conv p2p_arg(prolog_term, int);
-DllExport extern prolog_term call_conv p2p_attvar(prolog_term);
 DllExport extern prolog_term call_conv p2p_car(prolog_term);
 DllExport extern prolog_term call_conv p2p_cdr(prolog_term);
 DllExport extern prolog_term call_conv p2p_new(CTXTdecl);
@@ -291,8 +287,8 @@ DllExport extern xsbBool call_conv is_functor(prolog_term);
 DllExport extern xsbBool call_conv is_charlist(prolog_term,int*);
 DllExport extern xsbBool call_conv is_attv(prolog_term);
 
-DllExport extern int call_conv c2p_term(CTXTdeclc char*, char*, prolog_term);
-DllExport extern int call_conv p2c_term(CTXTdeclc char*, char*, prolog_term);
+extern int   c2p_term(CTXTdeclc char*, char*, prolog_term);
+extern int   p2c_term(CTXTdeclc char*, char*, prolog_term);
 
 /*======================================================================*/
 /* Other utilities							*/
@@ -343,8 +339,6 @@ DllExport extern int call_conv xsb_kill_thread(CTXTdecl);
 #endif
 
 DllExport extern void call_conv print_pterm(CTXTdeclc Cell, int, VarString*);
-DllExport extern char * call_conv print_pterm_fun(CTXTdeclc prolog_term term);
-
 DllExport extern char *p_charlist_to_c_string(CTXTdeclc prolog_term term, VarString *buf,
 					      char *in_func, char *where);
 DllExport extern void c_string_to_p_charlist(CTXTdeclc char *name, prolog_term list,

@@ -36,6 +36,5 @@
 :- import sym_prop/2, sym_name/3, sym_insert/5 from symtab.
 :- import option/1, error/1, message/1 from auxlry.
 :- import memberchk/2, member/2 from basics.
-:- import check_integer/3 from error_handler.
 
 /* --------------------- end of file suppltab.H ----------------------- */

@@ -324,7 +324,6 @@ void CompleteTop( th_context * th, CPtr leader )
     ComplStkFrame = next_compl_frame(ComplStkFrame);
   } /* while */
   openreg = prev_compl_frame(leader);
-  reset_level_num(openreg);
   reclaim_stacks(breg);
   breg = tcp_prevbreg(breg);
 }

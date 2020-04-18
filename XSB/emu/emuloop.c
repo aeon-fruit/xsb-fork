@@ -97,12 +97,6 @@ CPtr trieinstr_unif_stkptr;
 Integer  trieinstr_unif_stk_size = DEFAULT_ARRAYSIZ;
 #endif
 
-#ifndef MULTI_THREAD
-CPtr *sched_heap = NULL;
-Integer sched_heap_size = 0;
-Integer num_in_sched_heap = 0;
-#endif
-
 /*
  * Variable ans_var_pos_reg is a pointer to substitution factor of an
  * answer in the heap.  It is used and set in function
@@ -468,7 +462,6 @@ jmp_buf xsb_abort_fallback_environment;
 #endif
 
 char *xsb_segfault_message;
-int xsb_eval(CTXTdeclc Cell exp, FltInt *value);
 
 /*======================================================================*/
 /* the main emulator loop.						*/
@@ -518,7 +511,6 @@ int emuloop(CTXTdeclc byte *startaddr)
 /* Used only in the garbage collection test; does not affect emulator o/w */
 #define GC_INFERENCES 66 /* make sure the garbage collection test is hard */
   static int infcounter = 0;
-  printf("running in gc mode\n");
 #endif
   //  jmp_buf xsb_eval_environment; //unused
 
@@ -526,8 +518,6 @@ int emuloop(CTXTdeclc byte *startaddr)
 
   xsb_segfault_message = xsb_default_segfault_msg;
   rreg = reg; /* for SUN (TLS ???) */
-
-  biarg = bioldarg; /* default builtin/foreign routines argument access array */
 
 #ifdef JUMPTABLE_EMULOOP
 
@@ -786,21 +776,6 @@ contcase:     /* the main loop */
     }
     else {
       new_heap_free(hreg);
-    }
-  XSB_End_Instr()
-
-    /* "avar" stands for anonymous variable */
-  XSB_Start_Instr(unikavars,_unikavars) /* PPA */
-    Def1op
-    Op1(get_xxa);
-    ADVANCE_PC(size_xxx);
-    if (!flag) {	/* if (flag == READ) */
-      sreg += op1;
-    }
-    else {
-      while (op1-- > 0) {
-	new_heap_free(hreg);
-      }
     }
   XSB_End_Instr()
 
@@ -1069,15 +1044,6 @@ contcase:     /* the main loop */
   XSB_Start_Instr(bldavar,_bldavar) /* PPR */
     ADVANCE_PC(size_xxx);
     new_heap_free(hreg);
-  XSB_End_Instr()
-
-  XSB_Start_Instr(bldkavars,_bldkavars) /* PPR */
-    Def1op
-    Op1(get_xxa);
-    ADVANCE_PC(size_xxx);
-    while (op1-- > 0) {
-      new_heap_free(hreg);
-    }
   XSB_End_Instr()
 
   XSB_Start_Instr(bldtval,_bldtval) /* PPR */
@@ -1426,7 +1392,7 @@ contcase:     /* the main loop */
     if ((infcounter++ > GC_INFERENCES) || heap_local_overflow((Integer)op2))
       {
 	infcounter = 0;
-	fprintf(stddbg, ".");
+        fprintf(stddbg, ".");
 #else
 	//    printf("t_h %d %p\n",(ereg-hreg),hreg);
 	if (heap_local_overflow((Integer)op2))
@@ -2084,17 +2050,17 @@ argument positions.
 	Float temp;
 	if (isfiint(fiop1)) {
 	  if (isfiint(fiop2)) {
-	    temp = (Float)fiint_val(fiop2) / (Float)fiint_val(fiop1);
+	    temp = (Float)fiint_val(fiop1) / (Float)fiint_val(fiop2);
 	    bld_boxedfloat(CTXTc op3,temp);
 	  } else {
-	    temp = (Float)fiflt_val(fiop2) / fiint_val(fiop1);
+	    temp = (Float)fiint_val(fiop1) / fiflt_val(fiop2);
 	    bld_boxedfloat(CTXTc op3, temp);
 	  }
 	} else {
 	  if (isfiint(fiop2)) {
-	    temp = fiint_val(fiop2) / (Float)fiflt_val(fiop1);
+	    temp = fiflt_val(fiop1) / (Float)fiint_val(fiop2);
 	  } else {
-	    temp = fiflt_val(fiop2) / fiflt_val(fiop1);
+	    temp = fiflt_val(fiop1) / fiflt_val(fiop2);
 	  }
 	  bld_boxedfloat(CTXTc op3,temp);
 	}
@@ -2443,7 +2409,6 @@ argument positions.
     Def1op
     Op1(get_xxxl);
     ADVANCE_PC(size_xxxX);
-    biarg = bioldarg; /* set argument access array */
 #ifdef MULTI_THREAD
     fp = (int(*)())op1;
     if (fp(CTXT))  /* call foreign function */
@@ -2775,26 +2740,9 @@ argument positions.
     Def1op
     Op1(get_xxa);
     ADVANCE_PC(size_xxx);
-    biarg = bioldarg;
     pcreg=lpcreg; 
     if (builtin_call(CTXTc (byte)(op1))) {lpcreg=pcreg;}
     else Fail1;
-  XSB_End_Instr()
-
-  XSB_Start_Instr(bi_instr,_bi_instr)
-    Def1op
-    Op1(get_xxa);
-    biarg = lpcreg+sizeof(Cell)-1; // point to byte before second op of instr: regs to use (starting from r0!)
-    ADVANCE_PC(size_xxxX);
-    pcreg=lpcreg; 
-    if (builtin_call(CTXTc (byte)(op1))) {
-      biarg = bioldarg;
-      lpcreg=pcreg;
-    }
-    else {
-      biarg = bioldarg;
-      Fail1;
-    }
   XSB_End_Instr()
 
 #define jump_cond_fail(Condition) \

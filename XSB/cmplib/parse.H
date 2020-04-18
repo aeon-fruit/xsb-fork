@@ -43,7 +43,6 @@
 	enqueue_preprocessor/1,
 	dequeue_preprocessor/2.
 :- export parsing_file_name/1.
-:- export ensure_gensym_num_larger/1.
 
 :- import
 	retractall/1, retract/1,
@@ -53,7 +52,7 @@
    from assert.
 
 :- import check_file_compiler_options/1, 
-	error/1, message/1, option/1, setoptions1/1, warning/1, valid_charset/1
+	error/1, message/1, option/1, setoptions1/1, warning/1
    from auxlry.
 
 :- import append/3, memberchk/2, log_ith/3, member/2, copy_term/2 from basics.
@@ -71,15 +70,13 @@
    from curr_sym.
 
 :- import
-        preprocessing_error/1,domain_error/4,
-        existence_error/4, syntax_error/1, check_ground/3, check_integer/3, check_atom/3
+	preprocessing_error/1,
+	existence_error/4, syntax_error/1, check_ground/3
    from error_handler.
 
 :- import
 	file_size/2,
-	fmt_write_string/3,
-   file_set_character_set/2,
-   copyIOport/2, file_reopen/4
+	fmt_write_string/3
    from file_io.
 
 :- import mpa_to_skel/2 from file_op.
@@ -101,16 +98,15 @@
 :- import singleton_check/2 from singlton.
 
 :- import functor/3, seen/0, file_exists/1, '=..'/2, atom/1, integer/1,
-          op/3, (index)/3, (index)/2, real/1, see/1, expand_term/2,
+          op/3, (index)/3, (index)/2, real/1, see/1, expand_term/2, (=..)/2,
 	  check_table_options/3,
 	  callable/1, goal_cut_trans/3, requires_cut_transforming/1,
 	  arg/3,
 	  open/3,
 	  close/1,
 	  call/1, compound/1,
-	  is_most_general_term/1, number/1, atom_codes/2,
-	  seeing/1, (',')/2, catch/3
-   from standard.
+	  is_most_general_term/1, number/1, atom_codes/2
+     from standard.
 
 :- import file_read/3 from xsb_read.
 

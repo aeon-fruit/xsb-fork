@@ -236,10 +236,12 @@ inline static  void subsumptive_call_search(CTXTdeclc TabledCallInfo *callStruct
 
   btRoot = TIF_CallTrie(CallInfo_TableInfo(*callStruct));
   answer_template = CallInfo_AnsTempl(*callStruct) - 1;
+
   /* Handle 0-ary Predicates
      ----------------------- */
   if (CallInfo_CallArity(*callStruct) == 0) {
     xsbBool isNew;
+
     btn = bt_escape_search(CTXTc btRoot, &isNew);
 
 #if !defined(MULTI_THREAD) || defined(NON_OPT_COMPILE)
@@ -277,7 +279,7 @@ inline static  void subsumptive_call_search(CTXTdeclc TabledCallInfo *callStruct
 				CallInfo_CallArity(*callStruct));
 #endif
 
-  btn = iter_sub_trie_lookup(CTXTc btRoot, &path_type,CALL_TRIE_LOOKUP);
+  btn = iter_sub_trie_lookup(CTXTc btRoot, &path_type);
 
   /*
    * If this subsuming call maintains its own answer set, then this call
@@ -427,14 +429,12 @@ inline static  void *newAnswerSet(CTXTdeclc int n, TSTNptr Parent) {
  * answer into the set, and indicate to the caller whether it is new.
  */
 
-extern int subsumptive_handle_incrementally_rederived_answer(CTXTdeclc VariantSF ,BTNptr ,xsbBool);
-
 inline static
 TSTNptr subsumptive_answer_search(CTXTdeclc SubProdSF sf, int nTerms,
-				  CPtr answerVector, xsbBool *isNew,xsbBool *rederived_ptr) {
+				  CPtr answerVector, xsbBool *isNew) {
 
-  xsbBool rederived_flag = FALSE;
   TSTNptr root, tstn;
+
 #if !defined(MULTI_THREAD) || defined(NON_OPT_COMPILE)
   NumSubOps_AnswerCheckInsert++;
 #endif
@@ -443,24 +443,18 @@ TSTNptr subsumptive_answer_search(CTXTdeclc SubProdSF sf, int nTerms,
   //  if (TIF_AnswerDepth(subg_tif_ptr(sf))) 
   //    answer_depth_limit = (UInteger) (TIF_AnswerDepth(subg_tif_ptr(sf)));
   //  else answer_depth_limit = (UInteger) flags[MAX_TABLE_ANSWER_METRIC];  
+
   AnsVarCtr = 0;
   if ( IsNULL(subg_ans_root_ptr(sf)) )
     subg_ans_root_ptr(sf) = newAnswerSet(CTXTc nTerms, (TSTNptr) sf);
   root = (TSTNptr)subg_ans_root_ptr(sf);
   tstn = subsumptive_tst_search( CTXTc root, nTerms, answerVector, 
 				 (xsbBool)ProducerSubsumesSubgoals(sf), isNew );
-#ifdef INCR_SUBST
-  if(IsIncrSF(sf)) {
-    xsbBool isNewFlag = *isNew;
-    rederived_flag = subsumptive_handle_incrementally_rederived_answer(CTXTc (VariantSF) sf,(BTNptr) tstn,!isNewFlag);
-  }
-#endif
-  
+
 #if !defined(MULTI_THREAD) || defined(NON_OPT_COMPILE)
   if ( *isNew )  NumSubOps_AnswerInsert++;
 #endif
 
-  *rederived_ptr = rederived_flag;
   return tstn;
 }
 

@@ -25,7 +25,7 @@
 :- import bootstrap_package/2 from packaging.
 
 :- export {}/1, entailed/1, maximize/1, minimize/1, sup/2, inf/2, sup/4, inf/4, filter_varlist/4,
-	bb_inf/3, bb_inf/5. %%, clpr_portray_hook/1.
+	bb_inf/3, bb_inf/5, clpr_portray_hook/1.
 
 {F}:- nf_r:{F}.
 entailed(C):- nf_r:entailed(C).

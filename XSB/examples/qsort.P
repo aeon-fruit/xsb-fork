@@ -1,4 +1,4 @@
-/* File:      qsort.P   
+/* File:      qsort.P
 ** Author(s): Jiyang Xu, Kostis Sagonas
 ** Contact:   xsb-contact@cs.sunysb.edu
 ** 

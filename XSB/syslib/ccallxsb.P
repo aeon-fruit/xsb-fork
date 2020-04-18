@@ -48,19 +48,17 @@
 	call(Message),
 	call_c(One).
 
-:- mode c_callloop_query_loop(?).
 c_callloop_query_loop(Regs) :- 
 	catch(c_callloop_query_loop0(Regs),Ball,ccall_error_handler(Ball)).
 
 c_callloop_query_loop0(Regs) :-
 %	set_xsb_ready,
  	set_inthandler('_$attv_int'(_,_), MYSIG_ATTV),
-	conset('_$break_level', 0),
-        set_thread_interrupt,
+	set_thread_interrupt,
 	set_inthandler('_$timer_int'(_,_), TIMER_INTERRUPT),
 	set_inthandler('_$lazy_reeval_int'(_,_), LAZY_REEVAL_INTERRUPT),
 	repeat,
-	suspend_on_foreign_function(Par,VarTerm,Command),
+	suspend_on_forign_function(Par,VarTerm,Command),
 	(\+integer(Command)
 	 ->	file_write(STDERR,'C command error; must be an integer; is '),
 		file_write(STDERR,Command),
@@ -73,9 +71,9 @@ c_callloop_query_loop0(Regs) :-
 		do_pcall(Par,VarTerm)
 	 ; Command =:= 3	/* query_finish: succeed and return from XSB*/
 	 ->	!,
-		suspend_on_foreign_function(Regs,_,_)
+		suspend_on_forign_function(Regs,_,_)
 	 ; Command =:= 2	/* string_call */
-	 -> check_atom(Par,ccall_query_loop0/1,1),
+	 ->	
 	    string_to_term(Par,Goal),
 	    excess_vars(Goal,[],[],VarList),
 	    VarTerm =.. [ret|VarList],
@@ -86,7 +84,7 @@ c_callloop_query_loop0(Regs) :-
 	).
 
 % Used both to return to C and to call C functions.
-suspend_on_foreign_function(_,_,_) :- halt.		% halt returns to caller
+suspend_on_forign_function(_,_,_) :- halt.		% halt returns to caller
 
 do_pcall(Call,VarTerm) :-
 	%% ccall_error_handler fails
@@ -100,7 +98,7 @@ do_pcall(Call,VarTerm) :-
 
 call_and_get(Call,VarTerm,Command) :-
 	'_$call'(Call),
-	suspend_on_foreign_function(Call,VarTerm,Command).
+	suspend_on_forign_function(Call,VarTerm,Command).
 
 % hidden version of call
 '_$call'(Y) :- 
@@ -122,11 +120,13 @@ string_to_term(Atom,Goal) :-
 	file_read(Fp,Goal,_),
 	file_close(Fp),
 	save_query_in_cache(Atom,Goal).
+
 string_to_term(Atom,Goal) :-
 	file_open(Atom,sr,Fp),
 	file_read(Fp,Goal,_),
 	file_close(Fp),
 	save_query_in_cache(Atom,Goal).
+
 
 save_query_in_cache(Atom,Goal) :-
 	(\+ last_cached_query_index(_) -> assert(last_cached_query_index(0))
@@ -187,8 +187,3 @@ set_thread_interrupt.
 :- import timer_interrupt_trap/2 from standard.
 '_$timer_int'(One,Two):- 
 	timer_interrupt_trap(One,Two).
-
-:- import lazy_reeval_trap/1 from increval.
-'_$lazy_reeval_int'(One,_Two):- 
-	lazy_reeval_trap(One).
-

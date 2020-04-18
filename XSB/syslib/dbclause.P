@@ -39,7 +39,7 @@
 /* reclaimed. (See module assert for formats of data structures.	*/
 /************************************************************************/
 % db_retract(+Head,+Body,+PredEP,+PSC) deletes clauses and reclaims space
-:- mode db_retract(?,?,+,+).
+
 db_retract(Head,Body,PredEP,PSC) :-
 %	writeln(db_retract(Head,Body,PredEP,PSC)),
 	goal_cut_trans_a(Body,Tbody,_),
@@ -58,7 +58,7 @@ db_retract_fact(_Head,_PredEP,_PSC) :-
 
 % db_retractall(+Call,+PredEP,+PSC) deletes all clauses matching a pattern
 /* TLS: passing down PSC now to check for shared/private */
-:- mode db_retractall(?,+,+).
+
 db_retractall(Call,PredEP,Psc) :-
 %	writeln(db_retractall(Call,PredEP,Psc)),
 	( is_most_general_term(Call) ->	db_retract_abol(PredEP,Psc)
@@ -84,7 +84,6 @@ db_retractall_1(_Head, _PredEP, _PSC):-
 %-------
 
 %% Don't reclaim space
-:- mode db_retract_nr(?,?,+,+).
 db_retract_nr(Head,Body,PredEP,PSC) :-
 	goal_cut_trans_a(Body,Tbody,_),
 	db_get_clauses(PredEP,0,Head,0,Clref,Typ,EntryP),
@@ -145,14 +144,13 @@ db_retract_abol(PredEP1,PSC) :-
 
 /* db_abolish(+Psc) deletes all clauses of a predicate and abolishes
 its prref structures.   */
-:- mode db_abolish(+).
+
 db_abolish(Psc) :-
 	psc_ep(Psc, PredEP),
 %	db_retract_abol(PredEP,Psc).
         db_abolish0(PredEP,Psc).
 
 % db_clause(+Head,?Body,+PredEP,-Clref) retrieves a clause, and implements clause/2.
-:- mode db_clause(?,?,+,?).
 db_clause(Head,Body,PredEP,Clref) :-
 	goal_cut_trans_a(Body,Tbody,_),
 	db_get_clauses(PredEP,0,Head,0,Clref,Typ,EntryP),
@@ -181,7 +179,7 @@ db_clause_match(Head,Body,Entry) :-
 		 ->	Body = true
 		 ;	term_set_arg(BodyStore,1,true,1), % reset for next alt
 			goal_cut_trans_a(Body0, Body1, _),
-			(atom(Body)
+			(atom(Body1)
 			 ->	conname(Body1,Body2),
 				Body = Body2
 			 ;	Body = Body1
@@ -212,7 +210,7 @@ db_do_call(Entry, Head) :-
 	code_call(Entry, Head, 1).	% Type =:= 1 means dynamic predicate.
 
 %%:- dynamic(db_body_save(_)).
-:- mode '_$clause_int'(?).
+
 '_$clause_int'(Call) :-
 	stat_set_flag(CLAUSE_INT,0),	% turn clause intercept off
 	globalvar(GlobVar),
@@ -263,7 +261,6 @@ db_get_clauses1(ClRef0,CurrILvl0,CurrInd0,PrRef,Head,Failed,
 /* that were erased without reclaiming their space.			*/
 /************************************************************************/
 
-:- mode db_reclaim_space(?,+).
 db_reclaim_space(Head,PredEP):-
 	db_get_clauses(PredEP,0,Head,1,Clref,Typ,_IndLevel),
 	db_reclaim0(Clref,Typ),

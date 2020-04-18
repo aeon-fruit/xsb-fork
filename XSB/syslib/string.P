@@ -42,43 +42,12 @@ TLS: 12/03 I thought this might be more useful if I added a flatten,
 DSW: 3/04 rewritten to single pass for efficiency
 */
  
-:- mode concat_atom(?,?).
-concat_atom(List,Atom) :-
-    (atom(Atom)
-     ->	atom_codes(Atom,AtomCodes),
-	atomlist_to_codelist(List,ListCodes),
-	bind_atoms(ListCodes,AtomCodes)
-     ;	c_atom(List,[],AtomCodes),
-	atom_codes(Atom,AtomCodes)
-    ).
-
-atomlist_to_codelist([],[]).
-atomlist_to_codelist([A|As],[C|Cs]) :-
-    (atom(A)
-     ->	atom_codes(A,C)
-     ; number(A)
-     ->	number_codes(A,C)
-     ;	A = C
-    ),
-    atomlist_to_codelist(As,Cs).
-
-bind_atoms([],[]).
-bind_atoms([AC|ACs],BCs) :-
-    (ACs == []
-     ->	(var(AC)
-	 -> atom_codes(AC,BCs)
-	 ;  AC = BCs
-	)
-     ; var(AC)
-     ->	append(AC1,BCr,BCs),
-	bind_atoms(ACs,BCr),
-	atom_codes(AC,AC1)
-     ;	append(AC,BCr,BCs),
-	bind_atoms(ACs,BCr)
-    ).
-
-
-
+concat_atom(L,A) :-
+	(atom(A)
+	 ->	split_atom(A,L)
+	 ;	c_atom(L,[],AC),
+		atom_codes(A,AC)
+	).
 
 c_atom(A,L0,L) :-
 	(A == []
@@ -109,7 +78,6 @@ c_atom(A,L0,L) :-
 
 
 %---
-:- mode concat_atom(?,+,?).
 concat_atom(L,S,A) :-
 	atom(S),
 	atom_codes(S,St),
@@ -143,6 +111,32 @@ c_atom(A,S,L0,L) :-
 	).
 
 
+/* split_atom(Atom,AtomVarList) is the converse of concat_atom (with
+arguments in reverse order).  It takes an atom Atom and a list of
+atoms or variables AtomVarList, and binds the variables so that
+concat_atom(AtomVarList,Atom) is true.  */
+
+split_atom(Atom,AtomVarList) :-
+	atom_codes(Atom,AtomC),
+	safe_atom_codes_all(AtomVarList,AtomCList),
+	split_all_c(AtomCList,AtomC),
+	safe_atom_codes_all(AtomVarList,AtomCList).
+
+split_all_c([],[]).
+split_all_c([XC|AtomCs],AtomC) :-
+	append(XC,Rest,AtomC),
+	split_all_c(AtomCs,Rest).
+
+safe_atom_codes_all([],[]).
+safe_atom_codes_all([X|R],[Y|S]) :-
+	(var(X),var(Y)
+	 ->	true
+	 ; integer(X)
+	 ->	number_codes(X,Y)
+	 ;	atom_codes(X,Y)
+	),
+	safe_atom_codes_all(R,S).
+
 %% Get substring of String beginning at from and ending at To.
 %% Negative "To" counts from the end. Unbount "To" means use the end of string
 substring(String,From,To,Subst) :- substring(String,From,To,Subst).
@@ -150,84 +144,11 @@ string_substitute(String,SubstSpec,SubstList,ResultStr) :-
 	string_substitute(String,SubstSpec,SubstList,ResultStr).
 str_length(Str, Len) :- str_len(Str, Len).
 
-:- mode str_cat(+,+,?).
 str_cat(S1, S2, S3) :- str_cat(S1, S2, S3).
-
 %% Only checks the first match
-:- mode str_match(+,+,+,?,?).
 str_match(Sub,Str,Direction,Beg,End) :- str_match(Sub,Str,Direction,Beg,End).
-
-:- mode str_sub(+,+,?).
 str_sub(S1, S2, Pos) :- str_match(S1, S2, forward, Pos, _).
-
-:- mode str_sub(+,+).
 str_sub(S1, S2) :- str_match(S1, S2, forward, _, _).
-
-/* str_repl(+Atom,+SrcAtomList,+TargetAtomList,?NewAtom) replaces in
-Atom occurrences of substrings in SrcAtomList with corresponding atoms
-in TargetAtomList generating NewAtom.  (SrcAtomList and TargetAtomList
-may be single atoms.)  e.g.,
-str_repl(abcdefbcdef,[ab,bc,de],['AB','BC','DE'],'ABcDEfBCDEf').
-str_repl(abcdefbcdef,bc,'BBCC',aBBCCdefBBCCdef). */
-
-:- mode str_repl(+,+,+,?).
-str_repl(S0,SourceList,TargetList,S) :-
-    (atom(S0)
-     ->	true
-     ;	instantiation_error(str_repl/4,1,atom)
-    ),
-    atom_codes(S0,SC0),
-    (atom(SourceList)
-     ->	SourceList1 = [SourceList]
-     ;	SourceList1 = SourceList
-    ),
-    (atom(TargetList)
-     ->	TargetList1 = [TargetList]
-     ;	TargetList1 = TargetList
-    ),
-    atom_codes_sou_tar_list(SourceList1,TargetList1,SourceListC,TargetListC),
-    repl_all(SC0,SourceListC,TargetListC,SC),
-    atom_codes(S,SC).
-
-atom_codes_sou_tar_list([],[],[],[]) :- !.
-atom_codes_sou_tar_list([],_,_,_) :- !,
-    misc_error('str_repl/4: Source and Target lists must be the same length').
-atom_codes_sou_tar_list(_,[],_,_) :- !,
-    misc_error('str_repl/4: Source and Target lists must be the same length').
-atom_codes_sou_tar_list([A|As],[B|Bs],[AS|ASs],[BT|BTs]) :-
-    (atom(A)
-     ->	true
-     ;	(var(A)
-	 -> instantiation_error(str_repl/4,2,atom)
-	 ;  type_error(atom,A,str_repl/4,2)
-	)
-    ),
-    (A == ''
-     ->	domain_error(non_empty_atom,'''''',str_repl/4,1)
-     ;	true
-    ),
-    (atom(B)
-     ->	true
-     ;	(var(B)
-	 -> instantiation_error(str_repl/4,3,atom)
-	 ;  type_error(atom,A,str_repl/4,3)
-	)
-    ),
-    atom_codes(A,AS),
-    atom_codes(B,BT),
-    atom_codes_sou_tar_list(As,Bs,ASs,BTs).
-
-repl_all([],_,_,[]) :- !.
-repl_all(SC0,SourceList,TargetList,SC) :-
-    (ith(I,SourceList,SourceStr),
-     append(SourceStr,Rest,SC0)
-     ->	ith(I,TargetList,TargetStr),
-	append(TargetStr,SC1,SC)
-     ;	SC0 = [C|Rest],
-	SC = [C|SC1]
-    ),
-    repl_all(Rest,SourceList,TargetList,SC1).
-
 
 /***************************************************************/
 /*                                                             */
@@ -239,29 +160,21 @@ repl_all(SC0,SourceList,TargetList,SC) :-
 /*                                  */
 /***************************************************************/
 
-:- mode term_to_atom(?,?).
 term_to_atom(Term,Atom) :-
 	term_to_atom(Term,Atom,[ignore_ops(canonical)]).
 
-:- mode term_to_atom(?,?,+).
 term_to_atom(Term,Atom,OptionList) :-
-	term_to_codes(Term,OptionList,Codes),
+	copy_term(Term,Term1),  % protect Term's variables
+	term_to_codes(Term1,OptionList,Codes),
 	atom_codes(Atom,Codes).
 
-:- mode term_to_codes(?,?).
 term_to_codes(Term,Codes) :-
 	term_to_codes(Term,[ignore_ops(canonical)],Codes).
 
-:- mode term_to_codes(?,+,?).
 term_to_codes(Term,OptionList,Codes) :-
-        check_cyclic(Term,'term_to_atom/3-term_to_codes/3',1),
 	check_nonvar_list(OptionList,term_to_atom/3,3),
 	compute_options(OptionList,Structure),
-	copy_term(Term,Term1),  % protect Terms variables
-        ( (Structure = option(_IgOpts,_Quoted,Nvars),Nvars = true) ->
-             local_numbervars(Term1)
-           ; true),
-	term_to_codes(Term1,Structure,0,_,Codes,[]).
+	term_to_codes(Term,Structure,0,_,Codes,[]).
 
 compute_options([],option(IgOpts,Quoted,Nvars)):- 
 	(var(Quoted) -> Quoted = false ; true),
@@ -292,11 +205,6 @@ ignore_ops(option(V,_,_),V).
 numbervars(option(_,_,V),V).
 quoted(option(_,V,_),V).
 
-/* local_numbervars is needed since (for compatability) we want to use
-   numbervars/1 both as a boolean option and as the usual predicate */
-local_numbervars(Term) :-
-        numbervars(Term, 0, _).
-
 term_to_codes(Term,Structure,Var0,Var,Codes0,Codes) :-
 	(var(Term)
 	 ->	Term = ' _$var$_ '(Var0),
@@ -304,33 +212,30 @@ term_to_codes(Term,Structure,Var0,Var,Codes0,Codes) :-
 		Codes0 = [0'_,0'h|Codes1],
 		number_codes(Var0,IntCodes),
 		append(IntCodes,Codes,Codes1)
-	 ; get_varcode(Term,Structure,Var0,Var,VC)
+	 ;	get_varcode(Term,Structure,Var0,Var,VC)
 	 ->	append(VC,Codes,Codes0)
-	 ; integer(Term)
+	 ;	integer(Term)
 	 ->	Var = Var0,
 		number_codes(Term,IntCodes),
 		append(IntCodes,Codes,Codes0)
-	 ; atom(Term)
+	 ;	atom(Term)
 	 ->	Var = Var0,
 		extern_atom_codes(Term,Structure,Codes0,Codes)
-	 ; float(Term)
+	 ;	float(Term)
 	 ->	Var = Var0,
-%		extern_float_codes(Term,Codes0,Codes)
-		number_codes(Term,FloatCodes),
-		append(FloatCodes,Codes,Codes0)
-	 ; is_list(Term)
+		extern_float_codes(Term,Codes0,Codes)
+	 ;	is_list(Term)
          ->	Term=[Term1|Terms],
 	        get_listcode(Term1,Terms,Structure,Var0,Var,Codes0,Codes)
-	 ; structure(Term)
+	 ;	structure(Term)
 	 ->	Term =.. List,
-	    	(List = [Fun,Arg1|Args]
-		 -> 	extern_atom_codes(Fun,Structure,Codes0,[0'(|Codes2]),
+	 	(List = [Fun,Arg1|Args] ->
+	 		extern_atom_codes(Fun,Structure,Codes0,[0'(|Codes2]),
 			term_to_codes(Arg1,Structure,Var0,Var1,Codes2,Codes3),
 			cvt_termlist_to_codes(Args,Structure,Var1,Var,Codes3,[0')|Codes])
-		 ;	List = [Fun],
-			Var = Var0,
-			extern_atom_codes(Fun,Structure,Codes0,[0'(,0')|Codes])
-		)
+			; 
+			List = [Fun],
+			extern_atom_codes(Fun,Structure,Codes0,[0'(,0')|Codes]))
 	).
 
 cvt_termlist_to_codes([],_Structure,Var,Var,Codes,Codes).
@@ -341,7 +246,6 @@ cvt_termlist_to_codes([Arg|Args],Structure,Var0,Var,[0',|Codes0],Codes) :-
 % Called in a context in which a var check has already been made.
 get_varcode(' _$var$_ '(N), _Struct,Vin,Vin,Codes) :-
 	Codes = [0'_,0'h|IntCodes],
-	check_integer(N,'get_varcode/5',1),
 	number_codes(N,IntCodes).
 get_varcode('$VAR'(N), OptStruct,Vin,Vout,Codes) :-
 	(numbervars(OptStruct,true) -> 
@@ -390,7 +294,6 @@ get_listhead(Struct,Codes0,Codes1):-
              ; Codes0 = [ 0'., 0'(|Codes1] ).
 
 extern_atom_codes(Atom,Struct,Codes0,Codes) :-
-	check_atom(Atom,'extern_atom_codes/4',1),
 	atom_codes(Atom,AtomCodes),
 	(quoted(Struct,true) -> 
  	   (if_not_need_quote(AtomCodes)
@@ -427,52 +330,52 @@ copy_double_quote([C|Cs],[C|Cs0],Cs1) :-
 	).
 
 %TLS: changed to avoid calling log(0) below.
-%extern_float_codes(Float,Codes0,Codes) :-
-%	(Float < 0.0
-%	 ->	PFloat is -Float,
-%		Codes0 = [0'-'|Codes1],
-%		extern_float_codes1(PFloat,Codes1,Codes)
-%	 ;	(Float =:= 0.0 -> 
-%	           Codes0 = [48,46,48,48,48,48,48,48,48,48|Codes]
-%	 	 ; extern_float_codes1(Float,Codes0,Codes) )
-%	).
-%
-%extern_float_codes1(Float,Codes0,Codes) :-
-%	Log10 is log(10),
-%	Exp is floor(log(Float)/Log10-8), % to get 6 or 7 digits, Put . Exp to left from end
-%	DigitsInt is floor(Float/exp(Exp*Log10)),
-%	number_codes(DigitsInt,Digits),
-%	length(Digits,Length),
-%	Dist is Length+Exp,
-%	(Dist > 0
-%	 ->	place_decimal(Digits,Dist,Codes0,Codes)
-%	 ;	Codes0 = [0'0,0'.|Codes1],
-%		prefix_decimal(Digits,Dist,Codes1,Codes)
-%	).
-%
-%place_decimal([],Dist,Codes0,Codes) :-
-%	(Dist > 0
-%	 ->	Dist1 is Dist - 1,
-%		Codes0 = [0'0|Codes1],
-%		place_decimal([],Dist1,Codes1,Codes)
-%	 ;	Codes0 = [0'.,0'0|Codes]
-%	).
-%place_decimal([D|Digits],Dist,Codes0,Codes) :-
-%	(Dist > 0
-%	 ->	Dist1 is Dist - 1,
-%		Codes0 = [D|Codes1],
-%		place_decimal(Digits,Dist1,Codes1,Codes)
-%	 ; 	append([0'.,D|Digits],Codes,Codes0)
-%	).
-%		
-%prefix_decimal(Digits,Dist,Codes0,Codes) :-
-%	(Dist =:= 0
-%	 ->	append(Digits,Codes,Codes0)
-%	 ;	Dist1 is Dist + 1,
-%		Codes0 = [0'0|Codes1],
-%		prefix_decimal(Digits,Dist1,Codes1,Codes)
-%	).
-%
+extern_float_codes(Float,Codes0,Codes) :-
+	(Float < 0.0
+	 ->	PFloat is -Float,
+		Codes0 = [0'-'|Codes1],
+		extern_float_codes1(PFloat,Codes1,Codes)
+	 ;	(Float =:= 0.0 -> 
+	           Codes0 = [48,46,48,48,48,48,48,48,48,48|Codes]
+	 	 ; extern_float_codes1(Float,Codes0,Codes) )
+	).
+
+extern_float_codes1(Float,Codes0,Codes) :-
+	Log10 is log(10),
+	Exp is floor(log(Float)/Log10-8), % to get 6 or 7 digits, Put . Exp to left from end
+	DigitsInt is floor(Float/exp(Exp*Log10)),
+	number_codes(DigitsInt,Digits),
+	length(Digits,Length),
+	Dist is Length+Exp,
+	(Dist > 0
+	 ->	place_decimal(Digits,Dist,Codes0,Codes)
+	 ;	Codes0 = [0'0,0'.|Codes1],
+		prefix_decimal(Digits,Dist,Codes1,Codes)
+	).
+
+place_decimal([],Dist,Codes0,Codes) :-
+	(Dist > 0
+	 ->	Dist1 is Dist - 1,
+		Codes0 = [0'0|Codes1],
+		place_decimal([],Dist1,Codes1,Codes)
+	 ;	Codes0 = [0'.,0'0|Codes]
+	).
+place_decimal([D|Digits],Dist,Codes0,Codes) :-
+	(Dist > 0
+	 ->	Dist1 is Dist - 1,
+		Codes0 = [D|Codes1],
+		place_decimal(Digits,Dist1,Codes1,Codes)
+	 ; 	append([0'.,D|Digits],Codes,Codes0)
+	).
+		
+prefix_decimal(Digits,Dist,Codes0,Codes) :-
+	(Dist =:= 0
+	 ->	append(Digits,Codes,Codes0)
+	 ;	Dist1 is Dist + 1,
+		Codes0 = [0'0|Codes1],
+		prefix_decimal(Digits,Dist1,Codes1,Codes)
+	).
+
 
 /***************************************************************/
 /*                                                             */
@@ -482,12 +385,10 @@ copy_double_quote([C|Cs],[C|Cs0],Cs1) :-
 /*                                                             */
 /***************************************************************/
 
-:- mode atom_to_term(+,?).
 atom_to_term(Atom,Term) :-
 	atom_codes(Atom,AtomC),
 	codes_to_term(AtomC,Term).
 
-:- mode codes_to_term(+,?).
 codes_to_term(Codes,Term) :- codes_to_term(Codes,[],[],_,Term).
 
 codes_to_term(Rest0,Rest,ST0,ST,Term) :-
@@ -634,11 +535,9 @@ scan_blanks(Rest0,Rest) :-
 /*                                                             */
 /***************************************************************/
 
-:- mode read_atom_to_term(+,?).
 read_atom_to_term(Atom,Term) :-
 	read_atom_to_term(Atom,Term,_).
 
-:- mode read_atom_to_term(+,?,?).
 read_atom_to_term(Atom,Term,Vars) :-
 	(atom(Atom)
 	 ->	true
@@ -655,8 +554,6 @@ read_atom_to_term(Atom,Term,Vars) :-
 		fail
 	).
 
-
-:- mode read_atom_to_term_print_on_error(+,?,?).
 read_atom_to_term_print_on_error(Atom,Term,Vars) :-
 	(atom(Atom)
 	 ->	true
@@ -667,11 +564,11 @@ read_atom_to_term_print_on_error(Atom,Term,Vars) :-
 	 ;	Atom1 = Atom
 	),
 	file_open([Atom1,'.'],sr,FileDes),
-	(catch(file_read(FileDes,Term,Vars),E,read_handler(E))
+	(standard:catch(file_read(FileDes,Term,Vars),E,read_handler(E))
 	 ->	file_close(FileDes)
         ;
             file_close(FileDes),
-            nl(2),
+            standard:nl(2),
             fail
 	).
 
@@ -679,36 +576,8 @@ read_handler(error(_,context(Message,_Trace))) :-
         error_writeln(Message),
         fail.
 
-%---------
-   
-:- mode split_atom(+,+,?).
-split_atom(Atom,Sep,List_of_atoms):-
-    check_nonvar(Atom,split_atom/3,1),
-    check_nonvar(Sep,split_atom/3,2),
-    atom_chars(Atom,List_of_chars),
-    split_atom_1(List_of_chars,Sep,List_of_strings),
-    atomize_list(List_of_strings,List_of_atoms).
-   
-split_atom_1([],_Sep,[]):- !.
-split_atom_1(InList,Sep,[String|Rest]):- 
-    split_atom_2(InList,Sep,String,MidList),
-    split_atom_1(MidList,Sep,Rest).
-
-split_atom_2([],_Sep,[],[]):- !.
-split_atom_2([Sep|R],Sep,[],R):- !.
-split_atom_2([Char|RestAtom],Sep,[Char|RestString],Remaining):- 
-    split_atom_2(RestAtom,Sep,RestString,Remaining).
-
-atomize_list([],[]).
-atomize_list([String|Strings],Atoms):-
-    (String = [] -> 
-       atomize_list(Strings,Atoms)
-     ; atom_chars(Atom,String),
-       Atoms = [Atom|Atoms1],
-       atomize_list(Strings,Atoms1) ).
-
-
 /* ---------------------- end of file string.P ------------------------ */
+
 end_of_file.
 
 term_to_codes(Term,Structure,Var0,Var,Codes0,Codes) :-

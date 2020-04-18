@@ -40,7 +40,6 @@
 #include <errno.h>
 
 #ifdef WIN_NT
-#include <windows.h>
 #include <direct.h>
 #include <ctype.h>
 #else
@@ -123,7 +122,7 @@ extern char *expand_filename(char *filename);
 #define get_obj_word_bb(x)  \
   {Integer dummy; dummy = get_obj_word(x) ; fix_bb(x) ; \
     SQUASH_LINUX_COMPILER_WARN(dummy) ; }
-#define get_obj_word_bbsig(x) {dummy = get_obj_word(x) ; fix_bb4(x) ;\
+#define get_obj_word_bbsig(x) {get_obj_word(x) ; fix_bb4(x) ;\
 			       *(Cell *)(x) = makeint(*(int *)(x));}
 #define get_obj_word_bbsig_notag(x) \
   {Integer dummy; dummy = get_obj_word(x) ; fix_bb4(x) ;      \
@@ -480,10 +479,6 @@ static int load_text(FILE *fd, int seg_num, size_t text_bytes, int *current_tab)
 	dummy = get_obj_string(inst_addr,8);
 	inst_addr += 2;
 	break;
-      case RRRR:
-	dummy = get_obj_word(inst_addr);
-	inst_addr ++;
-	break;
       case B:                       // boxed integer
 	get_obj_word_bbsig_notag(inst_addr);
 	inst_addr ++;
@@ -768,11 +763,6 @@ void replace_form_by_act(char *name, prolog_term modformals, prolog_term modactu
 /* --------------------------------------------------------------------	*/
 
 #if defined(WIN_NT) || defined(CYGWIN)
-#if defined(CYGWIN)
-extern int toupper(int);
-#else
-__declspec(dllimport) int toupper(int);
-#endif
 #define file_strcmp(fn1,fn2) strcasecmp(fn1,fn2)
 #define isslash(c) ((c) == '/' || (c) == '\\')
 int file_strncmp(char *fn1, char *fn2, size_t len) {
@@ -789,15 +779,6 @@ int file_strncmp(char *fn1, char *fn2, size_t len) {
 #define file_strncmp(fn1,fn2,len) strncmp(fn1,fn2,len)
 #endif
 
-size_t get_len_wo_ext(char *filename, size_t len) {
-  size_t len_wo_ext = len - XSB_OBJ_EXTENSION_LENGTH;
-  while (len_wo_ext > 0 && filename[len_wo_ext] != '\\' && filename[len_wo_ext] != '/' &&
-	 file_strncmp(filename+len_wo_ext,XSB_OBJ_EXTENSION_STRING,XSB_OBJ_EXTENSION_LENGTH) != 0)
-    len_wo_ext--;
-  if (filename[len_wo_ext] == '\\' || filename[len_wo_ext] == '/') len_wo_ext = 0;
-  return len_wo_ext;
-}
-
 /* compare forms: either may be full_path.xwam or usermod(modname) or modname.
    If first is full modname, then the second must also be.
    If both full then if different ret true else ret false.
@@ -810,16 +791,17 @@ int nec_different_xwam_files(char *datafilename, char *currfilename) {
   //  printf("nec_diff: %s, %s\n",datafilename, currfilename);
   if (file_strcmp(datafilename,currfilename) == 0) return FALSE;
   dlen = strlen(datafilename);
-  dlen_wo_ext = get_len_wo_ext(datafilename,dlen);
+  dlen_wo_ext = dlen - XSB_OBJ_EXTENSION_LENGTH;
   clen = strlen(currfilename);
-  clen_wo_ext = get_len_wo_ext(currfilename,clen);
-  if (dlen_wo_ext > 0 && clen_wo_ext > 0 &&
-      (dlen_wo_ext != clen_wo_ext || file_strncmp(datafilename,currfilename,clen_wo_ext) != 0))
-    return TRUE;    // both full names and different
+  clen_wo_ext = clen - XSB_OBJ_EXTENSION_LENGTH;
+  if (file_strcmp(datafilename+dlen_wo_ext,XSB_OBJ_EXTENSION_STRING) == 0 &&
+      file_strcmp(currfilename+clen_wo_ext,XSB_OBJ_EXTENSION_STRING) == 0)
+    // both full names and different
+    return TRUE;
   // at least one is a module or usermod().
-  if (dlen_wo_ext == 0) {
+  if (file_strcmp(datafilename+dlen_wo_ext,XSB_OBJ_EXTENSION_STRING) != 0) {
     if (file_strncmp(datafilename,"usermod(",sizeof("usermod(")-1) == 0) {
-      if (datafilename[sizeof("usermod(")-1] == '\'') {
+      if (datafilename[sizeof("usermof(")-1] == '\'') {
 	ddisp = sizeof("usermod('")-1;  //9
 	dmlen = dlen - (sizeof("usermod('')")-1);  //11;
       } else {
@@ -835,7 +817,7 @@ int nec_different_xwam_files(char *datafilename, char *currfilename) {
     dmlen = 0;
   }
   
-  if (clen_wo_ext == 0) {
+  if (file_strcmp(currfilename+clen_wo_ext,XSB_OBJ_EXTENSION_STRING) != 0) {
     if (file_strncmp(currfilename,"usermod(",8) == 0) {
       if (currfilename[8] == '\'') {
 	cdisp = sizeof("usermod('")-1; //9;
@@ -855,14 +837,15 @@ int nec_different_xwam_files(char *datafilename, char *currfilename) {
   
   if (dmlen == 0) dmlen = cmlen; // one or other must be nonzero
   if (dmlen != cmlen) return TRUE;
-  if ((ddisp == -1) && dlen_wo_ext > 0
-      && strncmp(datafilename+dlen_wo_ext-dmlen,currfilename+cdisp,dmlen) == 0)
+  if ((ddisp == -1) &&
+      strncmp(datafilename+dlen-dmlen-XSB_OBJ_EXTENSION_LENGTH,
+		   currfilename+cdisp,dmlen) == 0)
     return FALSE;
-  if ((cdisp == -1) && clen_wo_ext > 0
-      && file_strncmp(datafilename+ddisp,currfilename+clen_wo_ext-cmlen,dmlen) == 0)
+  if ((cdisp == -1) &&
+      file_strncmp(datafilename+ddisp,
+		   currfilename+clen-cmlen-XSB_OBJ_EXTENSION_LENGTH,dmlen) == 0)
     return FALSE;
-  if (dlen_wo_ext == 0 && clen_wo_ext == 0 &&
-      file_strncmp(datafilename+ddisp,currfilename+cdisp,dmlen) == 0)
+  if (file_strncmp(datafilename+ddisp,currfilename+cdisp,dmlen) == 0)
     return FALSE;
   return TRUE;
 }
@@ -1202,7 +1185,7 @@ static byte *loader1(CTXTdeclc FILE *fd, char *filename, int exp, int immutable,
 	psc_set_immutable(ptr->psc_ptr,1);
       } else { 
 	if (pflags[VERBOSENESS_LEVEL]) { printf("Immutable: re-load of module prohibited: %s\n",name);}
-	return((byte *)2); // continue silently
+	return(NULL); 
       }
     }
     cur_mod = ptr->psc_ptr;
@@ -1396,7 +1379,11 @@ byte *loader(CTXTdeclc char *file, int exp, prolog_term modpars) // add arg of a
 
   fd = fopen(file, "rb"); /* "b" needed for DOS. -smd */
   //  fprintf(logfile,"opening: %s (%s)\n",file,"rb");
-  if (!fd) {printf("open failed for %s\n",file); return NULL;}
+  if (!fd) return NULL;
+  /*  {
+    printf("Error opening file: %s, errno=%d\n",file,errno);
+    return NULL;
+    } */
   if (flags[LOG_ALL_FILES_USED]) {
     char *dummy; /* to squash a warning */
     char current_dir[MAX_CMD_LEN];
@@ -1435,11 +1422,6 @@ byte *loader(CTXTdeclc char *file, int exp, prolog_term modpars) // add arg of a
     if (magic_num == 0x11121307 || magic_num == 0x11121305 || magic_num == 0x1112130a) {
       //      printf("Prolog magic num 0x%x\n",magic_num);
     char *efilename = expand_filename(file);
-    char *xwamaddr;
-    // take off trailing privatizer if nec, for messages
-    if ((xwamaddr = strstr(efilename,XSB_OBJ_EXTENSION_STRING))) {
-      *(xwamaddr+XSB_OBJ_EXTENSION_LENGTH) = '\0';
-    }
     char *filename = string_find(efilename,1);
     mem_dealloc(efilename,MAXPATHLEN,OTHER_SPACE);
     first_inst = loader1(CTXTc fd,filename,exp,is_immutable,modpars);  // pass actual par list as arg

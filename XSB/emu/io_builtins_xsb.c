@@ -64,7 +64,6 @@
 #include "findall.h"
 #include "heap_defs_xsb.h"
 #include "cell_xsb_i.h"
-#include "struct_intern.h"
 
 //extern FILE *logfile;
 
@@ -97,7 +96,6 @@ struct next_fmt_state {
 
 void next_format_substr(CTXTdeclc char*, struct next_fmt_state*, struct fmt_spec *, int, int);
 char *p_charlist_to_c_string(CTXTdeclc prolog_term, VarString*, char*, char*);
-char *cvt_float_to_str_with_fmt(CTXTdeclc Float, char *);
 
 /* type is a char: 's', 'i', 'f' */
 #define TYPE_ERROR_CHK(ch_type, Label) \
@@ -260,14 +258,14 @@ xsbBool fmt_write(CTXTdecl)
   XSB_StrSet(fmt_state._workspace,"");
 
   SET_FILEPTR(fptr, ptoc_int(CTXTc 2));
-  Fmt_term = ptoc_tag(CTXTc 3);
+  Fmt_term = reg_term(CTXTc 3);
   if (is_list(Fmt_term))
     Fmt = p_charlist_to_c_string(CTXTc Fmt_term,&FmtBuf,"FMT_WRITE","format string");
   else if (isstring(Fmt_term))
     Fmt = string_val(Fmt_term);
   else
     xsb_type_error(CTXTc "character string or atom",Fmt_term,"fmt_write/[2,3]",2);
-  ValTerm = ptoc_tag(CTXTc 4);
+  ValTerm = reg_term(CTXTc 4);
   if (isconstr(ValTerm) && !isboxed(ValTerm))
     Arity = get_arity(get_str_psc(ValTerm));
   else if (isref(ValTerm))
@@ -414,10 +412,10 @@ xsbBool fmt_write_string(CTXTdecl)
   fmt_state._workspace = tsgLBuff2;
   XSB_StrSet(fmt_state._workspace,"");
 
-  if (isnonvar(ptoc_tag(CTXTc 2)))
+  if (isnonvar(reg_term(CTXTc 2)))
     xsb_abort("[FMT_WRITE_STRING] Arg 1 must be an unbound variable");
   
-  Fmt_term = ptoc_tag(CTXTc 3);
+  Fmt_term = reg_term(CTXTc 3);
   if (islist(Fmt_term))
     Fmt = p_charlist_to_c_string(CTXTc Fmt_term, &FmtBuf,
 				 "FMT_WRITE_STRING", "format string");
@@ -426,7 +424,7 @@ xsbBool fmt_write_string(CTXTdecl)
   else
     xsb_abort("[FMT_WRITE_STRING] Format must be an atom or a character string");
 
-  ValTerm = ptoc_tag(CTXTc 4);
+  ValTerm = reg_term(CTXTc 4);
   if (isconstr(ValTerm) && ! isboxed(ValTerm))
     Arity = get_arity(get_str_psc(ValTerm));
   else if (isref(ValTerm))
@@ -573,7 +571,7 @@ xsbBool fmt_read(CTXTdecl)
   XSB_StrSet(fmt_state._workspace,"");
 
   SET_FILEPTR(fptr, ptoc_int(CTXTc 2));
-  Fmt_term = ptoc_tag(CTXTc 3);
+  Fmt_term = reg_term(CTXTc 3);
   if (islist(Fmt_term))
     Fmt = p_charlist_to_c_string(CTXTc Fmt_term,&FmtBuf,"FMT_READ","format string");
   else if (isstring(Fmt_term))
@@ -581,11 +579,11 @@ xsbBool fmt_read(CTXTdecl)
   else
     xsb_abort("[FMT_READ] Format must be an atom or a character string");
 
-  AnsTerm = ptoc_tag(CTXTc 4);
+  AnsTerm = reg_term(CTXTc 4);
   if (isconstr(AnsTerm))
     Arity = get_arity(get_str_psc(AnsTerm));
   else if (isref(AnsTerm)) {
-    /* assume that only one input val is required */
+    /* assume that only one input val is reuired */
     prolog_term TmpAnsTerm=p2p_new(CTXT), TmpArg;
 
     Arity = 1;
@@ -603,7 +601,7 @@ xsbBool fmt_read(CTXTdecl)
     xsb_abort("Usage: fmt_read([IOport,] FmtStr, args(A1,A2,...), Feedback)");
 
   /* status variable */
-  if (isnonvar(ptoc_tag(CTXTc 5)))
+  if (isnonvar(reg_term(CTXTc 5)))
     xsb_abort("[FMT_READ] Arg 4 must be an unbound variable");
 
   next_format_substr(CTXTc Fmt, &fmt_state,current_fmt_spec,
@@ -1664,7 +1662,7 @@ int xsb_intern_file(CTXTdeclc char *context,char *addr, int *ioport,char *strmod
   }
 }
 
-void mark_open_filenames(CTXTdecl) {
+void mark_open_filenames() {
   int i;
 
   for (i=MIN_USR_OPEN_FILE; i < MAX_OPEN_FILES; i++) {
@@ -1811,19 +1809,13 @@ void write_quotedname(FILE *file, int charset, char *string)
 #define wcan_buff tsgSBuff1
 
 char *cvt_float_to_str(CTXTdeclc Float floatval) {
-  return cvt_float_to_str_with_fmt(CTXTc floatval,(char *)flags[FLOAT_DISPLAY_FORMAT]);
-}
-
-char *cvt_float_to_str_with_fmt(CTXTdeclc Float floatval, char *format) {
-  //XSB_StrEnsureSize(wcan_buff,MAX_SPRINTF_STRING_SIZE);
-  sprintf(wcan_buff->string,format,floatval);
+  sprintf(wcan_buff->string,"%1.17g",floatval);
   wcan_buff->length = (int)strlen(wcan_buff->string);
   if (!strchr(wcan_buff->string,'.')) {
     char *eloc = strchr(wcan_buff->string,'e');
-    if (!eloc) {
-      XSB_StrAppend(wcan_buff,".0");
-    } else {	
-      char exp[500],fstr[MAX_SPRINTF_STRING_SIZE];
+    if (!eloc) XSB_StrAppend(wcan_buff,".0");
+    else {	
+      char exp[5],fstr[30];
       //	  printf("massage float %s\n", wcan_buff->string);
       strcpy(exp,eloc);
       eloc[0] = 0;
@@ -1901,23 +1893,20 @@ int call_conv write_canonical_term_rec(CTXTdeclc Cell prologterm, int letter_fla
      }
      else if (isboxedfloat(prologterm))
      {
-       /* TES: If we ever want to make write_canonical flag-based, replace the rest of this block with 
-          the following line (modulo break) */
-       //       XSB_StrAppend(wcan_string, cvt_float_to_str(CTXTc boxedfloat_val(prologterm)));
        sprintf(wcan_buff->string,"%1.17g",boxedfloat_val(prologterm));
        wcan_buff->length = (int)strlen(wcan_buff->string);
        if (!strchr(wcan_buff->string,'.')) {
-       	 char *eloc = strchr(wcan_buff->string,'e');
-       	 if (!eloc) XSB_StrAppend(wcan_buff,".0");
-       	 else {	
-       	   char exp[500],fstr[MAX_SPRINTF_STRING_SIZE];
+	 char *eloc = strchr(wcan_buff->string,'e');
+	 if (!eloc) XSB_StrAppend(wcan_buff,".0");
+	 else {	
+	   char exp[5],fstr[30];
 	   strcpy(exp,eloc);
-       	   eloc[0] = 0;
+	   eloc[0] = 0;
 	   strcpy(fstr,wcan_buff->string);
-       	   XSB_StrSet(wcan_buff,fstr);
-       	   XSB_StrAppend(wcan_buff,".0");
-       	   XSB_StrAppend(wcan_buff,exp);
-       	 }
+	   XSB_StrSet(wcan_buff,fstr);
+	   XSB_StrAppend(wcan_buff,".0");
+	   XSB_StrAppend(wcan_buff,exp);
+	 }
        }
        XSB_StrAppend(wcan_string,wcan_buff->string);
        break;         
@@ -1999,7 +1988,7 @@ int call_conv write_canonical_term_rec(CTXTdeclc Cell prologterm, int letter_fla
 DllExport void call_conv write_canonical_term(CTXTdeclc Cell prologterm, int letter_flag)
 {
   XSB_StrSet(wcan_string,"");
-  XSB_StrEnsureSize(wcan_buff,MAX_SPRINTF_STRING_SIZE);
+  XSB_StrEnsureSize(wcan_buff,40);
   if (write_canonical_term_rec(CTXTc prologterm, letter_flag)) return;
   else xsb_abort("[WRITE_CANONICAL_TERM] Illegal Prolog term: %s",wcan_string->string);
 }
@@ -2007,7 +1996,7 @@ DllExport void call_conv write_canonical_term(CTXTdeclc Cell prologterm, int let
 /* return a string containing the Prolog term in presented in canonical form */
 char *canonical_term(CTXTdeclc Cell prologterm, int letter_flag) {
   XSB_StrSet(wcan_string,"");
-  XSB_StrEnsureSize(wcan_buff,MAX_SPRINTF_STRING_SIZE);
+  XSB_StrEnsureSize(wcan_buff,40);
   write_canonical_term_rec(CTXTc prologterm, letter_flag);
   return wcan_string->string;
 }

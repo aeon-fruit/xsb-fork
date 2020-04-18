@@ -31,7 +31,6 @@
               check_file_compiler_options/1,
 	  numbervars_cmplib/3.
 :- export current_xsb_compiler_option/1.
-:- export valid_charset/1.
 
 :- import current_compiled_module/1 from compile.
 :- import load_dyn_module/1 from consult.
@@ -45,7 +44,7 @@
 :- import term_psc/2, term_type/2, psc_arity/2, term_arg/3
         from machine.
 :- import misc_error/1 from error_handler.
-   :- import file_write/2 from xsb_writ.
+
 :- import
 	unset_preprocessing_done/0,
 	enqueue_preprocessor/1

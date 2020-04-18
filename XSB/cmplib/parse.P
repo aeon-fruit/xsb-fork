@@ -35,24 +35,11 @@
 /*======================================================================*/
 
 %-----------------------------------------------------------------------
-% following for self-compile startup
-%:- import mode_on_success/1 from usermod.
-%:- assert:assert(mode_on_success(_)).
-
-:- mode_on_success(gpp_include_dir(+)).
 :- dynamic gpp_include_dir(_).
-
-:- mode_on_success(gpp_options(+)).
 :- dynamic gpp_options(_).
-
-:- mode_on_success(xpp_include_dir(+)).
 :- dynamic xpp_include_dir(_).
-
-:- mode_on_success(xpp_options(+)).
 :- dynamic xpp_options(_).
 
-:- mode_on_success(preprocessor_queue(+,+)).
-:- mode_on_success(preprocessor_registry(+,+)).
 :- dynamic
 	preprocessor_registry/2, %% PreprocName, PreprocCmdBuildingCall
 	preprocessor_queue/2.    %% PreprocName, PreprocOptions
@@ -62,7 +49,6 @@
 ?- register_xsb_preprocessor(gpp,make_gpp_command(_,_,_,_)).
 
 /* TLS: not supporting include when compiling from userin */
-:- mode parse(+,+,+,?).
 parse(Modname, PFile, HFile, Module) :-
 	filestack_reset,
 	stat_flag(CURRENT_INPUT,Str),
@@ -107,8 +93,6 @@ parse1(Modname, File, Module) :-
 		    filestack_pop(_),
 		    filename_pop(_),
 		    parsing_file(PFile), see(PFile),
-		    seeing(Str),
-		    file_set_character_set(Str,utf_8),
 %%%		    standard:writeln(needs_restart(OFile,PFile)),
 		    fail
 		;   ! % doesn't need a restart so cut away 2nd parse1 cls.
@@ -149,21 +133,14 @@ parse1(Modname, File, Module) :-
 
 
 %% If xpp_on option is not set, just open the file.
-%% Otherwise, pass it through the registered preprocessors (gpp by default).
-%% The result is pumped to current output.
-%% Preprocessors are registered via register_xsb_preprocessor/2.
-%% This predicate is higher-level and is easier to use than xpp_process_file/4
-:- mode open_or_xpp_file(+).
+%% Otherwise, pass it through the C preprocessor
 open_or_xpp_file(File) :- open_or_xpp_file(File,_).
-
-:- mode open_or_xpp_file(+,?).
 open_or_xpp_file(File,XPP_process) :-
-    unset_preprocessing_done,
+	unset_preprocessing_done,
 	%% sometimes need to clear out xpp_on, esp. when compiling external
 	(\+xpp_is_on, \+xpp_is_off -> set_xpp_off ; true), %% clear out xpp
 	(xpp_is_off -> 
 	    open(File,read,Istr),
-	    file_set_character_set(Istr,utf_8),
 	    filestack_push(Istr),
 	    see(Istr),
 	    XPP_process = skip
@@ -180,14 +157,15 @@ open_or_xpp_file(File,XPP_process) :-
 
 
 %% Make_XPP_Command has the form predicate(File,XPP_Name,Options,XPP_command).
-%% It is supposed to create the actual shell command (in XPP_command)
-%% out of File, XPP_Name, and Options
-%% that is supposed to invoke the preprocessor of choice in the shell.
+%% It is supposed to create
+%% the actual shell command that will invoke the preprocessor of choice.
 %%
 %% File is the name of the original file being preprocessed.
 %% XPPName should be replaced with the name of the actual preprocessor.
-%% Options is an argument that may be passed to the preprocessor 
-%%       with additional info for the creation of XPP_command.
+%%       In most cases the above two parameters are not used
+%%       by the predicate used in Make_XPP_Command
+%% Options is an argument that may be passed with additional info for
+%%       the creation of XPP_command.
 %% XPP_command should be such that if a file is given as the last arg then
 %%       that file would be  preprocessed by the external preprocessor.
 %%       If no file is given, input stream is going to be processed.
@@ -198,13 +176,12 @@ open_or_xpp_file(File,XPP_process) :-
 %% from the port. In the third, it binds variable to the input port of XPP.
 %% This can then be used, for example, to bind this port to XSB standard 
 %% output (stat_set_flag(CURRENT_OUTPUT,port))
-:- mode xpp_process_file(+,?,?,?).
 xpp_process_file(FileName,XPP_process,IOportFromProc,Make_XPP_Command) :-
 	%% bind the appropriate arg of the XPP making command to XPP_command
 	get_xpp_call_cmd(Make_XPP_Command,XPP_command),
-	catch(Make_XPP_Command,
-	      error(Error,Message,_),
-	      xpp_error_handler(Make_XPP_Command,Error,Message)),
+	standard:catch(Make_XPP_Command,
+		       error(Error,Message,_),
+		       xpp_error_handler(Make_XPP_Command,Error,Message)),
 	((integer(FileName) ; var(FileName))
 	-> fmt_write_string(FullXPP_command,'%s',arg(XPP_command)),
 	    InputStream = FileName
@@ -222,7 +199,7 @@ xpp_process_file(FileName,XPP_process,IOportFromProc,Make_XPP_Command) :-
 	    fmt_write_string(XPP_dump_msg,
 			     '[%s: Saving postprocessed file in %s]',
 			     args(XPP_Name,Dump_file))
-	; Dump_file = 'Null'
+	; true
 	),
 #ifdef DEBUG_GPP
 	fmt_write_string(XPP_command_msg,
@@ -244,10 +221,10 @@ xpp_process_file(FileName,XPP_process,IOportFromProc,Make_XPP_Command) :-
 	%% Redirect xpp's stderr to XSB's STDWARN
 	spawn_process(FullXPP_command, InputStream, IOportFromProc, STDWARN, XPP_process),
 	(xppdump_is_on ->
-	    open(Dump_file,write,DumpPort),
-	    copyIOport(IOportFromProc,DumpPort),
+	    file_io:file_open(Dump_file,w,DumpPort),
+	    file_io:copyIOport(IOportFromProc,DumpPort),
 	    close(DumpPort),
-	    file_reopen(Dump_file,r,IOportFromProc,_),
+	    file_io:file_reopen(Dump_file,r,IOportFromProc,_),
 	    ( BannerCtl mod QUIETLOAD =:= 0 -> true
 	    ;  message(XPP_dump_msg)
 	    )
@@ -261,11 +238,8 @@ xpp_process_file(FileName,XPP_process,IOportFromProc,Make_XPP_Command) :-
 
 %% xpp_process_file/3 is an alias for gpp_process_file.
 %% Used for Flora-2 compatibility
-:- mode xpp_process_file(+,+,+).
 xpp_process_file(FileName, XPP_process, IOportFromProc) :-
 	gpp_process_file(FileName, XPP_process, IOportFromProc).
-
-:- mode gpp_process_file(+,+,+).
 gpp_process_file(FileName, XPP_process, IOportFromProc) :-
 	setup_make_xpp_command_call(FileName, gpp,_, Make_XPP_Cmd),
 	xpp_process_file(FileName,XPP_process,IOportFromProc,Make_XPP_Cmd).
@@ -308,11 +282,8 @@ pipeline_preprocessors_in_queue(File,InPort,OutPort,XPP_process) :-
 	    )
 	).
 
-:- mode check_xpp_process_status(+,+).
 check_xpp_process_status(File,XPP_process) :-
 	check_xpp_process_status(File,XPP_process,'Compilation aborted').
-
-:- mode check_xpp_process_status(+,+,+).
 check_xpp_process_status(File,XPP_process,Message) :-
 	( XPP_process == skip -> true
 	; XPP_process == error ->
@@ -357,7 +328,6 @@ xpp_error_handler(Make_XPP_Command,Error,Message) :-
 %% now is NO LONGER used.
 %% PreprocessorName is not used. It is bound to the preprocessor name
 %% under which this call is registered.
-:- mode make_gpp_command(+,+,+,+).
 make_gpp_command(_FileName,_PreprocessorName,DirectCompilerOptions,GPP_command) :-
 	%% Construct the -Include directories
 	make_include_directive(Directive, '-I'),
@@ -414,14 +384,13 @@ make_gpp_options(X) :- xpp_options(X), !.
 make_gpp_options(' -P -m -nostdinc -curdirinclast ').
 
 %% register_xsb_preprocessor(+Name,+CallTemplate)
-%% CallTemplate is supposed to be a template of the form Pred(_,_,_).
-%%    Pred is supposed to be a predicate for making preprocessor shell command
-%%    (see xpp_process_file).
-%%    Arg 2 - finename of the file being processed
-%%    Arg 2 - options to pass for creation of that command.
-%%    If arg 1 is a variable - ignore.
-%%    Arg 2 is the output shell command made by Pred/2.
-:- mode register_xsb_preprocessor(+,?).
+%% Call template is supposed to be a template of the form Pred(_,_,_).
+%% Pred is supposed to be a predicate for making preprocessor shell command
+%% (see xpp_process_file).
+%% Arg 2 - finename of the file being processed
+%% Arg 2 - options to pass for creation of that command.
+%% If arg 1 is a variable - ignore.
+%% Arg 2 is the output shell command made by Pred/2.
 register_xsb_preprocessor(Name,_) :-
 	var(Name),
 	error(('When registering a preprocessor, the name should be an atom, not ',Name)),
@@ -443,7 +412,6 @@ register_xsb_preprocessor(Name,CallTemplate) :-
 register_xsb_preprocessor(_,_).
 
 %% Unregister a preprocessor
-:- mode unregister_xsb_preprocessor(+).
 unregister_xsb_preprocessor(Name) :-
 	nonvar(Name),
 	retractall(preprocessor_registry(Name,_)).
@@ -465,7 +433,6 @@ preprocessor_name(XPP_Call,_) :-
 
 %% maintain preprocessor queue
 %% If preprocessor is on the queue, ignore.
-:- mode enqueue_preprocessor(?).
 enqueue_preprocessor(_Preprocessor) :-
 	%% If immediately after preprocessing, don't enqueue. What may happen
 	%% is that we may encounter compiler_options([xpp_on(foobar)]) after
@@ -489,7 +456,6 @@ enqueue_preprocessor(Preprocessor) :-
 enqueue_preprocessor(Preprocessor) :-
 	error(('Invalid preprocesor spec: ', Preprocessor)).
 
-:- mode dequeue_preprocessor(?,?).
 dequeue_preprocessor(Name,Options) :-
 	preprocessor_queue(Name,Options),
 	(preprocessor_registry(Name,_) -> true
@@ -597,15 +563,14 @@ embedded_number((A->B)) :- !,
 	).
 
 %-------------------------------------------------------------------------
-% get_p_mod(+P, +ModName, -P_Mod)
+% get_p_mod(+P, +ModName, +P_Mod)
 %	Given a predicate name P and a module/file name ModName, returns
 %	a new predicate name P_Mod.
 %-------------------------------------------------------------------------
-:- mode get_p_mod(+,+,?).
 get_p_mod(P, ModName, P_Mod) :-
 	atom_codes(P,PChars), 
 	atom_codes(ModName, ModNameChars),
-	append(PChars, [0'$,0'_,0'$|ModNameChars], P_ModChars),  % ' for pp
+	append(PChars, [0'_|ModNameChars], P_ModChars),  % ' for pp
 	atom_codes(P_Mod, P_ModChars).
 
 %-------------------------------------------------------------------------
@@ -729,14 +694,7 @@ parse_directive(else, QrList,SymTab,ModName,ModStruct):- !,
 	parse_directive(elseif(true), QrList,SymTab,ModName,ModStruct).
 parse_directive(endif, _QrList,_SymTab,_ModName,_ModStruct):- !,
 	conset(conditional_compile,0).
-parse_directive(encoding(Charset),_,_,_,_) :- !,
-    (atom(Charset),
-     valid_charset(Charset)
-     ->	seeing(Str),
-	file_set_character_set(Str,Charset)
-     ;	warning((Charset,' is an illegal file encoding identifier, ignored !'))
-    ).
-parse_directive(module(ModIn,X,_Dialect), _QrList,SymTab,ModName,_ModStruct) :- !,
+parse_directive(module(ModIn,X,_Dialect), _QrList,SymTab,ModName,_ModStruct) :- !, 	
 	parse_directive(module(ModIn,X), _QrList,SymTab,ModName,_ModStruct).
 parse_directive(module(ModIn,X), _QrList,SymTab,ModName,_ModStruct) :- !, 	
 	(functor(ModName,ModIn,_) -> 
@@ -767,7 +725,6 @@ parse_directive(import(as(from(PredIn, Mod),PredAs)), _QrList,SymTab,_ModName,_M
 		 ->	error(('Predicate arities must be the same. Importing: ',P/A,' as ',P2/A2))
 		 ;	term_to_atom(Mod,PMod,[quoted(true)]),
 			sym_insert(PMod, 0, [module], SymTab, _),
-			check_atom(P2,'import/1',1), check_integer(A2,'import/1',1),
 			sym_insert(P2,A2,[pred,defined(PMod,P)],SymTab,_)
 		)
 	 ;	error(('Predicate specifiers must be of the form PredName/Arity. Importing (as): ',PredIn,' and ',PredAs))
@@ -821,7 +778,6 @@ parse_directive(include(FileIn), _QrList,_SymTab,ModName,ModStruct) :- !,
 	(var(FileIn)
 	 ->	error(('Module cannot be a variable. Include: '))
           ;	(FileIn = library(File1) -> File = File1 ; File = FileIn),
-		check_atom(File,'parse_directive/5',1),
 		(search_module(File, _Dir, _Newame, Ext, Base, _Obj) ->
 		    concat_atom([Base,'.',Ext],PFile),
 		    parse1(ModName,PFile,ModStruct)
@@ -834,43 +790,29 @@ parse_directive(include(FileIn), _QrList,_SymTab,ModName,ModStruct) :- !,
 parse_directive(index(X), _QrList,SymTab,_ModName,_ModStruct) :- !,
 	parse_index(X, SymTab).
 parse_directive(index(Ps,Arg,Size), QrList,SymTab,_ModName,_ModStruct) :- !,
-    (Ps = Pname/Arity,
-     check_atom(Pname,'index/3',1),check_integer(Arity,'index/3',1)
-     ->	true
-     ; functor(Ps,Pname,Arity)
-    ),
+	(Ps = Pname/Arity -> true ; functor(Ps,Pname,Arity)),
 	(integer(Arg)
 	 ->	sym_insert(Pname,Arity,[index(Arg)],SymTab,_)
 	 ; Arg = [Arg0|_], integer(Arg0) % if multiple, take first
 	 ->	sym_insert(Pname,Arity,[index(Arg0)],SymTab,_)
 	 ;	true
 	),
-	check_integer(Size,(index)/3,3),
-	check_ground(Arg,(index)/3,2),
 	index(Ps,Arg,Size), 
 	parse_query(index(Ps,Arg,Size), QrList,SymTab).
 parse_directive(index(Ps,Arg), QrList,SymTab,_ModName,_ModStruct) :- !,
-    (Ps = Pname/Arity
-     ->	check_atom(Pname,parse_directive/5,1),
-	check_integer(Arity,parse_directive/5,1)
-     ; functor(Ps,Pname,Arity)
-    ),
-    (integer(Arg)
-     ->	sym_insert(Pname,Arity,[index(Arg)],SymTab,_)
-     ;	Arg = [Arg0|_],
-	integer(Arg0)		% if multiple, take first
-     ->	sym_insert(Pname,Arity,[index(Arg0)],SymTab,_)
-     ;	true
-    ),
-    check_ground(Arg,(index)/2,2),
-    index(Ps,Arg),
-    parse_query(index(Ps,Arg), QrList,SymTab).
+	(Ps = Pname/Arity -> true ; functor(Ps,Pname,Arity)),
+	(integer(Arg)
+	 ->	sym_insert(Pname,Arity,[index(Arg)],SymTab,_)
+	 ; Arg = [Arg0|_], integer(Arg0) % if multiple, take first
+	 ->	sym_insert(Pname,Arity,[index(Arg0)],SymTab,_)
+	 ;	true
+	),
+	index(Ps,Arg),
+	parse_query(index(Ps,Arg), QrList,SymTab).
 parse_directive(local(X), _QrList,SymTab,_ModName,_ModStruct) :- !,
 	parse_comma_list(X, SymTab, [(local)], (local)).
 parse_directive(mode(X), _QrList,SymTab,_ModName,_ModStruct) :- !,
 	parse_mode(X, SymTab).
-parse_directive(mode_on_success(X), _QrList,SymTab,_ModName,_ModStruct) :- !,
-	parse_mode_on_success(X, SymTab).
 parse_directive(parallel(X), _QrList,SymTab,_ModName,_ModStruct) :- !,
 	parse_comma_list(X, SymTab, [(parallel)], (parallel)).
 parse_directive(auto_table, _QrList,_SymTab,_ModName,_ModStruct) :- !,	% This is quite dirty!
@@ -881,15 +823,11 @@ parse_directive(suppl_table(EDB_Dep), _QrList,_SymTab,_ModName,_Modstruct) :- !,
 	conset('EDB Dep #', EDB_Dep),
 	conset(suppl_table, 1).
 parse_directive(op(P,T,S), QrList,SymTab,_ModName,_ModStruct) :- !,
-    check_integer(P,op/3,1),
-    check_atom(T,op/3,2),
-    check_ground(S,op/3,3),
-    op(P,T,S), 
-    parse_query(op(P,T,S),QrList,SymTab).
+	op(P,T,S), 
+	parse_query(op(P,T,S),QrList,SymTab).
 parse_directive(hilog(X), QrList,SymTab,_ModName,_ModStruct) :- !,
-    check_atom(X,'hilog/1',1),
-    add_hilog_symbol(X), 
-    parse_query(hilog(X),QrList,SymTab).
+	add_hilog_symbol(X), 
+	parse_query(hilog(X),QrList,SymTab).
 parse_directive(ti(X), _QrList,SymTab,_ModName,_ModStruct) :- !,
 	parse_ti(X, (ti), SymTab).
 parse_directive(ti_all, _QrList,_SymTab,_ModName,_ModStruct) :- !,
@@ -927,9 +865,6 @@ parse_directive(table(as(PredCList,Options)),QrList,SymTab,_ModName,_ModStruct) 
 	parse_comma_list_table(PredCList,SymTab,Options),
 	check_ground(Options,(table)/1,1),
 	check_table_options(Options,PredCList,_),
-	( (comma_member(dyn,Options) ; comma_member(dynamic,Options)) ->
-             parse_comma_list_dyn(PredCList,SymTab)
-	 ;   true ),
 	parse_query(table(as(PredCList,Options)), QrList, SymTab).
 parse_directive(table(PredCList),_QrList,SymTab,_ModName,_ModStruct) :- !,
 	parse_comma_list_table(PredCList,SymTab,no_options).
@@ -1094,7 +1029,6 @@ parse_preddef_sym(H, B, List, PredSym, SymTab) :-
 	add_new_clause(clause(PredSym,K,ArgList, Body), List,K),
 	sym_propin(pred, PredSym).
 
-:- mode ensure_gensym_num_larger(+).
 ensure_gensym_num_larger(Num) :-
 	gennum(VNum),
 	(VNum > Num
@@ -1160,15 +1094,10 @@ parse_comma_list_import(X,_Mod,_SymTab) :-
 :- import comma_member/2 from basics.
 % who knows, there could be more...
 insert_compiler_based_options(Options,P/A,SymTab):-
-    check_atom(P,'insert_compiler_based_options/3','2.1'),
-    check_integer(A,'insert_compiler_based_options/3','2.2'),
-    (comma_member(approximate(Cond),Options)
-     ->	%	        standard:console_writeln(approximate(Cond)),
-	sym_insert(P, A, [approximation(Cond)], SymTab, _)
-     ; comma_member(index(IndexSpec),Options)
-     ->	parse_table_index(P/A,IndexSpec,SymTab)
-     ;	true
-     ).
+	comma_member(approximate(Cond),Options) -> 
+%	        standard:console_writeln(approximate(Cond)),
+		sym_insert(P, A, [approximation(Cond)], SymTab, _)
+	;       true.
 
 parse_comma_list_table((Pred, Preds), SymTab,Options) :- 
 	!,
@@ -1177,19 +1106,13 @@ parse_comma_list_table((Pred, Preds), SymTab,Options) :-
 parse_comma_list_table(P/A, SymTab,Options) :- 
 	atom(P), integer(A), 
 	!,
-	(comma_member(index(_),Options)
-	 -> true
-	 ;  sym_insert(P, A, [tabled], SymTab, _)
-	),
+	sym_insert(P, A, [tabled], SymTab, _),
 	insert_compiler_based_options(Options,P/A,SymTab).
 parse_comma_list_table(Spec, SymTab,Options) :- 
 	is_most_general_term(Spec),
 	!,
 	functor(Spec,P,A),
-	(comma_member(index(_),Options)
-	 -> true
-	 ;  sym_insert(P, A, [tabled], SymTab, _)
-	),
+	sym_insert(P, A, [tabled], SymTab, _),
 	insert_compiler_based_options(Options,P/A,SymTab).
 parse_comma_list_table(Spec, SymTab,Options) :- 
 	is_aggregation_spec(Spec,SymTab),
@@ -1268,21 +1191,16 @@ is_mode_list([M|Ms]) :- is_a_mode(M), !, is_mode_list(Ms).
 is_a_mode('-').
 is_a_mode('+').
 
-%TES: now checks for a list: giving it a single number made the entire
-% compilation fail.
 parse_table_index(PredSpec,IndexSpec,SymTab) :-
 	(PredSpec = Pred/Arity
-	 ->	check_atom(Pred,'parse_table_index/3','1.1'),
-		check_integer(Arity,'parse_table_index/3','1.2')
+	  ->	 true
 	  ;	 functor(PredSpec,Pred,Arity)
 	),
-        (IndexSpec = [_|_]
-	 -> RIndexSpec = IndexSpec
-	 ;  RIndexSpec = [IndexSpec]
-	),
-	(valid_index_spec(RIndexSpec,Arity)
-	 ->	sym_insert(Pred,Arity,[table_index(RIndexSpec)],SymTab,_)
-	 ;	domain_error('Illegal index specification: ',IndexSpec,'table_index/2',2)).
+	(valid_index_spec(IndexSpec,Arity)
+	 ->	sym_insert(Pred,Arity,[table_index(IndexSpec)],SymTab,_)
+	 ;	warning(('Illegal index specification: ',IndexSpec,
+			 ' in table_index declaration for ',PredSpec))
+	).
 
 valid_index_spec([],_Arity) :- !.
 valid_index_spec([Ind|Inds],Arity) :- !,
@@ -1304,12 +1222,11 @@ parse_comma_list_dyn((Spec,Specs),SymTab) :- !,
 parse_comma_list_dyn(Spec,SymTab) :-
 	(is_most_general_term(Spec)
 	 ->	functor(Spec,P,A),
+		sym_insert(P,A,[(dynamic),pred],SymTab,Sym),
 		(sym_prop(defined,Sym)
 		 ->	warning((P,'/',A,' defined before its dynamic declaration'))
 		 ;	true
-		),
-		%sym_insert(P,A,[(dynamic),pred,defined],SymTab,Sym) DSWDSW
-		sym_insert(P,A,[(dynamic),pred],SymTab,Sym)
+		)
 	 ;      warning(('Non predicate specification "', Spec,
 		 '" found in dynamic directive. Ignored!'))
 	).	
@@ -1377,7 +1294,6 @@ filter_out_number([pred(_,PS,CS,T)|Prs],[pred(PS,CS,T)|FPrs]) :-
 /* auxiliary routines							*/
 /*======================================================================*/
 
-:- mode get_symtab(?,?).
 get_symtab(module(SymTab,_,_,_,_), SymTab).
 
 /*======================================================================*/
@@ -1392,13 +1308,6 @@ parse_mode(Pred, SymTab) :-
 	functor(Pred, Name, Arity),
 	sym_insert(Name, Arity, [mode(Pred)], SymTab, _Sym).
 
-parse_mode_on_success((Pred, Preds), SymTab) :- !,
-	parse_mode_on_success(Pred, SymTab),
-	parse_mode_on_success(Preds, SymTab).
-parse_mode_on_success(Pred, SymTab) :- 
-	functor(Pred, Name, Arity),
-	sym_insert(Name, Arity, [mode_on_success(Pred)], SymTab, _Sym).
-
 /*======================================================================*/
 /* parse_index(+Indices, +SymTab)					*/
 /*	Parses the indexing directives for compiled code.		*/
@@ -1407,21 +1316,16 @@ parse_mode_on_success(Pred, SymTab) :-
 parse_index((Pred, Preds), SymTab) :- !,
 	parse_index(Pred, SymTab),
 	parse_index(Preds, SymTab).
-%parse_index(Pname/Arity-Arg, _SymTab) :-
-%	\+ integer(Arg), !, 
-%	warning(('Cannot index a compiled predicate on more than one argument '
-%		,Pname,'/',Arity,' !')).
+parse_index(Pname/Arity-Arg, _SymTab) :-
+	\+ integer(Arg), !, 
+	warning(('Cannot index a compiled predicate on more than one argument '
+		,Pname,'/',Arity,' !')).
 parse_index(Pname/Arity-Arg, SymTab) :- !,
-    check_integer(Arg,parse_index/2,1),
-    check_atom(Pname,parse_index/Arg,1),
-    check_integer(Arity,parse_index/2,1),
-    index(Pname/Arity, Arg, 0),
-    sym_insert(Pname, Arity, [index(Arg)], SymTab, _).
+	index(Pname/Arity, Arg, 0),
+	sym_insert(Pname, Arity, [index(Arg)], SymTab, _).
 parse_index(Pname/Arity, SymTab) :- 
-    check_atom(Pname,parse_index/2,1),
-    check_integer(Arity,parse_index/2,1),
-    index(Pname/Arity, 1, 0),
-    sym_insert(Pname, Arity, [index(1)], SymTab, _).
+	index(Pname/Arity, 1, 0),
+	sym_insert(Pname, Arity, [index(1)], SymTab, _).
 
 /*======================================================================*/
 /* parse_ti(+Preds, +Type, +SymTab)					*/
@@ -1432,14 +1336,12 @@ parse_ti((Pred, Preds), Type, SymTab) :- !,
 	parse_ti(Pred, Type, SymTab),
 	parse_ti(Preds, Type, SymTab).
 parse_ti(Pname/Arity, Type, SymTab) :- !,
-    check_atom(Pname,'parse_ti/3',1),
-    check_integer(Arity,'parse_ti/3',1),
-    sym_insert(Pname, Arity, [Type], SymTab, _).
+	sym_insert(Pname, Arity, [Type], SymTab, _).
 
 /*======================================================================*/
 /* trans_goals(+Term, -Goal, #SymTab, +VidIn, -VidOut)			*/
 /*======================================================================*/
-:- mode trans_goals(?,?,?,+,?).
+
 trans_goals('$$var'(Vid), goal(Sym,[varocc(Vid)]), SymTab, VidIn, VidOut) :- !,
 	sym_insert(call, 1, [], SymTab, Sym),
 	( var(Vid) -> VidOut is VidIn + 1, Vid = VidOut
@@ -1464,7 +1366,7 @@ trans_goals((A->B), if(Goal1, Goal2), SymTab, VidIn, VidOut) :- !,
 	trans_goals(B, Goal2, SymTab, VidMed, VidOut).
 trans_goals(not(A), not(Goal1), SymTab, VidIn, VidOut) :- !,
 	trans_goals(A, Goal1, SymTab, VidIn, VidOut).
-trans_goals(\+(A), not(Goal1), SymTab, VidIn, VidOut) :- !,
+trans_goals('\+'(A), not(Goal1), SymTab, VidIn, VidOut) :- !,
 	trans_goals(A, Goal1, SymTab, VidIn, VidOut).
 trans_goals(fail_if(A), not(Goal1), SymTab, VidIn, VidOut) :- !, 
 	trans_goals(A, Goal1, SymTab, VidIn, VidOut).
@@ -1478,7 +1380,7 @@ trans_goals(do_all(Gen,if_none(Do,Else)),Goal1,SymTab,VidIn,VidOut) :-
 	trans_goals((findall(Vars,Gen,Vals),
 		     (Vals == []
 		      ->     call(Else),fail
-		      ;	     setof:sort(Vals,SVals),
+		      ;	     sort(Vals,SVals),
 			     basics:member(Vars,SVals),call(Do),fail
 		     )
 		     ;
@@ -1488,7 +1390,7 @@ trans_goals(do_all(Gen,if_none(Do,Else)),Goal1,SymTab,VidIn,VidOut) :-
 trans_goals(do_all(Gen,Do),Goal1,SymTab,VidIn,VidOut) :-
 	!,
 	intersect_both_vars(Gen,Do,Vars),
-	trans_goals((findall(Vars,Gen,Vals),setof:sort(Vals,SVals),
+	trans_goals((findall(Vars,Gen,Vals),sort(Vals,SVals),
 		     basics:member(Vars,SVals),call(Do),
 		     fail
 		     ;
@@ -1507,7 +1409,10 @@ trans_goals(call(Goal), Goal1, SymTab, VidIn, VidOut) :-
 		trans_goals(('_$savecp'(C), TransGoal), Goal1, SymTab, VidIn, VidOut)
 	 ;	trans_goals(Goal,Goal1,SymTab,VidIn,VidOut)
 	).
-trans_goals(Term, Goal, SymTab, VidIn, VidOut) :-
+trans_goals(T, Goal, SymTab, VidIn, VidOut) :-
+	trans_goal(T, Goal, SymTab, VidIn, VidOut).
+
+trans_goal(Term, Goal, SymTab, VidIn, VidOut) :-
 	(Term = Mod:Term1,
 	 \+ (Mod = '$$var'(Id), integer(Id)),
 	 ground(Mod),
@@ -1531,7 +1436,6 @@ trans_goals(Term, Goal, SymTab, VidIn, VidOut) :-
 	),
 	trans_args(RawArgs, ArgList, SymTab, VidIn, VidOut).
 	 
-:- mode trans_head(?,?,?,+,?).
 trans_head(Term, goal(_Sym, ArgList), SymTab, VidIn, VidOut) :-
 	Term =.. [_|RawArgs],
         trans_args(RawArgs, ArgList, SymTab, VidIn, VidOut).
@@ -1632,33 +1536,30 @@ trans_arg(RawArg, structure(Sym, ArgList), SymTab, VidIn, VidOut) :-
 %%	),
 %%	is_list_of_atoms(L).
 
-prime(     401).
-prime(     809).
-prime(    1601).
-prime(    3203).
-prime(    6421).
-prime(   12809).
-prime(   25601).
-prime(   51203).
-prime(  102407).
-prime(  204803).
-prime(  409609).
-prime(  819229).
-prime( 1638431).
-prime( 3276803).
-prime( 6553621).
+prime(401).
+prime(809).
+prime(1601).
+prime(3203).
+prime(6421).
+prime(12809).
+prime(25601).
+prime(51203).
+prime(102407).
+prime(204803).
+prime(409609).
+prime(819229).
+prime(1638431).
+prime(3276803).
+prime(6553621).
 prime(13107229).
 prime(24999983).
 prime(_).  % to generate an error!
 
 %% This is a stack of file descriptors
-:- mode_on_success(parsing_file(+)).
 :- dynamic parsing_file/1.
 %% This is a stack of file name
-:- mode_on_success(filename_stack(+)).
 :- dynamic filename_stack/1.
 
-:- mode parsing_file_name(?).
 parsing_file_name(X) :-
 	(filename_stack(X) -> true
 	; X = usermod

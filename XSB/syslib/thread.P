@@ -43,7 +43,6 @@
    rather than weaving back and forth.
  */
 
-:- mode thread_create(?,?,+).
 thread_create(Goal, ThreadId , Options) :- 
 %	check_callable(Goal,thread_create/2,1),
 %	check_var(ThreadId,thread_create/2,2),
@@ -80,8 +79,8 @@ check_options_list_1([Option|Rest],GLSize,TCSize,ComplSize,PDLSize,Detached,Alia
 	;	Option @= complsize(_) -> Option = complsize(N),set_thread_create_arg(N,ComplSize,complsize), Alias = R
 	;	Option @= pdlsize(_) -> Option = pdlsize(N),set_thread_create_arg(N,PDLSize,pdlsize), Alias = R
 	;	Option @= detached(_) -> (Option = detached(Boolean),Boolean == true -> Detached = 1 ; Detached = 0),Alias = R
-	;	Option @= on_exit(_) -> Option = on_exit(Handler), Alias = R
-	;	Option @= at_exit(_) -> Option = at_exit(Handler), Alias = R	% for compatibility with SWI-Prolog and YAP
+	;	Option @= on_exit(_) -> Option = on_exit(Handler)
+	;	Option @= at_exit(_) -> Option = at_exit(Handler)	% for compatibility with SWI-Prolog and YAP
 	;	Option @= alias(_) -> Option = alias(A),check_atom(A,thread_create/3,3),Alias = [A|R]
 	; 	domain_error(thread_option,Option,thread_create/3,3,'')
 	),
@@ -100,7 +99,6 @@ set_thread_create_arg(Option, Arg, OptionName) :-
 
 /*---------------*/
 		
-:- mode thread_create(?,?).
 thread_create(Goal, ThreadId) :- 
 %	check_callable(Goal,thread_create/2,1),
 %	check_var(ThreadId,thread_create/2,2),
@@ -108,20 +106,17 @@ thread_create(Goal, ThreadId) :-
 
 /*---------------*/
 
-:- mode thread_create(?).
 thread_create(Goal) :- 
 	thread_create(Goal, _, [detached(true)]).
 
 /*---------------*/
 
-:- mode thread_exit(+).
 thread_exit(Term) :- 
 	throw(thread_exit(Term)).
 
 /* Upon user-called exit, If thread is detached and aliased, remove
    aliases.  if thread is joinable, assert an exit term; if thread is
    detached and non-aliased, no special action is necessary */
-:- mode thread_exit_handler(?).
 thread_exit_handler(ExitTerm) :- 
 	thread_request( XSB_CHECK_ALIASES_ON_EXIT,AliasedDetached,Detached,_,_,_,_,_,_),
 	(	AliasedDetached == 1 -> 
@@ -133,7 +128,6 @@ thread_exit_handler(ExitTerm) :-
 	),
 	thread_request( XSB_THREAD_EXIT,THREAD_EXITED,_, _, _,_,_,_,_).
 
-:- mode internal_thread_exit(+).
 internal_thread_exit(ExitCode) :- 
 	thread_request( XSB_CHECK_ALIASES_ON_EXIT,AliasedDetached,_,_,_,_,_,_,_),
 	(	AliasedDetached == 1 -> 
@@ -147,7 +141,6 @@ internal_thread_exit(ExitCode) :-
 
 /* Need to check errorval on return, as well as checking input state
    of exitcode */
-:- mode thread_join(+,?).
 thread_join(Input, ExitCode) :-
 %	check_var(ExitCode,thread_join/2,2),
 	(var(Input) -> 
@@ -179,13 +172,12 @@ thread_join_1(Input, Return) :-
 		retractall('_$thread_exit_ball'(Id,_))
 	).
 
-:- mode thread_join(+).
 thread_join(ThreadId) :-
 	thread_join(ThreadId, _).
 
 
 /*---------------*/
-:- mode thread_self(?).
+
 thread_self(ThreadId)		:- 
 %	check_var(ThreadId,thread_self/1,1),
 	thread_request( XSB_THREAD_SELF, Tid, _, _, _, _, _, _ ,_),
@@ -196,7 +188,6 @@ thread_self(ThreadId)		:-
 
 /*---------------*/
 
-:- mode thread_detach(+).
 thread_detach(ThreadAlias) :-
 	(var(ThreadAlias) -> 
 		instantiation_error(thread_detach/1,1,ground)
@@ -221,7 +212,6 @@ thread_detach_1(ThreadId) :-
 
 /*---------------*/
 
-:- mode thread_property(?,?).
 thread_property(Input, Property) :- 
 	(var(Input) -> 
 		var_thread_property(Input,Property)
@@ -276,7 +266,6 @@ thread_property_1(Tid, alias(Alias)) :-
 :- import abort_on_thread_cancel/0 from error_handler.
 
 % The convention is that the main thread is always 0
-:- mode thread_cancel(+).
 thread_cancel(Input) :-
 	(var(Input) -> 
 		instantiation_error(thread_cancel/1,1,ground)
@@ -289,7 +278,6 @@ thread_cancel(Input) :-
 		  ; domain_error(thread_or_alias,Input,thread_cancel/1,1,'')
 		  ) ) ).
 
-:- mode thread_signal(+,?).
 thread_signal(Input,Message) :-
 	(var(Input) -> 
 		instantiation_error(thread_signal/2,1,ground)
@@ -340,14 +328,12 @@ abolish_all_shared_tables :-
 set_xsb_ready :- 
 	thread_request( SET_XSB_READY, _,_,_, _, _, _, _, _).
 
-:- mode usleep(+).
-usleep(Milliseconds) :-
-	thread_request( XSB_USLEEP, Milliseconds, _, _, _, _, _, _, _).
+usleep(Miliseconds) :-
+	thread_request( XSB_USLEEP, Miliseconds, _, _, _, _, _, _, _).
 
-:- mode thread_sleep(+).
 thread_sleep(Seconds) :-
-	Milliseconds is round(Seconds*1000), 
-	thread_request( XSB_USLEEP, Milliseconds, _, _, _, _, _, _, _).
+	Miliseconds is round(Seconds*1000), 
+	thread_request( XSB_USLEEP, Miliseconds, _, _, _, _, _, _, _).
 
 
 /* ==================================================================  */
@@ -376,7 +362,6 @@ threads :-
 /* Routines used internally.                                           */
 
 /* called by xsb_thread_run() in thread_xsb.c */
-:- export '_$thread_run'/1.  % called externally from C.
 '_$thread_run'( Goal ) :-
 	(	catch( thread_run0(Goal), Ball, 
 	                   (handle_thread_error(Ball),
@@ -405,8 +390,7 @@ handle_thread_error(thread_exit(Term)) :-
 	thread_exit_handler(Term),   
 	!.				% cut should be unnecessary, as thread should have exited by here 
 handle_thread_error(Ball) :- 
-    check_ground(Ball,'handle_thread_error/1',1),
-    default_error_handler(Ball).
+	default_error_handler(Ball).
 
 /* This routine is called when a thread is created with the
    on_exit(Handler) option.  Use this, rather than call_cleanup/2
@@ -414,7 +398,6 @@ handle_thread_error(Ball) :-
    even when choicepoints have been left around.  
 */
 
-:- export thread_call/2.  %dsw seems reasonable? even though now only generated internally...
 thread_call(Goal, Handler) :-
 %	writeln(thread_call(Goal, Handler)),
 	catch(Goal,Ball,thread_call_handler(Ball,Handler)),
@@ -441,14 +424,12 @@ assert_status_ball(thread_exit(Term)) :-
 assert_status_ball(error(thread_cancel,Msg,BT)) :- !,
 %	writeln(thread_cancel_reached),
 	thread_request( XSB_SET_EXIT_STATUS, THREAD_CANCELLED, _, _, _, _, _, _ ,_),
-	check_ground(BT,'assert_status_ball/1','1.3'),
 	get_backtrace(BT,ReadBT),
 	thread_self(Id),
 	asserta('_$thread_exit_ball'(Id,cancelled(error(thread_cancel,Msg,ReadBT)))).
 assert_status_ball(error(Error,Msg,BT)) :-
 %	writeln(thread_error_reached),
 	thread_request( XSB_SET_EXIT_STATUS, THREAD_EXCEPTION, _, _, _, _, _, _ ,_),
-	check_ground(BT,'assert_status_ball/1','1.3'),
 	get_backtrace(BT,ReadBT),thread_self(Id),
 	asserta('_$thread_exit_ball'(Id,exception(error(Error,Msg,ReadBT)))).
 assert_status_ball(Ball) :-
@@ -471,30 +452,21 @@ init_multi_threading :-
 xsb_show_mutexes :- 
 	thread_request( XSB_SHOW_MUTEXES, _,_,_, _,_,_,_,_).
 
-:- mode xsb_sys_mutex_lock(+).
 xsb_sys_mutex_lock(Id) :- 
 	thread_request( XSB_SYS_MUTEX_LOCK, Id, _, _, _, _, _, _ ,_).
-
-:- mode xsb_sys_mutex_unlock(+).
 xsb_sys_mutex_unlock(Id) :- 
 	thread_request( XSB_SYS_MUTEX_UNLOCK, Id, _, _, _, _, _, _ ,_).
 
 /* ==================================================================  */
 /* Obsolescent, but may still be used in parts of the system.  */
-:- mode xsb_thread_create(?,?,+).
 xsb_thread_create(One,Two,Three) :- thread_create(One,Two,Three).
 xsb_thread_create(One,Two) :- thread_create(One,Two).
 
-:- mode xsb_thread_cancel(+).
 xsb_thread_cancel(Id) :- thread_cancel(Id).
 
-:- mode xsb_thread_detach(+).
 xsb_thread_detach(ThreadId) :- thread_detach(ThreadId).
 
-:- mode xsb_thread_join(+,?).
 xsb_thread_join(Input, ExitCode) :- thread_join(Input, ExitCode).
-
-:- mode xsb_thread_join(+).
 xsb_thread_join(Input) :- thread_join(Input).
 
 xsb_thread_property(Id, Property) :- thread_property(Id, Property).

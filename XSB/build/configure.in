@@ -136,9 +136,7 @@ AC_ARG_WITH(pcre-libdir,
 AC_ARG_WITH(pcre-incdir,
 [  --with-pcre-incdir=DIR       the location of the include files for the PCRE library is at DIR])
 AC_ARG_WITH(dbdrivers,
-[  --with-dbdrivers             configure with the dbdrivers package])
-AC_ARG_WITH(no-dbdrivers,
-[  --with-no-dbdrivers          configure without the dbdrivers package])
+[  --with-dbdrivers             configure dbdrivers package])
 AC_ARG_WITH(odbc-libdir,
 [  --with-odbc-libdir=DIR       provide info on where the ODBC libraries are])
 AC_ARG_WITH(odbc-incdir,
@@ -164,14 +162,10 @@ AC_ARG_WITH(smodels,
 AC_ARG_WITH(itkwish,
 [  --with-itkwish=DIR		DIR where the itkwish shell is located])
 
-AC_ARG_WITH(stdcall,
-[  --with-stdcall		use the __stdcall call convention for DLLs in Windows
-                                Affects Win32 only. Ignored in Win64.])
-
 
 AC_ARG_ENABLE(no-cygwin,
 [  --enable-no-cygwin           Compile with the gss option -mno-cygwin (default: disabled)
-                                Cygwins don't support this flag since many years ago],
+                                The latest Cygwins don't support this flag],
 				enable_no_cygwin=yes,
                             	enable_no_cygwin=no)
 AC_ARG_ENABLE(general-tagging,
@@ -219,7 +213,7 @@ AC_ARG_ENABLE(profiling,
 AC_ARG_ENABLE(electric-fence,
 [  --enable-electric-fence      link with the electric fence malloc debugger (currently unsupported)])
 AC_ARG_WITH(pita,
-[  --with-pita       compile XSB with PITA])
+[  --with-pita=DIR       compile XSB with PITA, with CUDD in directory DIR])
 
 # TLS As far as I know, autoconf version 2.59 or so does check various
 # command line values, but if the values are of type --enable-*,
@@ -267,15 +261,11 @@ do
 		--with-gcc | --with-cc* | --with-cilk | --with-acc | \
 		--with-bits64 | --with-bits32 | --with-aout | \
                 --with-cflags* | \
-		--with-optimization* | --with-config-tag* | \
-                --with-site-prefix* | --with-includes* | \
-		--with-static-libraries* | --with-dynamic-libraries* | \
-                --with-xpath* | \
+		--with-optimization* | --with-config-tag* | --with-site-prefix* | --with-includes* | \
+		--with-static-libraries* | --with-dynamic-libraries* | --with-xpath* | \
 		--with-curl* | --with-pcre* | --with-mysql* | \
-		--with-dbdrivers | --with-no-dbdrivers | --with-oracle | --with-odbc* | \
-                --with-iodbc* | \
-                --with-stdcall | \
-		--with-smodels* | --with-itkwish* | --with-pita )
+		--with-dbdrivers | --with-oracle | --with-odbc* | --with-iodbc* | \
+		--with-smodels* | --with-itkwish* | --with-pita* )
 		    ;;
 	    *)
                     echo "configure: error: unrecognized option: $1"
@@ -324,16 +314,6 @@ if test "$bits64" = "yes" &&  test "$bits32" = "yes"; then
 fi
 
 # ---------------------- end testing inconsistencies  ---------------------- 
-
-chmod +x makexsb
-chmod +x MSVC.sh
-chmod +x config.guess
-chmod +x config.sub
-chmod +x touch.sh
-chmod +x clean_pkgs.sh
-chmod +x pkg_config.sh
-chmod +x ../syslib/CompileChangedFiles.sh
-
 
 # make sure new files are readable
 umask 022
@@ -913,37 +893,21 @@ if test -n "$with_includes"; then
     echo "    Appending directories to the C include path:"
     for arg in $with_includes; do
         dnl strip trailing slashes
-        arg=`echo "-I\"${arg}\"" | sed 's,\([[^/]]\)/*$,\1,'`
+        arg=`echo "-I${arg}" | sed 's,\([[^/]]\)/*$,\1,'`
         c_site_includes="${c_site_includes} $arg"
         echo "		$arg"
     done
 fi
 
 
-dnl --with-pita
+dnl --with-pita=DIR
 if test -n "$with_pita" && test -d "$topdir/packages/pita"; then
     cd "$topdir/packages/pita"
     echo "***Configuring pita"
-    echo "***Configuring CUDD"
-    cd "cudd-3.0.0" && autoreconf && ./configure CFLAGS="-Wall -Wextra -g -O3 -fPIC" 
-    echo "***Compiling CUDD"
-    make
-    cd ..
-    echo "***End configuring CUDD"
     echo `pwd`
     chmod 700 ./configure
-    ./configure 
+    ./configure  --with-pita="$with_pita"  > /dev/null
     cd $build_dir
-fi
-
-dnl If --with-no-dbdrivers is specified then zap with_dbdrivers
-dnl (even if --with-dbdrivers is given explicitly). Else enable dbdrivers.
-if test -n "${with_no_dbdrivers}"; then
-    with_dbdrivers=
-elif test "${with_odbc+set}" = "set" -a "${host_os}" = "cygwin"; then
-    with_dbdrivers=
-else
-    with_dbdrivers=yes
 fi
 
 if test -n "${with_dbdrivers}" && test -d "$topdir/packages/dbdrivers"; then
@@ -1085,6 +1049,10 @@ AC_CHECK_HEADERS(sys/time.h)
 dnl defines TIME_WITH_SYS_TIME if both allowed
 AC_HEADER_TIME
 
+AC_CHECK_HEADERS(sys/resource.h, , have_errors=yes)
+test "${have_errors}" = "yes" &&
+    AC_MSG_ERROR([sys/resource.h is missing on your system])
+
 AC_CHECK_FUNCS(malloc, have_malloc=yes,have_malloc=no)
 test "${have_malloc}" = "no" &&
     AC_MSG_ERROR([malloc() is missing on your system])
@@ -1133,12 +1101,6 @@ fi
 if test "${with_oracle+set}" = "set" ; then
     AC_DEFINE(ORACLE)
     with_oracle=yes
-fi
-
-call_scheme="__cdecl"
-if test "${with_stdcall+set}" = "set" ; then
-    call_scheme="__stdcall"
-    AC_DEFINE(XSB_STDCALL)
 fi
 
 #if test "${with_oracle+set}" = "set" ; then
@@ -1365,9 +1327,6 @@ DYNMOD_SHAREDLIB_EXTENSION=so
 # do not work right with symlinks. So, for CYGWIN we use cp -pf
 config_ln_command="ln -s "
 
-# Normally we also run makexsb dynmodule - except for Cygwin
-force_dynmodule="yes"
-
 # Set OS-specific variables for XSB
 case "$canonical" in
     *alpha*)    AC_DEFINE(FOREIGN_ELF)
@@ -1509,7 +1468,6 @@ case "$canonical" in
                 LDFLAGS="${LDFLAGS} -N"
         ;;
     *-cygwin*)  AC_DEFINE(CYGWIN)
-                AC_DEFINE(FOREIGN_ELF)
                 real_host_os=cygwin
 
                 builtins_opt_level=-${with_optimization-"O3 -fno-strict-aliasing"}
@@ -1534,25 +1492,8 @@ case "$canonical" in
                 fi
 
                 config_ln_command="cp -fp "
-                force_dynmodule="no"
-        ;;
-
-     *-mingw*)  AC_DEFINE(MINGW)
-                real_host_os=mingw
-
-                dnl MK: dunno if the 2 lines below are correct-copied from Cygwin
-                builtins_opt_level=-${with_optimization-"O3 -fno-strict-aliasing"}
-                loader_opt_level=-${with_optimization-"O3 -fno-strict-aliasing"}
-
-                config_ln_command="cp -fp "
         ;;
 esac
-
-if test "${real_host_os}" != "mingw" ; then
-    AC_CHECK_HEADERS(sys/resource.h, , have_errors=yes)
-    test "${have_errors}" = "yes" &&
-        AC_MSG_ERROR([sys/resource.h is missing on your system])
-fi
 
 if test "${general_tagging}" = "yes" ; then
    AC_DEFINE(GENERAL_TAGGING)
@@ -1591,7 +1532,7 @@ if test "${do_debugging}" = "yes" ; then
     fi
 fi
 
-if test "${CC}" = "gcc" -a "${host_os}" != "windows" -a "${host_os}" != "cygwin" ; then
+if test "${CC}" = "gcc" -a "${host_os}" != "windows"  ; then
     dnl gcc is smarter when creating dynamic libraries in Unix
     LD=gcc
     XSBMOD_LDFLAGS="-nodefaultlibs -nostartfiles ${XSBMOD_LDFLAGS}"
@@ -1635,10 +1576,10 @@ if test "${with_odbc}" = yes ; then
 		    XSBMOD_LDFLAGS="$(iodbc-config --libs) ${XSBMOD_LDFLAGS}" || \
 			XSBMOD_LDFLAGS="-L/usr/lib -liodbc ${XSBMOD_LDFLAGS}"
                 else
-		    ODBC_CFLAGS="$(odbc_config --cflags 2> /dev/null)"
-                    LDFLAGS="$(odbc_config --libs 2> /dev/null) ${LDFLAGS}" || \
+		    ODBC_CFLAGS="$(odbc_config --cflags)"
+                    LDFLAGS="$(odbc_config --libs) ${LDFLAGS}" || \
 			LDFLAGS="-L/usr/lib -lodbc ${LDFLAGS}"
-                    XSBMOD_LDFLAGS="$(odbc_config --libs 2> /dev/null) ${XSBMOD_LDFLAGS}" || \
+                    XSBMOD_LDFLAGS="$(odbc_config --libs) ${XSBMOD_LDFLAGS}" || \
 			XSBMOD_LDFLAGS="-L/usr/lib -lodbc ${XSBMOD_LDFLAGS}"
                 fi
     esac
@@ -1662,8 +1603,8 @@ else
     if test  "$os_type" = "windows"; then
         XASPLIBNAME=xasppkg.dll
         XASPDEFFILE=xasppkg.def
-        smoCFLAGS="-I\"${arch_config_prefix}\" -I\"${with_smodels}\""
-        smoLDFLAGS="-L\"${arch_config_prefix}/bin\" -L\"${with_smodels}\""
+        smoCFLAGS="-I${arch_config_prefix} -I${with_smodels}"
+        smoLDFLAGS="-L${arch_config_prefix}/bin -L${with_smodels}"
         smoLIB="-lsmodels -lxsb"
         if test "${enable_no_cygwin}" = "yes"; then
             CXX="${CXX} -mno-cygwin"
@@ -1671,7 +1612,7 @@ else
     else
         XASPLIBNAME=xasppkg.so
         XASPDEFFILE=
-        smoCFLAGS="-I\"${arch_config_prefix}\" -I\"${with_smodels}\""
+        smoCFLAGS="-I${arch_config_prefix} -I${with_smodels}"
         smoLDFLAGS="-L${arch_config_prefix}/bin"
         smoLIB="${with_smodels}/.libs/libsmodels.a"
     fi
@@ -1730,9 +1671,9 @@ else
     java_compiler="$JAVA_HOME/bin/javac"
 fi
 
-java_platform_specific_hdr_path="`ls "${java_path}/"*/jni_md.h 2> /dev/null`"
+java_platform_specific_hdr_path="`ls "${java_path}/"*/jni_md.h`"
 java_platform_specific_hdr_path="`dirname "${java_platform_specific_hdr_path}"`"
-java_platform_specific_hdr_path_alt="`ls "${java_path}/"jni_md.h 2> /dev/null`"
+java_platform_specific_hdr_path_alt="`ls "${java_path}/"jni_md.h`"
 java_platform_specific_hdr_path_alt="`dirname "${java_platform_specific_hdr_path_alt}"`"
 
 if test -f "$java_path/jni.h" -a -f "$java_platform_specific_hdr_path/jni_md.h" ; then
@@ -1769,11 +1710,11 @@ if test "$interprolog_native_engine" = "yes"; then
     INTERPROLOGOBJ="interprolog_callback.o"
     
     if test -n "$JAVA_HEADER_PATH" ; then
-	loaderCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${loaderCFLAGS}"
-	builtinsCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${builtinsCFLAGS}"
-	emuloopCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${emuloopCFLAGS}"
-	trutilsCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${trutilsCFLAGS}"
-	CFLAGS=" -I\"${JAVA_HEADER_PATH}\" $CFLAGS"
+	loaderCFLAGS=" -I${JAVA_HEADER_PATH} ${loaderCFLAGS}"
+	builtinsCFLAGS=" -I${JAVA_HEADER_PATH} ${builtinsCFLAGS}"
+	emuloopCFLAGS=" -I${JAVA_HEADER_PATH} ${emuloopCFLAGS}"
+	trutilsCFLAGS=" -I${JAVA_HEADER_PATH} ${trutilsCFLAGS}"
+	CFLAGS=" -I${JAVA_HEADER_PATH} $CFLAGS"
     fi
 fi
 
@@ -1810,7 +1751,6 @@ AC_SUBST(full_config_name)
 AC_SUBST(topdir)
 AC_SUBST(prefix)
 AC_SUBST(mt_mode)
-AC_SUBST(force_dynmodule)
 
 AC_SUBST(CROSS_SIMULATOR)
 AC_SUBST(LD)
@@ -1871,8 +1811,6 @@ AC_SUBST(xsb_release_date)
 AC_SUBST(xsb_full_version_name)
 AC_SUBST(engine_mode)
 AC_SUBST(word_size)
-# call_scheme is ignored in Win 64 and non-windoze systems
-AC_SUBST(call_scheme)
 
 AC_SUBST(ODBCSRC)
 AC_SUBST(ODBCOBJ)

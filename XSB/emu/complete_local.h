@@ -48,7 +48,7 @@ void makeConsumerFromGenerator(CTXTdeclc VariantSF producer_sf)
     CPtr profile_CSF = cs_ptr; \
     VariantSF prof_compl_subg; \
 \
-    leader_level = compl_leader_level(profile_CSF); \
+    leader_level = compl_level(profile_CSF); \
 \
     /* check from leader up to the youngest subgoal */ \
     while (profile_CSF >= openreg) { \
@@ -270,17 +270,6 @@ static inline CPtr ProcessSuspensionFrames(CTXTdeclc CPtr cc_tbreg_in,
   return cc_tbreg;
 }
 
-static inline int check_SCC_for_compl_sems(CTXTdeclc CPtr cs_ptr) {
-  CPtr ComplStkFrame = cs_ptr;
-
-  while (ComplStkFrame >= openreg) {
-    if (TIF_AlternateSemantics(subg_tif_ptr(compl_subgoal_ptr(ComplStkFrame))))
-      return TRUE;
-    else ComplStkFrame = next_compl_frame(ComplStkFrame);
-  }
-  return FALSE;
-}
-
 static inline CPtr ProcessCSReturns(CTXTdeclc CPtr cs_ptr) {
   CPtr ComplStkFrame = cs_ptr;
   VariantSF compl_subg;
@@ -435,7 +424,7 @@ static inline void CompleteSimplifyAndReclaim(CTXTdeclc CPtr cs_ptr)
     if (flags[CTRACE_CALLS] && !subg_forest_log_off(compl_subg))  { 
       sprint_subgoal(CTXTc forest_log_buffer_1,0,compl_subg);     
       fprintf(fview_ptr,"cmp(%s,%d,%d).\n",forest_log_buffer_1->fl_buffer,
-	      compl_leader_level(ComplStkFrame),ctrace_ctr++);
+	      compl_level(ComplStkFrame),ctrace_ctr++);
       //      file_print_tables("CompleteSimplifyAndReclaim",ctrace_ctr);
   }
 
@@ -532,7 +521,6 @@ static inline void SetupReturnFromLeader(CTXTdeclc CPtr orig_breg, CPtr cs_ptr,
 
   /* reclaim stacks, including leader */
   openreg = prev_compl_frame(cs_ptr);
-  reset_level_num(openreg);
   reclaim_stacks(orig_breg);
   answer_template = tcp_template(breg);
   tmp = int_val(cell(answer_template));

@@ -2236,7 +2236,7 @@ fi
 if test -z "$with_mysqlembedded_incdir" ; then
    if test -d `mysql_config --variable=pkgincludedir 2> /dev/null` ; then
        incdir="`mysql_config --variable=pkgincludedir 2> /dev/null`"
-       mysqld_includes=`mysql_config --include 2> /dev/null`
+       mysqld_includes=`mysql_config --include`
    elif test -d /usr/include/mysql ; then
        incdir="/usr/include/mysql"
        mysqld_includes="-I/usr/include/mysql"

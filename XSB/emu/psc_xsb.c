@@ -417,10 +417,9 @@ Pair insert_module(int type, char *name)
  *    YES => return a ptr to its PSC-PAIR record.
  *     NO => replace the old PSC record with 'psc'; return a ptr to the
  *           PSC-PAIR record.
- *  TES: now outputting the current module in the message.
  */
 
-Pair link_sym(CTXTdeclc Psc psc, Psc curmod_psc)
+Pair link_sym(CTXTdeclc Psc psc, Psc mod_psc)
 {
     Pair *search_ptr, found_pair;
     char *name;
@@ -429,37 +428,35 @@ Pair link_sym(CTXTdeclc Psc psc, Psc curmod_psc)
     SYS_MUTEX_LOCK_NOERROR( MUTEX_SYMBOL ) ;
     name = get_name(psc);
     arity = get_arity(psc);
-    if ( (global_flag = is_globalmod(curmod_psc)) ) {
+    if ( (global_flag = is_globalmod(mod_psc)) ) {
       search_ptr = (Pair *)symbol_table.table +
 	           hash(name, arity, symbol_table.size);
     } else
-      search_ptr = (Pair *)&get_data(curmod_psc);
+      search_ptr = (Pair *)&get_data(mod_psc);
     if ((found_pair = search_psc_in_module(arity, name, search_ptr))) {
       if (pair_psc(found_pair) != psc) {
-	/*  Invalidate the old name!! It is no longer accessible
+	/*
+	 *  Invalidate the old name!! It is no longer accessible
 	 *  through the global chain.
 	 */
 	umtype = get_type(pair_psc(found_pair));
 	mtype = get_type(psc);
 	if ( umtype != T_ORDI && mtype != T_ORDI ) {
-	  char message[450], modmsg[200], curmodmsg[200];
-	  if (curmod_psc == 0) snprintf(curmodmsg,200,"%s","usermod");
-	  else if (isstring(curmod_psc)) snprintf(curmodmsg,200,"usermod from file: %s",string_val(curmod_psc));
-	  else snprintf(curmodmsg,200,"module: %s",get_name(curmod_psc));
+	  char message[220], modmsg[200];
 	  if (umtype == T_DYNA || umtype == T_PRED) {
 	    Psc mod_psc;
 	    mod_psc = (Psc) get_data(pair_psc(found_pair));
 	    if (mod_psc == 0) snprintf(modmsg,200,"%s","usermod");
 	    else if (isstring(mod_psc)) snprintf(modmsg,200,"usermod from file: %s",string_val(mod_psc));
 	    else snprintf(modmsg,200,"module: %s",get_name(mod_psc));
-	    snprintf(message,450,
-		     "%s/%d (%s) had been defined in %s; those clauses lost in the context of %s.",
-		     name, arity, ((umtype==T_PRED)?"static predicate":"dynamic predicate"),modmsg,curmodmsg);
-		     //		    "%s/%d (umtype %d) had been defined in %s; those clauses lost.",
+	    snprintf(message,220,
+		    "%s/%d (umtype %d) had been defined in %s; those clauses lost.",
+		     name, arity, umtype, 
+		     modmsg);
 	  } else 
-	    snprintf(message,450,
-		    "%s/%d (%s) had been defined in another module. Those clauses lost in the context of %s.",
-		    name, arity,  ((umtype==T_PRED)?"static predicate":"dynamic predicate"),curmodmsg);
+	    snprintf(message,220,
+		    "%s/%d (umtype %d) had been defined in another module. Those clauses lost!",
+		    name, arity, umtype);
 	  xsb_warn(CTXTc message);
 	} else {
 	  if (umtype != T_ORDI) {

@@ -24,15 +24,13 @@
 */
 
 
-:- mode term_comp_op(?).
-term_comp_op(==).
-term_comp_op(\==).
-term_comp_op(@<).
-term_comp_op(@=<).
-term_comp_op(@>).
-term_comp_op(@>=).
+term_comp_op('==').
+term_comp_op('\==').
+term_comp_op('@<').
+term_comp_op('@=<').
+term_comp_op('@>').
+term_comp_op('@>=').
 
-:- mode term_comp_tab(+,?,?,?).
 term_comp_tab(==,R,Label,jumpnz(R,Label)).
 term_comp_tab(\==,R,Label,jumpz(R,Label)).
 term_comp_tab(@<,R,Label,jumpge(R,Label)).

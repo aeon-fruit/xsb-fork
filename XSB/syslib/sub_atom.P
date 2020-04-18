@@ -26,7 +26,6 @@
 
 :- compiler_options([sysmod,optimize]).
 
-:- mode sub_atom(+,?,?,?,?).
 sub_atom(At, Bef, Size, After, SubAt) :-
 	atom(At), !,
 	atom_codes(At, Atl),
@@ -51,7 +50,7 @@ sub_atom(At, _Bef, _Size, _After, _SubAt) :-
 
 % if SubAt is bound, the rest is deterministic.
 '$sub_atom3'(Size, After, SubAt, Atl, _ErrorTerm) :-
-	atom(SubAt), !,
+	nonvar(SubAt), !,
 	'$sub_atom_needs_atom'(SubAt,5),
 	'$sub_atom_needs_int'(Size,3),
 	'$sub_atom_needs_int'(After,4),
@@ -84,8 +83,7 @@ sub_atom(At, _Bef, _Size, _After, _SubAt) :-
 % ok: in the best case we just try to find SubAt in  the original atom.
 '$sub_atombv'(Bef, Size, After, SubAt, Atl, _ErrorTerm) :-
 %	check_nonneg_integer(Size,sub_atom/5,3),
-%	nonvar(SubAt), !,
-	atom(SubAt), !,
+	nonvar(SubAt), !,
 	'$sub_atom_needs_atom'(SubAt, 5),
 	atom_codes(SubAt,SubAts),
 	'$sub_atom_search'(SubAts, Atl, 0, Bef, AfterS),

@@ -651,16 +651,13 @@ typedef struct outedge{
 	callnodeptr callnode;
 }OUTEDGE;
 
-/* TES:
-   goal --          For tabled calls, this is a pointer to the SF; for leaves a pointer to the subgoal leaf; 
-                        null for dynamics
+/* tls: this is a callnodeptr;
+   goal --          For tabled calls, this is a pointer to the SF; null for dynamics
    no_of_answers -- Used as estimate of whether the answers in the subgoal have changed. 
    deleted --       This callnodeptr refers to an affected call that is being/has been updated.
                     used for cycles in dfs_outedges.
    changed --       This call has updated its answers.
    prev_call --     When reevaluating an affected call, used to compare this to prev.
-
-   There are two ways to get to the leaf ptr for leaf nodes: through the goal and thrugh the leaf_ptr
 */
 
 typedef struct callnodetag{
@@ -677,9 +674,7 @@ typedef struct callnodetag{
     ALNptr aln; 
     BTNptr leaf_ptr;
   };
-  int id;
-  unsigned int idg_dyn_leaf:1,
-  unused:30;
+  int id; 
   //  unsigned int no_of_undefs;
 }CALL_NODE;
 
@@ -688,9 +683,7 @@ typedef struct callnodetag{
 #define callnode_tif_ptr(Ptr) ( ((callnodeptr)(Ptr)) -> tif_ptr)
 #define callnode_leaf_ptr(Ptr) ( ((callnodeptr)(Ptr)) -> leaf_ptr)
 
-//#define is_idg_leaf(Ptr)  (callnode_sf(Ptr) == 0)
-#define is_idg_leaf(Ptr)  (((callnodeptr)(Ptr))->idg_dyn_leaf == 1)
-#define is_incr_trie(Ptr)  (((callnodeptr)(Ptr))->is_incremental_trie == 1)
+#define is_fact_in_callgraph(Ptr)  (callnode_sf(Ptr) == 0)
 
 typedef struct key{
 	prolog_int goal;

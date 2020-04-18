@@ -23,8 +23,6 @@
 ** 
 */
 
-#define _POSIX_C_SOURCE 200809L
-
 #include "xsb_config.h"
 
 #include <stdio.h>
@@ -70,8 +68,6 @@
 #include "flags_xsb.h"
 #include "thread_defs_xsb.h"
 #include "thread_xsb.h"
-#include "deref.h"
-#include "ptoc_tag_xsb_i.h"
 
 extern void get_statistics(CTXTdecl);
 extern size_t getMemorySize();
@@ -157,9 +153,7 @@ int sys_syscall(CTXTdeclc int callno)
 #endif
     break;
   }
-  case SYS_unlink:
-    result = unlink(ptoc_longstring(CTXTc 3));
-    break;
+  case SYS_unlink: result = unlink(ptoc_longstring(CTXTc 3)); break;
   case SYS_chdir : result = chdir(ptoc_longstring(CTXTc 3)); break;
   case SYS_access: {
     switch(*ptoc_string(CTXTc 4)) {
@@ -184,27 +178,9 @@ int sys_syscall(CTXTdeclc int callno)
     result = stat(ptoc_longstring(CTXTc 3), &stat_buff);
     break;
   }
-  case SYS_rename: {
-    char soufile[MAXFILENAME+1];
-    char tarfile[MAXFILENAME+1];
-    strncpy(soufile,ptoc_longstring(CTXTc 3),MAXFILENAME);
-    strncpy(tarfile,ptoc_longstring(CTXTc 4),MAXFILENAME);
-#ifdef WIN_NT
-    /* rename on windows returns error if target file exists, so delete first if nec */
-    /* dont delete is renaming to self... */
-    if (access(tarfile,W_OK_XSB) != -1) {
-      char fsoufile[MAXFILENAME+1];
-      char ftarfile[MAXFILENAME+1];
-      char *dummy;
-      dummy = _fullpath(fsoufile,soufile,MAXFILENAME);
-      dummy = _fullpath(ftarfile,tarfile,MAXFILENAME);
-      if (strcmp(fsoufile,ftarfile) != 0)
-	unlink(tarfile);
-    }
-#endif    
-    result = rename(soufile,tarfile);
+  case SYS_rename: 
+    result = rename(ptoc_longstring(CTXTc 3), ptoc_longstring(CTXTc 4)); 
     break;
-  }
   case SYS_cwd: {
     char current_dir[MAX_CMD_LEN];
     /* returns 0, if != NULL, 1 otherwise */
@@ -226,12 +202,7 @@ int sys_syscall(CTXTdeclc int callno)
     break;
   }
   case SYS_create: {
-    // TES: need to use different macro forms with clang when updating the POSIX vzaersion
-#if defined(DARWIN)
-    result = open(ptoc_longstring(CTXTc 3),O_CREAT|O_EXCL,S_IRUSR|S_IWUSR);
-#else
     result = open(ptoc_longstring(CTXTc 3),O_CREAT|O_EXCL,S_IREAD|S_IWRITE);
-#endif
     if (result >= 0) close(result);
     break;
   }
@@ -278,38 +249,9 @@ int sys_syscall(CTXTdeclc int callno)
     ctop_int(CTXTc 4,(Integer)(time_epoch.millitm));
     break;
   }
-  case SYS_epoch_nsecs: {
-#ifdef WIN_NT
-    /*
-    // use millisecs*1000000 in Windows, as clock_gettime unimplemented there
-    static struct timeb time_epoch;
-    ftime(&time_epoch);
-    ctop_int(CTXTc 3,(Integer)(time_epoch.time));
-    // convert milisec to nanosec
-    ctop_int(CTXTc 4,(Integer)(time_epoch.millitm)*1000000);
-    */
-    static struct timespec time_epoch;
-    timespec_get(&time_epoch, TIME_UTC);
-    ctop_int(CTXTc 3,(Integer)(time_epoch.tv_sec));
-    ctop_int(CTXTc 4,(Integer)(time_epoch.tv_nsec));
-#else
-    static struct timespec time_epoch;
-    clock_gettime(CLOCK_REALTIME, &time_epoch);
-    ctop_int(CTXTc 3,(Integer)(time_epoch.tv_sec));
-    ctop_int(CTXTc 4,(Integer)(time_epoch.tv_nsec));
-#endif
-    break;
-  }
   case SYS_main_memory_size: {
     size_t memory_size = getMemorySize();
     ctop_int(CTXTc 3,(UInteger)memory_size);
-    break;
-  }
-  case SYS_gethostname: {
-    char hostname[1024];
-    result = gethostname(hostname,1024);
-    if (result) hostname[0]='\0'; /* if error, return empty atom */
-    ctop_string(CTXTc 3,hostname);
     break;
   }
   default: xsb_abort("[SYS_SYSCALL] Unknown system call number, %d", callno);
@@ -342,72 +284,12 @@ xsbBool sys_system(CTXTdeclc int callno)
     sleep(iso_ptoc_int_arg(CTXTc 2,"sleep/1",1));
 #endif
     return TRUE;
-  case SLEEP_FOR_MILLISECS:
-    {
-#ifdef WIN_NT
-      int milliseconds = (int)iso_ptoc_int_arg(CTXTc 2,"sleep_ms/1",1);
-      Sleep(milliseconds);
-#else
-      int milliseconds = iso_ptoc_int_arg(CTXTc 2,"sleep_ms/1",1);
-      struct timespec ts;
-      ts.tv_sec = milliseconds / 1000;
-      ts.tv_nsec = (milliseconds % 1000) * 1000000;
-      nanosleep(&ts, NULL);
-#endif
-      return TRUE;
-    }
-
-    /*
   case GET_TMP_FILENAME:
     ctop_string(CTXTc 2,tempnam(NULL,NULL));
     return TRUE;
-    */
-#ifdef WIN_NT
-  case GET_TMP_FILENAME:
-    ctop_string(CTXTc 2,tempnam(NULL,NULL));
-    return TRUE;
-    /*
-    // This one is suitable for GET_TMP_FILE kind of builtin - one that
-    // actually creates the tempfile.
-    // Interprolog used to have trouble with this version because it used to
-    // assume that the actual temp file is not created by the GET_TMP_FILENAME
-    // function. But now it seems to be ok with it.
-    {
-      char tempdir[MAXFILENAME+1];
-      char tempfile[MAXFILENAME+1];
-      int ret;
-      ret = GetTempPath(MAXFILENAME,tempdir);
-      if (ret > MAXFILENAME || (ret == 0))
-	xsb_abort(CTXTc "[GET_TMP_FILENAME] Unable to get temporary filename");
-      ret = GetTempFileName(tempdir,"xsb",0,tempfile);
-      if (ret == 0)
-	xsb_abort(CTXTc "[GET_TMP_FILENAME] Unable to get temporary filename");
-      ctop_string(CTXTc 2,tempfile);
-      return TRUE;
-    }
-    */
-#else
-  case GET_TMP_FILENAME:
-    {
-      char s[] = P_tmpdir "/xsbXXXXXX";
-      int fd = mkstemp(s);
-      if (fd != -1 && close(fd) == 0) {
-        // unlink: for compatibility with tempnam()
-        // Interprolog used to have trouble with this version because it used to
-        // assume that the actual temp file is not created by GET_TMP_FILENAME.
-        // But now it seems to be ok with it.
-        unlink(s);
-	ctop_string(CTXTc 2,s);
-	return TRUE;
-      } else {
-	xsb_abort("[GET_TMP_FILENAME] Unable to get temporary filename");
-      }
-    }
-#endif
   case IS_PLAIN_FILE:
   case IS_DIRECTORY:
   case STAT_FILE_TIME:
-  case STAT_FILE_TIME_NANOSECS:
   case STAT_FILE_SIZE:
     return file_stat(CTXTc callno, ptoc_longstring(CTXTc 2));
   case EXEC: {
@@ -417,7 +299,7 @@ xsbBool sys_system(CTXTdeclc int callno)
     prolog_term cmdspec_term;
     int index = 0;
     
-    cmdspec_term = ptoc_tag(CTXTc 2);
+    cmdspec_term = reg_term(CTXTc 2);
     if (islist(cmdspec_term)) {
       prolog_term temp, head;
       char *string_head=NULL;
@@ -483,7 +365,7 @@ xsbBool sys_system(CTXTdeclc int callno)
     else
       callname = "shell/[1,2,5]";
 
-    cmdspec_term = ptoc_tag(CTXTc 2);
+    cmdspec_term = reg_term(CTXTc 2);
     if (islist(cmdspec_term))
       params_are_in_a_list = TRUE;
     else if (isstring(cmdspec_term))
@@ -498,27 +380,27 @@ xsbBool sys_system(CTXTdeclc int callno)
 
     /* the user can indicate that he doesn't want either of the streams created
        by putting an atom in the corresponding argument position */
-    if (isref(ptoc_tag(CTXTc 3)))
+    if (isref(reg_term(CTXTc 3)))
       toproc_needed = TRUE;
-    if (isref(ptoc_tag(CTXTc 4)))
+    if (isref(reg_term(CTXTc 4)))
       fromproc_needed = TRUE;
-    if (isref(ptoc_tag(CTXTc 5)))
+    if (isref(reg_term(CTXTc 5)))
       fromstderr_needed = TRUE;
 
     /* if any of the arg streams is already used by XSB, then don't create
        pipes --- use these streams instead. */
-    if (isointeger(ptoc_tag(CTXTc 3))) {
-      SET_FILEPTR(toprocess_fptr, oint_val(ptoc_tag(CTXTc 3)));
+    if (isointeger(reg_term(CTXTc 3))) {
+      SET_FILEPTR(toprocess_fptr, oint_val(reg_term(CTXTc 3)));
     }
-    if (isointeger(ptoc_tag(CTXTc 4))) {
-      SET_FILEPTR(fromprocess_fptr, oint_val(ptoc_tag(CTXTc 4)));
+    if (isointeger(reg_term(CTXTc 4))) {
+      SET_FILEPTR(fromprocess_fptr, oint_val(reg_term(CTXTc 4)));
     }
-    if (isointeger(ptoc_tag(CTXTc 5))) {
-      SET_FILEPTR(fromproc_stderr_fptr, oint_val(ptoc_tag(CTXTc 5)));
+    if (isointeger(reg_term(CTXTc 5))) {
+      SET_FILEPTR(fromproc_stderr_fptr, oint_val(reg_term(CTXTc 5)));
     }
 
-    if (!isref(ptoc_tag(CTXTc 6)))
-      xsb_type_error(CTXTc "variable (to return process id)",ptoc_tag(CTXTc 6),callname,5);
+    if (!isref(reg_term(CTXTc 6)))
+      xsb_type_error(CTXTc "variable (to return process id)",reg_term(CTXTc 6),callname,5);
     //      xsb_abort("[%s] Arg 5 (process id) must be a variable", callname);
 
     if (params_are_in_a_list) {
@@ -610,7 +492,7 @@ xsbBool sys_system(CTXTdeclc int callno)
 	       of the form [process(Pid,To,From,Stderr,Cmdline), ...] */
     int i;
     prolog_term table_term_tail, listHead;
-    prolog_term table_term=ptoc_tag(CTXTc 2);
+    prolog_term table_term=reg_term(CTXTc 2);
 
     SYS_MUTEX_LOCK( MUTEX_SYS_SYSTEM );
     init_process_table();
@@ -637,11 +519,11 @@ xsbBool sys_system(CTXTdeclc int callno)
     }
     c2p_nil(CTXTc table_term_tail); /* bind tail to nil */
     SYS_MUTEX_UNLOCK( MUTEX_SYS_SYSTEM );
-    return p2p_unify(CTXTc table_term, ptoc_tag(CTXTc 2));
+    return p2p_unify(CTXTc table_term, reg_term(CTXTc 2));
   }
 
   case PROCESS_STATUS: {
-    prolog_term pid_term=ptoc_tag(CTXTc 2), status_term=ptoc_tag(CTXTc 3);
+    prolog_term pid_term=reg_term(CTXTc 2), status_term=reg_term(CTXTc 3);
 
     SYS_MUTEX_LOCK( MUTEX_SYS_SYSTEM );
 
@@ -683,7 +565,7 @@ xsbBool sys_system(CTXTdeclc int callno)
   case PROCESS_CONTROL: {
     /* sys_system(PROCESS_CONTROL, +Pid, +Signal). Signal: wait, kill */
     int status;
-    prolog_term pid_term=ptoc_tag(CTXTc 2), signal_term=ptoc_tag(CTXTc 3);
+    prolog_term pid_term=reg_term(CTXTc 2), signal_term=reg_term(CTXTc 3);
 
     SYS_MUTEX_LOCK( MUTEX_SYS_SYSTEM );
     init_process_table();
@@ -733,9 +615,9 @@ xsbBool sys_system(CTXTdeclc int callno)
    
   case LIST_DIRECTORY: {
     /* assume all type- and mode-checking is done in Prolog */
-    prolog_term handle = ptoc_tag(CTXTc 2); /* ref for handle */
+    prolog_term handle = reg_term(CTXTc 2); /* ref for handle */
     char *dir_name = ptoc_longstring(CTXTc 3); /* +directory name */
-    prolog_term filename = ptoc_tag(CTXTc 4); /* reference for name of file */
+    prolog_term filename = reg_term(CTXTc 4); /* reference for name of file */
     
     if (is_var(handle)) 
       return xsb_find_first_file(CTXTc handle,dir_name,filename);
@@ -1207,42 +1089,22 @@ xsbBool file_stat(CTXTdeclc int callno, char *file)
        the least significant 24.
        ***This probably breaks 64 bit systems, so David will look into it!
        */
-    int functor_arg3 = isconstr(ptoc_tag(CTXTc 3));
+    int functor_arg3 = isconstr(reg_term(CTXTc 3));
     if (!retcode && functor_arg3) {
       /* file exists & arg3 is a term, return 2 words*/
-      c2p_int(CTXTc (prolog_int)(stat_buff.st_mtime >> 24),p2p_arg(ptoc_tag(CTXTc 3),1));
-      c2p_int(CTXTc 0xFFFFFF & stat_buff.st_mtime,p2p_arg(ptoc_tag(CTXTc 3),2));
+      c2p_int(CTXTc (prolog_int)(stat_buff.st_mtime >> 24),p2p_arg(reg_term(CTXTc 3),1));
+      c2p_int(CTXTc 0xFFFFFF & stat_buff.st_mtime,p2p_arg(reg_term(CTXTc 3),2));
     } else if (!retcode) {
       /* file exists, arg3 non-functor:  issue an error */
       ctop_int(CTXTc 3, (prolog_int)stat_buff.st_mtime);
     } else if (functor_arg3) {
       /* no file, and arg3 is functor: return two 0's */
-      c2p_int(CTXTc 0, p2p_arg(ptoc_tag(CTXTc 3),2));
-      c2p_int(CTXTc 0, p2p_arg(ptoc_tag(CTXTc 3),1));
+      c2p_int(CTXTc 0, p2p_arg(reg_term(CTXTc 3),2));
+      c2p_int(CTXTc 0, p2p_arg(reg_term(CTXTc 3),1));
     } else {
       /* no file, no functor: return 0 */
       ctop_int(CTXTc 3, 0);
     }
-    return TRUE;
-  }
-  case STAT_FILE_TIME_NANOSECS: {
-    if (!retcode) {
-#if defined(WIN_NT)
-      // Windows does not have st_mtim.tv_nsec so nsecs are set to 0
-      ctop_int(CTXTc 3, (prolog_int)stat_buff.st_mtime);
-      ctop_int(CTXTc 4, 0);
-#elif defined(DARWIN)
-      ctop_int(CTXTc 3, (prolog_int)stat_buff.st_mtime);
-      ctop_int(CTXTc 4, (prolog_int)stat_buff.st_mtimensec);
-#else
-      ctop_int(CTXTc 3, (prolog_int)stat_buff.st_mtim.tv_sec);
-      ctop_int(CTXTc 4, (prolog_int)stat_buff.st_mtim.tv_nsec);
-#endif
-    } else { /* no file: return 0 */
-      ctop_int(CTXTc 3, 0);
-      ctop_int(CTXTc 4, 0);
-    }
-
     return TRUE;
   }
   case STAT_FILE_SIZE: { /* Return size in bytes. */
@@ -1261,7 +1123,7 @@ xsbBool file_stat(CTXTdeclc int callno, char *file)
       tail = p2p_cdr(tail); c2p_nil(CTXTc tail);
       c2p_int(CTXTc stat_buff.st_size >> 24, elt1);
       c2p_int(CTXTc 0xFFFFFF & stat_buff.st_size, elt2);
-      p2p_unify(CTXTc size_lst,ptoc_tag(CTXTc 3));
+      p2p_unify(CTXTc size_lst,reg_term(CTXTc 3));
       return TRUE;
     } else  /* no file */
       return FALSE;

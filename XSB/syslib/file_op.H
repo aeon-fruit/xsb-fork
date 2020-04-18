@@ -31,7 +31,7 @@
 :- export force_file_op_loaded/0.
 
 :- import default_assert_size/1 from config.
-:- import integer/1, functor/3, atom/1, '_$multifile'/1, '_$multifile_comp'/2 from standard.
+:- import integer/1, functor/3, atom/1 from standard.
 :- import /*incremental evaluation */ assert/1, assertai/2, retract/1, retractall/1, (dynamic)/1 from assert.
 :- import system_retractall/1 from assert.
 

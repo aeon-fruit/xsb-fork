@@ -85,9 +85,6 @@
 /* CYGWIN */
 #undef CYGWIN
 
-/* MINGW */
-#undef MINGW
-
 /* Defined, if XSB is built with support for ORACLE DB */
 #undef ORACLE
 #undef ORACLE_DEBUG

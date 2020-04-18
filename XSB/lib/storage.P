@@ -37,17 +37,17 @@ storage_builtin(_BuiltinNum,_StorageNam,_TrieType,_Handle,_Snapshot,_Changed) :-
 %% Local version of trie_intern
 %%find_in_trie(Fact,TrieRoot,Leaf) :- intern:trie_interned(Fact,TrieRoot,Leaf,_).
 find_in_trie(Fact,TrieRoot,Leaf) :-
-	fast_trie_interned(TrieRoot,Fact,Leaf).
+	intern:fast_trie_interned(TrieRoot,Fact,Leaf).
 put_in_trie(Fact,Handle,Leaf,Flag) :- 
-	trie_intern(Fact,Handle,Leaf,Flag,_).
+	intern:trie_intern(Fact,Handle,Leaf,Flag,_).
 delete_from_trie(Handle,Leaf) :-
-	trie_unintern_nr(Handle,Leaf).
+	intern:trie_unintern_nr(Handle,Leaf).
 incr_put_in_trie(Fact,Handle,Leaf,Flag) :- 
-	incr_trie_intern(Handle,Fact,Leaf,Flag).
+	intern:incr_trie_intern(Handle,Fact,Leaf,Flag).
 incr_delete_from_trie(Handle,Leaf) :-
-	incr_trie_unintern_nr(Handle,Leaf).
+	intern:incr_trie_unintern_nr(Handle,Leaf).
 incr_unmark_uninterned_from_trie(H, Leaf) :-
-	incr_unmark_uninterned_nr(H,Leaf).
+	intern:incr_unmark_uninterned_nr(H,Leaf).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%% Insertion %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -401,7 +401,7 @@ storage_find_fact(StorageName,Fact,StoredFact) :-
 	storage_handle(StorageName,NON_INCREMENTAL_TRIE,H,_),
 	!,
 	find_in_trie(Fact,H,Leaf),
-	trie_interned(StoredFact,H,Leaf,_).
+	intern:trie_interned(StoredFact,H,Leaf,_).
 
 storage_find_keypair(StorageName,Key,Value) :-
 	storage_handle(StorageName,NON_INCREMENTAL_TRIE,H,_),
@@ -423,7 +423,7 @@ incr_storage_find_fact(StorageName,Fact,StoredFact) :-
 	storage_handle(StorageName,INCREMENTAL_TRIE,H,_),
 	!,
 	find_in_trie(Fact,H,Leaf),
-	trie_interned(StoredFact,H,Leaf,_).
+	intern:trie_interned(StoredFact,H,Leaf,_).
 
 incr_storage_find_keypair(StorageName,Key,Value) :-
 	storage_handle(StorageName,INCREMENTAL_TRIE,H,_),
@@ -445,7 +445,7 @@ storage_commit(StorageName) :-
 %% Update tables for incremental tabling
 incr_storage_update(StorageName) :-
 	( storage_builtin(INCREMENT_STORAGE_SNAPSHOT,StorageName,_,_,_,_),
-	    incr_table_update,
+	    increval:incr_table_update,
 	    !
 	%% don't backtrack over it
 	; fail

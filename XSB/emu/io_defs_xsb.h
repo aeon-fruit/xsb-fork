@@ -61,10 +61,6 @@
 #define FILE_PEEK_CHAR     32
 #define ATOM_LENGTH        33
 #define FILE_SET_CHARACTER_SET 34
-#define GET_FLOAT_DISPLAY_FORMAT 35
-#define PUT_FLOAT_DISPLAY_FORMAT 36
-#define WRITE_FLOAT_VAR_FORMAT 37
-#define WRITE_RADIX 38
 
 /* This sequence is for stream properties */
 #define STREAM_FILE_NAME              0
@@ -115,7 +111,3 @@
 #define MUTEX_ALIAS              2
 #define QUEUE_ALIAS              3
 #define TRIE_ALIAS               4
-
-#define XSB_DECIMAL              0
-#define XSB_HEXIDECIMAL          1
-#define XSB_OCTAL                2

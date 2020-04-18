@@ -264,7 +264,7 @@ except it uses a user specified base of KBase, which must be between 2
 and 255.  log_ith uses binary trees with a list cons at each node;
 logk_ith uses a term of arity KBase at each node.  KBase and Index
 must be bound to integers. */
-:- mode logk_ith(+,+,?,?).
+
 logk_ith(K,I,T,E) :- 
 	integer(K),
 	integer(I),	% integer
@@ -334,7 +334,6 @@ memberchk(X,[_|L]) :- memberchk(X,L).
 
 %---SW
 % subset
-:- mode subset(+,+).
 subset([],_).
 subset([H|T],List) :-
 	memberchk(H,List),
@@ -348,7 +347,6 @@ subseq([H|T],S,[H|C]) :- subseq(T,S,C).
 
 %---
 % A not so naive reverse
-:- mode reverse(?,?).
 reverse(L, R) :- nonvar(L), !, reverse_acc(L, [], R).
 reverse(L, R) :- reverse_acc(R, [], L).
 
@@ -358,22 +356,13 @@ reverse_acc([Head|Tail], Acc, Reversed) :-
 
 %---
 % Some Prologs like to call this delete!
-:- mode select(?,?,?).
 select(Element, [Element|Rest_Elements], Rest_Elements).
 select(Element, [Element1|Rest_L1], [Element1|Rest_L2]) :-
 	select(Element, Rest_L1, Rest_L2).
 
-% Permutation
-:- mode perm(?,?).
-perm([], []).
-perm(L, [H|T]) :-
-	select(H, L, Rest),
-	perm(Rest, T).
-
 %%% for(?I,+B1,+B2) nondeterministically binds I to all integer values
 %%% from B1 to B2 inclusive.  B1 and B2 must be integers, but either
 % may be larger.  
-:- mode for(?,+,+).
 for(I,B1,B2) :-
 	(B1 =< B2
 	 ->	forup(I,B1,B2)
@@ -388,18 +377,17 @@ fordown(I,H,L) :- H > L, H1 is H-1, fordown(I,H1,L).
 
 % Compatability w. SWI and others (also error checking)
 % add check on third argument, if bound as non-integer
-:- mode between(+,+,?).
 between(L,U,B) :-
-    check_nonvar(L,between/3,1),
-    check_nonvar(U,between/3,2),
-    check_integer(L,between/3,1),
-    check_integer(U,between/3,2),
-    (nonvar(B)
-     ->	check_integer(B,between/3,3),
-	L =< B, B =< U
-     ;	L =< U,
-	between_1(L,U,B)
-    ).
+	check_nonvar(L,between/3,1),
+	check_nonvar(U,between/3,2),
+	check_integer(L,between/3,1),
+	check_integer(U,between/3,2),
+	(	nonvar(B) ->
+		check_integer(B,between/3,3)
+	;	true
+	),
+	L =< U,
+	between_1(L,U,B).
 
 between_1(L,_U,L).
 between_1(L,U,Res) :- L < U, L1 is L + 1, between_1(L1,U,Res).
@@ -419,7 +407,7 @@ comma_to_list(One,[One]).
 comma_member(A,','(A,_)).
 comma_member(A,','(_,R)):- 
 	comma_member(A,R).
-comma_member(A,A):- \+ (functor(A,',',2)).
+comma_member(A,A):- \+ (functor(A,',',_)).
 
 comma_memberchk(A,','(A,_)):- !.
 comma_memberchk(A,','(_,R)):- 

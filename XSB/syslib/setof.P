@@ -34,7 +34,6 @@
 %% The bagof1 hack is needed to make sure that setof is traced properly 
 %% by the debugger. That is, bagof/3 is printed, but nothing is traced 
 %% after that until we hit the call to Generator.
-:- mode setof(?,?,?).
 setof(Template, Generator, Set) :-
 	bagof1(Template, Generator, Bag),
 	sort(Bag, Set0),
@@ -43,7 +42,6 @@ setof(Template, Generator, Set) :-
 %% MK: the tabled versions: tbagof/tsetof/tfindall aren't traced
 %% properly by the debugger. Can be done the same way as I did
 %% for bagof/setof/findall
-:- mode tsetof(?,?,?).
 tsetof(Template, Generator, Set) :-
 	tbagof(Template, Generator, Bag),
 	sort(Bag, Set0),
@@ -54,9 +52,7 @@ tsetof(Template, Generator, Set) :-
 /* bagof(?Template, +Call, ?Bag)					*/
 /*======================================================================*/
 
-:- mode bagof(?,?,?).
 bagof(Template, Generator, Bag) :- bagof1(Template, Generator, Bag).
-
 %% The bagof1 hack is needed to make sure that bagof is traced properly 
 %% by the debugger. That is, bagof/3 is printed, but nothing is traced 
 %% after that until we hit the call to Generator.
@@ -71,7 +67,6 @@ bagof1(Template, Generator, Bag) :-
 		Bag \== []	% If Bag=[] then bagof/3 and setof/3 should fail.
 	).
 
-:- mode tbagof(?,?,?).
 tbagof(Template, Generator, Bag) :-
 	excess_vars(Generator, Template, [], VarList), 
 	VarList \== [], !,
@@ -92,7 +87,6 @@ clean_existentials(X,X).
 
 /* The following 3 preds are a result of a bug fix by Kostis,
    with a little help from Bart */
-:- mode pick(?,?,?).
 pick([K-X|Bags], Key, Bag) :-
         parade(Bags, K, Bag1, Bags1),
 	decide(Bags1, [X|Bag1], K, Key, Bag).
@@ -109,10 +103,8 @@ decide([], Bag, Key, Key, Bag) :- !.
 decide(_, Bag, Key, Key, Bag).
 decide(Bags, _, _, Key, Bag) :- pick(Bags, Key, Bag).
 
-:- mode excess_vars(?,?,?,?).
 excess_vars(Term,Tmpl,PVars,Vars) :- excess_vars(Term,Tmpl,PVars,1,Vars).
 
-:- mode term_variables(?,?).
 term_variables(Term,Vars) :- excess_vars(Term,[],[],0,Vars).
 
 %% use builtin
@@ -123,17 +115,12 @@ excess_vars(_Term,_Tmpl,_PVars,_IfExist,_Vars) :- '_$builtin'(EXCESS_VARS).
 /*	Sorting now is implemented in C via qsort(). 			*/
 /* -------------------------------------------------------------------- */
 
-%sort(List, SortedList) :- sort(List, SortedList).
-:- mode sort(?,?).
-sort(_List, _SortedList) :- '_$builtin'(SORT).
+sort(List, SortedList) :- sort(List, SortedList).
 
-%keysort(List, SortedList) :- keysort(List, SortedList).
-:- mode keysort(?,?).
-keysort(_List, _SortedList) :- '_$builtin'(KEYSORT).
+keysort(List, SortedList) :- keysort(List, SortedList).
 
 /*======================================================================*/
 
-:- mode ^(?,?).
 _X^P :- call(P).
 
 /*======================================================================*/
@@ -146,7 +133,6 @@ _X^P :- call(P).
 /*	The rest of buffer contains the answer (a list)			*/
 /*======================================================================*/
 
-:- mode findall(?,?,?).
 findall(Template,Goal,List) :- bfindall(Template,Goal,List,[]).
 
 findall(Template,Goal,List,Tail) :- bfindall(Template,Goal,List,Tail).
@@ -167,11 +153,9 @@ bfindall(Template,Goal,List,Tail) :-
 	) .
 
 
-:- mode find_n(+,?,?,?).
 find_n(N,Template,Goal,List) :-
 	findall(Template,n_times(N,Goal),List).
 
-:- mode n_times(+,?).
 n_times(N,Goal) :-
 	integer(N),
 	N > 0,
@@ -184,11 +168,9 @@ n_times(N,Goal) :-
 	 ;	!
 	).
 
-:- mode find_n_m(+,+,?,?,?).
 find_n_m(N,M,Template,Goal,List) :-
 	findall(Template,n_m_times(N,M,Goal),List).
 
-:- mode n_m_times(+,+,?).
 n_m_times(N,M,Goal) :-
 	integer(N),
 	N > 0,
@@ -205,12 +187,10 @@ n_m_times(N,M,Goal) :-
 	).
 
 %% unsafe not-exists-not.
-:- mode forall(?,?).
 forall(Bind,Pred) :-
 	\+ (call(Bind), \+ call(Pred)).
 
 %% safe for all if Bind doesn't contain any free variables
-:- mode forall(?,?,?).
 forall(Template,Bind,Pred) :-
 	excess_vars(Bind,Template,[],BVars),
 	excess_vars(Pred,Template,[],PVars),
@@ -221,7 +201,6 @@ forall(Template,Bind,Pred) :-
 	).
 
 %% safe for all, where UBRange binds variables free in Bind.
-:- mode forall(?,?,?,?).
 forall(Template,Bind,UBRange,Pred) :-
 	excess_vars(Bind,Template,[],BVars),
 	excess_vars(Pred,Template,[],PVars),
@@ -246,7 +225,6 @@ all_in_list_true([Val|Vals],CVars,Var,Pred) :-
 /* bounded_bagof(?Template, +Call, +RangeBinder, ?Bag)			*/
 /*======================================================================*/
 
-:- mode bounded_bagof(?,?,?,?).
 bounded_bagof(Template, Generator, Range, Bag) :-
 	excess_vars(Generator, Template, [], VarList), 
 	term_variables(Range, RVarList),

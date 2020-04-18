@@ -43,7 +43,6 @@
 #include "io_builtins_xsb.h"
 #include "cinterf.h"
 #include "sig_xsb.h"
-#include "flag_defs_xsb.h"
 
 #define exit_if_null(x) {\
   if(x == NULL){\
@@ -512,52 +511,6 @@ int utf8_char_to_codepoint(byte **s_ptr){
   return c;
 }
 
-/* for single byte code systems */
-int non_ascii_chars(byte *string) {
-  int n = 0;
-  while (*string != '\0') {
-    if (*(string++) > 127) n++;
-  }
-  return n;
-}  
-
-int chars_to_utf_string(byte *from, int charset, byte *to, size_t to_len) {
-  char *to_end;
-  if (charset == UTF_8) {
-    printf("ERROR: chars_to_utf_string: Don't convert from utf-8 to utf-8!!\n");
-    return 1;
-  }
-  to_end = (char *) (to + to_len - 5);
-  while (*from != (byte)'\0' && (char *)to < to_end) {
-    to = utf8_codepoint_to_str(char_to_codepoint(charset,&from),to);
-  }
-  *to = '\0';
-  if (*from == '\0') return 0;
-  else {
-    printf("ERROR: chars_to_utf_string: conversion to utf-8 string"
-	   "truncated, %zd too small with\n%s\n",to_len,to);
-    return 1;
-  }
-}
-
-int utf_string_to_chars(byte *from, int charset, byte *to, size_t to_len) {
-  char *to_end;
-  if (charset == UTF_8) {
-    printf("ERROR: chars_to_utf_string: Don't convert from utf-8 to utf-8!!\n");
-    return 1;
-  }
-  to_end = (char *) (to + to_len - 1);
-  while (*from != (byte)'\0' && (char *)to < to_end) {
-    to = codepoint_to_str(utf8_char_to_codepoint(&from),charset,to);
-  }
-  *to = '\0';
-  if (*from == '\0') return 0;
-  else {
-    printf("ERROR: utf_string_to_chars: conversion from utf-8 string truncated!!\n");
-    return 1;
-  }
-}
-
 extern int utf8_GetCode(FILE *, STRFILE *, int);
 
 int GetCode(int charset, FILE *curr_in, STRFILE *instr) {
@@ -823,7 +776,6 @@ char    badradix[]      = "radix not 0 or 2..36";
 
     -- If encounters the EOF, then return -2. (Baoqiu, 2/16/1997)
 */
-#define MAX_CODEPOINT 1114111
  
 static int read_character(CTXTdeclc register FILE *card,
 			  register STRFILE *instr, int charset,
@@ -906,11 +858,6 @@ READ_ERROR:
 		    c = GetCode(charset,card,instr);
 		  }
 		  if (c < 0) goto READ_ERROR;
-		  if (n > MAX_CODEPOINT || n < 0) {
-		    xsb_warn(CTXTc "[TOKENIZER] \\xHex\\ constant in atom not a code-point;"
-			     " max code-point assumed");
-		    n = MAX_CODEPOINT;
-		  }
 		  if (c != '\\') {
 		    unGetC(c, card, instr);
 		    //  xsb_warn(CTXTc "Ill-formed \\xHEX\\ escape: %d (dec) at position %d in %s",
@@ -989,8 +936,7 @@ READ_ERROR:
 	        return '`';
 	    default:			/* return the \, not an escape */
 	      (void) unGetC(c, card, instr);
-	      /* printf("un-escaped backslash: %d\n",c); */
-	      return '\\';  /* give warning? or have flag to give error here */
+	      return '\\';
         }
     }
  
@@ -1014,8 +960,7 @@ READ_ERROR:
     "following" character.
  
 */
-/* very long, so essentially never used */
-#define EOL_COMMENT_WARN_LENGTH 10000
+#define EOL_COMMENT_WARN_LENGTH 300
 
 static int com0plain(CTXTdeclc register FILE *card,	/* source file */
        		     register STRFILE *instr,	/* source string, if non-NULL */
@@ -1075,7 +1020,7 @@ static int com2plain(register FILE *card,	/* source file */
 }
 
 #ifndef MULTI_THREAD 
-int token_too_long_warning = 0;  // turn off for now. Too much chatter?
+int token_too_long_warning = 1;
 #endif
 
 void realloc_strbuff(CTXTdeclc byte **pstrbuff, byte **ps, int *pn)
@@ -1326,8 +1271,7 @@ LAB_DECIMAL:                *s++ = '.';
                 } else {
 	            token->nextch = c;
 		    token->value = (char *)strbuff;
-		    if (flags[TOKENIZE_VARIABLES_AS_ATOMS]) token->type = TK_ATOM;
-                    else token->type = TK_VAR;
+                    token->type = TK_VAR;
                     return token;
                 }
  
@@ -1491,8 +1435,7 @@ case deleted ****/
 		*s = 0;
 		token->nextch = lastc;
 		token->value = (char *)strbuff;
-		if (flags[TOKENIZE_DQ_AS_ATOM]) token->type = TK_ATOM;
-		else token->type = TK_LIST;
+		token->type = TK_LIST;
                 return token;
 
             case EOLN:

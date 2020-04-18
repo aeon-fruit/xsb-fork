@@ -63,7 +63,7 @@ they are consistent. */
 :- import call_c/1 from standard.
 :- import search_module/6, read_canonical/1 from consult.
 :- import inline_predicate/2, inline_builtin/3 from builtin.
-:- import assert/1, asserta/1, retractall/1, (dynamic)/1 from assert.
+:- import assert/1, asserta/1, retract/1, retractall/1, (dynamic)/1 from assert.
 :- import add_lib_dir/1, add_lib_dir/2 from consult.
 :- import findall/3, setof/3, sort/2 from setof.
 :- import expand_term/2, file_exists/1, (index)/2, nl/0, op/3, read/1,
@@ -76,13 +76,11 @@ they are consistent. */
 :- import setoptions1/1 from auxlry.
 :- import bootstrap_package/2 from packaging.
 :- import abolish_table_pred/1 from tables.
-:- import check_integer/3, check_atom/3, check_ground/3 from error_handler.
 
 :- dynamic imports/4.
 :- dynamic exports/2.
 :- dynamic all_files/1.
 :- index(all_files/1,trie).
-:- mode_on_success(all_files(+)).
 :- dynamic files_not_found/1.
 :- index(files_not_found/1,trie).
 :- dynamic files_read/1.
@@ -103,10 +101,8 @@ they are consistent. */
 :- index(dynamically_defined/2,[*(2),1]).
 :- dynamic operators/1.
 
-:- mode checkImpExps(+).
 checkImpExps(Files) :- checkImpExps([],Files).
 
-:- mode checkImpExps(+,+).
 checkImpExps(Opts,Files) :-
 	abolish_table_pred(print_hdr_if_nec(_)),
 	retractall(imports(_,_,_,_)),
@@ -487,7 +483,7 @@ real_or_fake_module(Mod) :-
 
 
 /********* Load Data **************/
-:- mode read_for_ports(+).
+
 read_for_ports(File) :-
 	(search_module(File,Dir,Mod,Ext,Base,_Obj)
 	 ->	true
@@ -574,11 +570,11 @@ read_and_process(Mod,large) :-
 
 
 undo_operators :-
-    (do_all
-     operators(Op),
-     call_c(Op)
-    ),
-    retractall(operators(_)).
+	retract(operators(Op)),
+	call_c(Op),
+	fail.
+undo_operators.
+
 
 process_clause(':-'(Directive),Mod) :- !,
 	(process_directive(Directive,Mod)
@@ -593,10 +589,7 @@ process_clause(Head,Mod) :- !,
 	process_head(Head,Mod).
 
 process_directive(op(X,Y,Z),_) :-
-    check_integer(X,'op/3',1),
-    check_atom(Y,'op/3',2),
-    check_ground(Z,'op/3',3),
-    assert(operators(op(X,Y,Z))),
+	assert(operators(op(X,Y,Z))),
 /**	('_$op'(X1,Y,Z)
 	 ->	assert(operations(op(X1,Y,Z)))
 	 ;	assert(operations(op(0,Y,Z)))
@@ -642,16 +635,11 @@ process_directive(dynamic(Preds),Mod) :-
 	),
 	define_specs(Preds,Mod).
 process_directive(add_lib_dir(Dirs),_) :-
-	check_ground(Dirs,'add_lib_dir/1',1),
 	add_lib_dir(Dirs).
 process_directive(add_lib_dir(Path,Dirs),_) :-
-	check_ground(Path,'add_lib_dir/2',1),
-	check_ground(Dirs,'add_lib_dir/2',2),
 	add_lib_dir(Path,Dirs).
 process_directive(bootstrap_package(A,B),_) :-
-    check_atom(A,'bootstrap_package/2',1),
-    check_ground(B,'bootstrap_package/2',2),
-    bootstrap_package(A,B).	% add lib_dirs
+	bootstrap_package(A,B). % add lib_dirs
 process_directive(compiler_options(Options),_) :-
 	(xpp_is_off
 	 ->	conset(migh_need_restart,1),
@@ -784,5 +772,4 @@ process_body(Goal,Mod) :-
 	process_uses_list(Args,Mod).
 
 %% for backward compatibility.
-:- mode add_libraries(+).
 add_libraries(Ds) :- add_lib_dir(Ds).

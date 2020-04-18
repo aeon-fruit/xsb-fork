@@ -118,7 +118,6 @@ DLL_LINK_OBJS= \
 	"$(OBJDIR)/auxlry.obj" \
 	"$(OBJDIR)/builtin.obj" \
 	"$(OBJDIR)/biassert.obj" \
-	"$(OBJDIR)/base64_enc.obj" \
 	"$(OBJDIR)/call_graph_xsb.obj" \
 	"$(OBJDIR)/call_xsb.obj" \
 	"$(OBJDIR)/cinterf.obj" \
@@ -223,7 +222,7 @@ LINK_DEBUG_FLAGS=/debug
 !ELSEIF "$(DEBUG)" != "yes" && "$(DLL)" == "yes"
 !MESSAGE Building XSB with DLL in Release mode $(ORACLE_MSG) $(INTERPROLOG_MSG)
 
-DEBUG_CPP_FLAGS=/MD /O2 /D "NDEBUG"
+DEBUG_CPP_FLAGS=/MT /O2 /D "NDEBUG"
 DLL_CPP_FLAGS=/D "$(CALL_CONV)"
 LINK_DEBUG_FLAGS=$(DLLDIR)"\xsb.lib" /incremental:no
 DLL_LINK_DEBUG_FLAGS=/incremental:no
@@ -231,7 +230,7 @@ DLL_LINK_DEBUG_FLAGS=/incremental:no
 !ELSEIF "$(DEBUG)" == "yes" &&  "$(DLL)" == "yes"
 !MESSAGE Building XSB with DLL in Debug mode $(ORACLE_MSG) $(INTERPROLOG_MSG)
 
-DEBUG_CPP_FLAGS=/MDd /Gm /Zi /Od /D "_DEBUG" /D "DEBUG" /Fd"$(INTDIR)/"
+DEBUG_CPP_FLAGS=/MTd /Gm /Zi /Od /D "_DEBUG" /D "DEBUG" /Fd"$(INTDIR)/"
 DLL_CPP_FLAGS=/D "$(CALL_CONV)"
 LINK_DEBUG_FLAGS=/debug $(DLLDIR)"\xsb.lib" 
 DLL_LINK_DEBUG_FLAGS=/debug

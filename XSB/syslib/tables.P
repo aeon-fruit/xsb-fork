@@ -37,17 +37,88 @@
 #include "flag_defs_xsb.h"
 #include "incr_xsb_defs.h"
 
-:- dynamic table_index_predicates/2.
+/*----------------------------------------------------------------------*/
+
+/* Change Evaluation Method for Tabled Predicate
+   --------------------------------------------- */
+use_variant_tabling(CommaList) :-
+	set_eval_method_for_comma(CommaList,VARIANT_EVAL_METHOD).
+
+use_subsumptive_tabling(CommaList) :-
+	set_eval_method_for_comma(CommaList,SUBSUMPTIVE_EVAL_METHOD).
+
+set_eval_method_for_comma((PS1,PS2),EvalMethod) :-
+	!, set_eval_method_for_comma(PS1,EvalMethod),
+	set_eval_method_for_comma(PS2,EvalMethod).
+set_eval_method_for_comma(PredSpec,EvalMethod) :-
+	set_tabled_eval_for_pred(PredSpec,EvalMethod).
+
+/*
+ * Setting of the evaluation method will fail if calls exist in the
+ * Call Trie.
+ */
+set_tabled_eval_for_pred(PredSpec,Method) :-
+	( PredSpec = P/N -> functor(Term,P,N); Term = PredSpec ),
+	( set_tabled_eval(Term,Method), fail; true ).
+
+set_tabled_eval(Predicate,EvalMethod) :-
+	set_tabled_eval(Predicate,EvalMethod).
+
+/* Here, if a predicate is static, and non-tabled we throw an error,
+   otherwise a no-op */
+add_table(Spec) :-
+	mpa_to_skel(Spec,Call),
+	term_psc(Call,Psc),
+	psc_type(Psc,Type),
+	(Type =:= T_PRED -> /* static and loaded */
+	    ((psc_tabled(Psc, Tabled),Tabled \== 0) ->
+		true
+	      ; permission_error(table,static_code,Spec,(table)/1) )
+	    ;	   (Type =:= T_DYNA, dynamic_pred_has_clauses(Spec,IfCls), IfCls =:= 1
+		    ->	   permission_error(table,'dynamic predicate with clauses',Spec,(table)/1)
+		    ; psc_set_tabled(Psc,1) %% set it as tabled
+		    ->	   true
+		    ;	   permission_error(table,'predicate that cannot be tabled',Spec,(table)/1)
+		   )
+	). 
+
+retract_table(Spec) :-
+	mpa_to_skel(Spec,Call),
+	term_psc(Call,Psc),
+	psc_set_tabled(Psc,0).  %% set it as non-tabled
+
+/* The following predicates are only called from table/1, 
+   and consistency has already been checked, so it is safe to 	
+   assume that we can just set the bits without further checking. 
+*/
+
+%:- import console_writeln/1 from standard.
+/* Mode can be INCREMENTAL, NONINCREMENTAL, or OPAQUE */
+add_incr_table(Spec,Mode) :-
+	mpa_to_skel(Spec,Call),
+	term_psc(Call,Psc),	
+	(predicate_has_tables(Psc) ->
+	   permission_error(add_incremental_tabling,predicate_with_tables,Spec,(table)/1) 
+	 ; psc_set_incr(Psc,Mode)).
+
+add_alt_semantics(Spec,Mode) :-
+	mpa_to_skel(Spec,Call),
+	term_psc(Call,Psc),	
+	(predicate_has_tables(Psc) ->
+	   permission_error(add_alt_semantics,predicate_with_tables,Spec,(table)/1) 
+	 ; alt_semantics(Mode,C_Mode),
+	   psc_set_alt_semantics(Psc,C_Mode)).
+
+alt_semantics(weak_cs,WEAK_CS):- !.
+alt_semantics(wfs_semantics,WFS_SEMANTICS).
 
 /*----------------------------------------------------------------------*/
-% truth_value/2
-:- mode is_tabled(?).
+:- export is_tabled/1.
 is_tabled(Term):- 
 	term_psc(Term,Psc),
 	psc_tabled(Psc,T),
 	T \== 0.
 
-:- mode truth_value(?,?).
 truth_value(Goal,TV):- 
 	(is_tabled(Goal) -> 
    	   truth_value_tp(Goal,TV)
@@ -92,23 +163,13 @@ tv_answer_set_status_code(UNDEFINED_ANSWER_SET,  non_tabled_subgoal).
 tv_answer_set_status_code(COMPLETED_ANSWER_SET,  complete).
 tv_answer_set_status_code(INCOMPLETE_ANSWER_SET, incomplete_subgoal).
 
-:- mode not3(?).
-not3(Term) :-
-    truth_value(Term,TV),
-%    writeln(TV),
-    (TV=true  -> fail
-     ; (TV=undefined -> Term
-     ; true)).
     
-/*----------------------------------------------------------------------*/
-% table_state   
 /*
  * To obtain info about both subsumptive and variant predicates.
  * See the file ../emu/builtin.c for a description of the valid
  * combinations of values for PredType, CallType, and AnsSetStatus.
  */
 
-:- mode table_state(?,?,?,?).
 table_state(Call, PredType, CallType, AnsSetStatus) :-
 %    writeln(table_state_called(table_state(Call, PredType, CallType, AnsSetStatus))),
 	(Call = M:Goal -> term_new_mod(M,Goal,NewGoal) ; Call = NewGoal),
@@ -117,7 +178,6 @@ table_state(Call, PredType, CallType, AnsSetStatus) :-
 	call_type_code(CallTypeCode, CallType),
 	answer_set_status_code(AnsSetStatusCode, AnsSetStatus).
 
-:- mode table_status(?,?,?,?,?).
 table_status(_Call, _PredType, _CallType, _AnsSetStatus,_SubgoalFrame) :-
 	'_$builtin'(TABLE_STATUS).
 
@@ -140,20 +200,16 @@ answer_set_status_code(INCOMPLETE_ANSWER_SET, incomplete).
  * Builtins for supporting negation and suspensions.
  */
 
-:- mode get_ptcp(?).
 get_ptcp(PTCP) :- get_ptcp(PTCP).
 
-:- mode is_incomplete(+,+).
 is_incomplete(_ProducerSubgoalFrame,_PTCP) :- '_$builtin'(IS_INCOMPLETE).
 
-:- mode slg_not(+).
 slg_not(ProducerSF) :- slg_not(ProducerSF).
 
 %lrd_success(ProducerSF,Subgoal) :- lrd_success(ProducerSF,Subgoal).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-:- mode tfindall(?,?,?).
 tfindall(T, Call, Result) :-
 	table_state(Call,PredType,_CallType,AnsSetStatus),
 	( PredType \== undefined ->
@@ -171,13 +227,12 @@ tfindall(T, Call, Result) :-
 	; abort(['Illegal (untabled?) subgoal to tfindall/3: ', Call])
 	).
 
-:- mode 't not'(?).
+:- export 't not'/1.
 't not'(Goal):- tnot(Goal).
 
 /* Need to Handle module calls (not sure if done properly before) */
 /* need to refactor to distinguish completed from non-completed with call-entry */
 %:- import writeln/1 from standard.
-:- mode tnot(?).
 tnot(Subgoal) :-
 	table_inspection_function(TNOT_SETUP,Subgoal,PredType,CallType,AnsSetStatus,SF,PTCP),
 %	writeln(table_inspection_function(TNOT_SETUP,Subgoal,PredType,CallType,AnsSetStatus,SF,PTCP)),
@@ -194,33 +249,38 @@ tnot(Subgoal) :-
 		    ; t_not_subsumptive_sf_incomp(Subgoal,SF,AnsSetStatus) ) ) ).
 
 t_not_variant(Subgoal,AnsSetStatus,SF,PTCP):- 
-%	    standard:writeln(t_not_variant(Subgoal,AnsSetStatus,SF,PTCP)),
+%	writeln(t_not_variant(Subgoal,AnsSetStatus,SF,PTCP)),
 %	    get_ptcp(PTCP),
 	    ( AnsSetStatus < 0 ->  % i.e. UNDEFINED_ANSWER_SET or INCR_NEEDS_REEVAL
 	        (tcall(Subgoal), fail 
 	          ;  get_producer_call(Subgoal,ProducerSF,_AnswerTmplt),
 		     is_incomplete(ProducerSF,PTCP),
-		     %% do answer_completed here??
 		     slg_not(ProducerSF) 
 		 )
           ;  %get_producer_call(Subgoal,ProducerSF,_AnswerTmplt),
-	     is_incomplete(SF,PTCP), % suspend if is incomplete, succeed if complete
-	     ensure_answer_completed(Subgoal,SF),
-	     slg_not(SF) ).
+	     ensure_answer_completed(AnsSetStatus,Subgoal,SF),
+	     is_incomplete(SF,PTCP),slg_not(SF) ).
 
-ensure_answer_completed(Subgoal,SF) :-
-	stat_flag(ANSWER_COMPLETION,AC),
-	(AC =:= 0		% not doing answer_completion
-	 -> true
-	 ;  is_answer_completed(SF,SAC), SAC =:= 1
-	 -> true
-	 ;  excess_vars(Subgoal,[],[],Vars),
-	    Tmp =.. [ret|Vars],
-	    stat_set_flag(ANSWER_COMPLETION,0),
-	    (do_all
-	     %%standard:writeln(userout,ac_from_tnot(Subgoal)),
-	     answer_completion(SF,Tmp)
-	    )
+ensure_answer_completed(AnsSetStatus,Subgoal,SF) :-
+	(AnsSetStatus =\= COMPLETED_ANSWER_SET
+	 ->	true		% not completed
+	 ;	stat_flag(ANSWER_COMPLETION,AC),
+		(AC =:= 0	% not doing answer_completion
+		 ->	true
+		 ;	is_answer_completed(SF,SAC),
+			(SAC =:= 1
+			 ->	true
+			 ;	%writeln(userout,'AC in slg_not '(Subgoal)),
+				excess_vars(Subgoal,[],[],Vars),
+				Tmp =.. [ret|Vars],
+				stat_set_flag(ANSWER_COMPLETION,0),
+				(answer_completion(SF,Tmp),
+				 fail
+				 ;	
+				 true
+				)
+			)
+		)
 	).
 
 % needs to be optimized!
@@ -280,10 +340,8 @@ t_not_subsumptive_sf_incomp_1(Subgoal,ConsumerSF,PTCP):-
 	get_producer_call(Subgoal,ProducerSF,_Answertmplt),
 	is_incomplete(ProducerSF,PTCP),
 	((var(ConsumerSF) ; ConsumerSF == 0) -> 
-	    %%ensure_answer_completed(Subgoal,ProducerSF),
 	    slg_not(ProducerSF) 
-	 ;  %%ensure_answer_completed(Subgoal,ConsumerSF),
-	    slg_not(ConsumerSF)).
+	  ; slg_not(ConsumerSF)).
 
 
 /*
@@ -309,53 +367,36 @@ t_not(Subgoal,PredType,PTCP) :-
 */
 
 /*
+%%:- import writeln/1 from standard.
 %%writeit(0).
 %writeit(1).
 %%mywriteln(Term):- writeit(If),(If =:= 1 -> writeln(Term); true).
 */
-%%:- import writeln/1 from standard.
-%%   mywriteln(Term):- writeln(Term).
 
-:- mode u_not(?).
 u_not(Goal) :-
 	(ground_and_acyclic(Goal) ->
 	   tnot(Goal)
 	 ; check_cyclic(Goal,'u_not/1',1),
 	   floundered(Goal)).
 
+:- import floundered_undefined/1 from xsbbrat.
 :- table floundered/1 as variant, opaque.
 floundered(_Goal):- floundered_undefined(a).
 
-%%:- table tunnumcall/1.
-%%:- use_variant_tabling tunnumcall(_).
+:- table tunnumcall/1.
+:- use_variant_tabling tunnumcall(_).
 
-%% Should give existential semantics to nonground negative
+%% skolemized tnot.  Variables temporarily changed to ground and tnot 
+%% call is made.  Should give existential semantics to nonground negative
 %% calls.  That is
 %%	...:- sk_not(p(X)),...
 %% is like
 %%	... :- tnot(pp),...
 %%	pp :- p(X).
 %% where pp is a new proposition.
-%% Gives (tabled) semantics of \+ for calls with variables.
 
-:- mode not_exists(?).
 not_exists(Goal):- sk_not(Goal).
 
-:- table tabled_call/1 as variant, opaque.
-tabled_call(X) :- call(X).
-
-%% tnot works "correctly" with variables in subgoal if it has been
-%% called before.  So call it first.
-
-:- mode sk_not(?).
-sk_not(Goal) :-
-        (tabled_call(Goal), fail
-	 ;
-	 tnot(tabled_call(Goal))
-        ). 
-
-/*** Earlier code no longer needed; rewritten more efficiently,
-     and more generally, as above **
 sk_not(Goal) :-
 	check_cyclic(Goal,'sk_not/1',1),
 	copy_term(Goal,Goal1),
@@ -366,7 +407,6 @@ sk_not(Goal) :-
 tunnumcall(GGoal) :-
 	unnumbervars(GGoal,VGoal),
 	call(VGoal).
-***/
 
 % we've got true and fail -- why not this?
 :- table undefined/0 as opaque.
@@ -377,7 +417,7 @@ undefined:- tnot(undefined).
 /*----------------------------------------------------------------------*/
 
 /*
- * get_call(+CallTerm, -SubgoalFrame, -ReturnTemplate)
+ * get_call(+CallTerm, -TableEntryHandle, -ReturnTemplate)
  *   Performs an interpretive traversal of a Call Trie in searching
  *   for a VARIANT of CallTerm.  If the call is present, then a
  *   reference to the subgoal frame is returned as a handle to the
@@ -387,16 +427,9 @@ undefined:- tnot(undefined).
  * corresponds to TRIE_GET_CALL builtin
  */
 
-%get_call(CallTerm, SubgoalFrame, ReturnTemplate) :-
-%	get_call(CallTerm, SubgoalFrame, ReturnTemplate).
+get_call(CallTerm, TableEntryHandle, ReturnTemplate) :-
+	get_call(CallTerm, TableEntryHandle, ReturnTemplate).
 
-:- mode get_call(?,?,?).
-get_call(CallTerm, SubgoalFrame, Template) :-
-   get_call(CallTerm, SubgoalFrame, Template, _Callnode).
-
-:- mode get_call(?,?,?,?).
-get_call(_CallTerm, _SubgoalFrame, _Template,_Callnode) :-
-	'_$builtin'(TRIE_GET_CALL).
 
 /*
  * get_producer_call(+CallTerm, -TableEntryHandle, -ReturnTemplate)
@@ -410,9 +443,10 @@ get_call(_CallTerm, _SubgoalFrame, _Template,_Callnode) :-
  *   term in ReturnTemplate.
  */
 
-:- mode get_producer_call(?,?,?).
 get_producer_call(CallTerm, ProducerTableEntry, ReturnTemplate) :-
 	get_producer_call(CallTerm, ProducerTableEntry, ReturnTemplate).
+
+:- export get_calls/1.
 
 /*
  * get_calls(#CallTerm, -TableEntryHandle, -ReturnTemplate)
@@ -427,6 +461,7 @@ get_producer_call(CallTerm, ProducerTableEntry, ReturnTemplate) :-
  *   perform trie-code-directed traversals.  Hence get_calls/1 is not
  *   inlined and we explicitly invoke the builtin call.
  */
+
 
 '_$$get_calls'(CallTerm,Handle,Template) :-
 	get_calls(CallTerm),
@@ -457,26 +492,20 @@ A=1, C=1, and RET=ret(1,B).
 Not that if RET is most-general, then no variables in the current call
 were instantiated and so it subsumes the call in the table.
 
-*/
+ */
 
-:- mode get_calls(?,?,?).
+
 get_calls(CallTerm, Handle, Template) :-
 %   writeln(get_calls(CallTerm, Handle, Template)),
 	(nonvar(CallTerm),CallTerm = M:Goal -> term_new_mod(M,Goal,NewGoal) ; CallTerm = NewGoal),
 	findall('_$get_calls'(NewGoal,Handle,Template),
 		'_$$get_calls'(NewGoal,Handle,Template),
 		List),
-%writeln(get_calls_1(VallTerm, List)),
+%writeln(get_calls_1(CallTerm, List)),
 	member('_$get_calls'(NewGoal,Handle,Template),List).
 
-:- mode get_calls(?).
-get_calls(CallTerm) :-
-   (nonvar(CallTerm),CallTerm = M:Goal -> term_new_mod(M,Goal,NewGoal) ; CallTerm = NewGoal),
-%   writeln(get_calls_1(NewGoal)),
-   get_calls_1(NewGoal).
 
-get_calls_1(_CallTerm) :-
-   '_$builtin'(TRIE_UNIFY_CALL).
+get_calls(_CallTerm) :- '_$builtin'(TRIE_UNIFY_CALL).
 
 
 /*
@@ -487,7 +516,6 @@ get_calls_1(_CallTerm) :-
  *   a term: p(t1,...,tn).
  */
 
-:- mode get_calls_for_table(?,?).
 get_calls_for_table(PredSpec,Call) :-
 	( PredSpec = P/N
 	 ->	functor(Call,P,N)
@@ -500,6 +528,7 @@ get_calls_for_table(PredSpec,Call) :-
 
 
 %get_call_from_sf(+SF,-Call):- 
+:- export get_call_from_sf/2.
 get_call_from_sf(SF,Call):- 
 	table_inspection_function(GET_CALL_FROM_SF,SF,Call,_,_).
 			      
@@ -520,7 +549,6 @@ get_call_from_sf(SF,Call):-
  *   variable, delay_it, is set to ensure this).
  */
 
-:- mode get_returns(?,?).
 get_returns(TableEntry, ReturnTemplate) :-
 	findall('_$get_returns'(TableEntry,ReturnTemplate),
 		trie_get_return(TableEntry,ReturnTemplate),
@@ -534,11 +562,9 @@ get_returns(TableEntry, ReturnTemplate) :-
 	member('_$get_returns'(TableEntry,ReturnTemplate),ReturnsList).
 
 
-:- mode_on_success('_$return'(?)).
 :- dynamic '_$return'/1.
 :- index('_$return'/1,trie).
 
-:- mode get_unifiable_returns(?,?,?).
 get_unifiable_returns(TableEntry,Skel, Leaf) :-
 	\+ \+ (get_unifiable_returns_1(TableEntry, Skel, ReturnList),
 	       ReturnList \== [],
@@ -556,7 +582,6 @@ get_unifiable_returns_1(TableEntry, Skel, ReturnsList):-
 	trie_get_return(TableEntry,RetTmplt),
 	get_lastnode_cs_retskel(_,RetLeaf,_,_).
 	
-:- mode get_returns(?,?,?).
 get_returns(TableEntry, RetTmplt, RetLeaf) :-
 	findall('_$get_returns'(TableEntry,RetTmplt,RetLeaf),
 		'_$$get_returns'(TableEntry,RetTmplt,RetLeaf),
@@ -587,7 +612,7 @@ trie_get_return(TableEntryHandle,ReturnTemplate) :-
 trie_get_return(_TableEntryHandle,_ReturnTemplate,_Delay) :-
 	'_$builtin'(TRIE_GET_RETURN).
 
-:- mode get_lastnode_cs_retskel(?,?,?,?).
+
 get_lastnode_cs_retskel(CallTerm, LastNode, SubgoalPtr, RetSkel) :-
 	get_lastnode_cs_retskel(CallTerm, LastNode, SubgoalPtr, RetSkel).
 
@@ -599,7 +624,6 @@ get_lastnode_cs_retskel(CallTerm, LastNode, SubgoalPtr, RetSkel) :-
  *   answers of CallTerm.
  */
 
-:- mode get_returns_for_call(?,?).
 get_returns_for_call(CallTerm,AnswerTerm) :-
 	copy_term(CallTerm,Call),
 	get_call(Call,SF,Return),	% vars of 'Call' are put into 'Return'
@@ -611,7 +635,6 @@ get_returns_for_call(CallTerm,AnswerTerm) :-
  * get_residual(#CallTerm,?DelayList)
  */
 
-:- mode get_residual(?,?).
 get_residual(CallSkel, DelayList) :-
 	get_calls(CallSkel, S, R),
 	get_returns_and_dls(S, R, DLs),
@@ -620,9 +643,8 @@ get_residual(CallSkel, DelayList) :-
 	; member(DelayList, DLs)
 	).
 
-:- mode variant_get_residual(?,?).
 variant_get_residual(CallSkel, DelayList) :-
-	get_call(CallSkel, S, R,_),
+	get_call(CallSkel, S, R),
 	get_returns_and_dls(S, R, DLs),
 	( DLs == [] -> DelayList = []
 	; DLs = [DL] -> DelayList = DL
@@ -634,7 +656,6 @@ variant_get_residual(CallSkel, DelayList) :-
 	get_lastnode_cs_retskel(_,Leaf,_,_),
 	get_delay_lists(Leaf,DLs).
 	
-:- mode get_returns_and_dls(?,?,?).
 get_returns_and_dls(CallStr, RetSkel, DLs) :-
 	'_$$get_returns_and_dls'(CallStr,RetSkel,DLs).
 /*	findall('_$get_returns_and_dls'(CallStr,RetSkel,DLs),
@@ -642,13 +663,10 @@ get_returns_and_dls(CallStr, RetSkel, DLs) :-
 		List),
 	member('_$get_returns_and_dls'(CallStr,RetSkel,DLs),List).*/
 
-:- mode get_delay_lists(+,?).
 get_delay_lists(Leaf, DLs) :- get_delay_lists(Leaf, DLs).
 
 %------------
-% TES: Not sure if this is needed.
 
-:- mode get_returns_and_tvs(?,?,?).
 get_returns_and_tvs(TableEntry, ReturnTemplate,TV) :-
 	findall('_$$get_returns_and_tvs'(TableEntry,ReturnTemplate,TV),
 	        '_$$get_returns_and_tvs'(TableEntry,ReturnTemplate,TV),
@@ -666,8 +684,7 @@ get_returns_and_tvs(TableEntry, ReturnTemplate,TV) :-
 	get_lastnode_cs_retskel(_,Leaf,_,_),
 	is_conditional_answer(Leaf,IsCond),
 	(IsCond = 1 -> TV = u ; TV = t).
-
-:- mode '_$$get_returns_and_tvs'(?,?,?,?).
+	
 '_$$get_returns_and_tvs'(CallStr,RetSkel,Leaf,TV) :-
 	trie_get_return(CallStr,RetSkel),
 	get_lastnode_cs_retskel(_,Leaf,_,_),
@@ -681,13 +698,14 @@ is_conditional_answer(Leaf,IsCond):-
 /* Predicates to remove information from tables.			*/
 /*----------------------------------------------------------------------*/
 
+:- import reinitialize_undefineds/0 from xsbbrat.
 %:- import current_prolog_flag/2 from curr_sym.
 abolish_all_tables :- 
 	   abolish_table_info,
 	   reinitialize_undefineds.
 
+:- import table_index_predicates/2 from standard.
 % TES: predicate does not seem to work if abolish_table_pred_bi is not last (?) 
-:- mode abolish_table_pred(?,+).
 abolish_table_pred(Spec,Options) :-
 	check_nonvar(Spec,abolish_table_pred/2,1),
 	(Spec = M:Goal -> 
@@ -707,7 +725,6 @@ abolish_table_pred_bi_all([Term|Terms],ActionType) :-
 	abolish_table_pred_bi(Term,ActionType),
 	abolish_table_pred_bi_all(Terms,ActionType).
 
-:- mode abolish_table_pred(?).
 abolish_table_pred(Spec) :- abolish_table_pred(Spec,[]).
 
 /*
@@ -724,55 +741,40 @@ abolish_table_pred_bi(_TIF,_Action) :-
 	'_$builtin'(ABOLISH_TABLE_PREDICATE).
 
 :- dynamic invalidate_table_for/2.
-:- mode invalidate_tables_for(?,?).
 invalidate_tables_for(DynSkel,Mode) :-
 	invalidate_table_for(DynSkel,Mode),
 	fail.
 invalidate_tables_for(_DynSkel,_).
 
-:- mode abolish_module_tables(?).
 abolish_module_tables(_Predicate) :-
 	'_$builtin'(ABOLISH_MODULE_TABLES).
 
-:- mode abolish_table_subgoals(?,+).
 abolish_table_subgoals(Call,Options) :-
 	check_abolish_options_list(Options,ActionType,abolish_table_subgoals/2),
 	abolish_table_subgoals_internal(Call,ActionType).
-
-:- mode abolish_table_subgoals(?).
 abolish_table_subgoals(Call) :-
 	abolish_table_subgoals_internal(Call,ABOLISH_TABLES_DEFAULT).
 
-:- mode abolish_table_subgoal(?,+).
 abolish_table_subgoal(Call,Options) :-
 	check_abolish_options_list(Options,ActionType,abolish_table_subgoalb/2),
 	abolish_table_subgoal_internal(Call,ActionType).
-
-:- mode abolish_table_subgoal(?).
 abolish_table_subgoal(Call) :-
 	abolish_table_subgoal_internal(Call,ABOLISH_TABLES_DEFAULT).
 
-check_abolish_options_list(Options,ActionType,Pred) :- 
-    check_nonvar(Options,Pred,2),
-    (Options == []
-     ->	ActionType = ABOLISH_TABLES_DEFAULT
-     ;	check_abolish_options_list0(Options,ActionType,Pred)
-    ).
-
-check_abolish_options_list0([],0,_Pred):- !.
-check_abolish_options_list0([Option|Rest],ActionType,Pred):- !,
+check_abolish_options_list(Options,_ActionType,Pred):- 
+	check_nonvar(Options,Pred,2),
+	fail.
+check_abolish_options_list([],ActionType,_Pred):- !,
+	(var(ActionType) -> ActionType = ABOLISH_TABLES_DEFAULT ; true).
+check_abolish_options_list([Option|_Rest],ActionType,Pred):- !,
 	check_nonvar(Option,Pred,2),
-	check_abolish_options_list0(Rest,ActionType0,Pred),
-	(Option == abolish_tables_transitively
-	 -> ActionType is ActionType0 +  ABOLISH_TABLES_TRANSITIVELY
-	 ; Option == abolish_tables_singly
-	 -> ActionType is ActionType0 + ABOLISH_TABLES_SINGLY
-	 ; Option == no_cps_check
-	 -> ActionType is ActionType0 + ABOLISH_TABLES_NO_CPS_CHECK
-	 ;  domain_error([abolish_tables,transitively,
-			  abolish_tables_singly],Option,Pred,2,'')
-	).
-check_abolish_options_list0(Culprit,_ActionType,Pred):- 
+	(Option = abolish_tables_transitively -> 
+	    ActionType = ABOLISH_TABLES_TRANSITIVELY
+	  ; (Option = abolish_tables_singly -> 
+	       ActionType = ABOLISH_TABLES_SINGLY
+	     ; domain_error([abolish_tables,transitively,
+	                    abolish_tables_singly],Option,Pred,2,'') ) ).
+check_abolish_options_list(Culprit,_ActionType,Pred):- 
 	type_error(list,Culprit,Pred,2).
 
 /* TES: Action on call subsumption is to delete producer for consumer
@@ -822,7 +824,6 @@ abolish_table_subgoal_internal(_Call,_Action).
 abolish_table_subgoal_bi(_Handle,_Action) :-
 	'_$builtin'(ABOLISH_TABLE_CALL).
 
-:- mode abolish_nonincremental_tables(+).
 abolish_nonincremental_tables(Option):- 
      ((Option = on_incomplete(X) ; Option = [on_incomplete(X)]) -> 
        (X = skip -> C_action = SKIP_ON_INCOMPLETE
@@ -831,6 +832,7 @@ abolish_nonincremental_tables(Option):-
            ; domain_error([on_incomplete/1],Option,abolish_nonincremental_tables,1,'') ),
        table_inspection_function(ABOLISH_NONINCREMENTAL_TABLES,C_action,_Two,_Three,_Four).
 
+:- export abolish_nonincremental_tables/0.
 abolish_nonincremental_tables:- 
        table_inspection_function(ABOLISH_NONINCREMENTAL_TABLES,ERROR_ON_INCOMPLETE,_Two,_Three,_Four).
 
@@ -846,11 +848,9 @@ abolish_nonincremental_tables:-
  *   pointer.
  */
 
-:- mode delete_return(+,+).
 delete_return(TableEntryHandle,ReturnHandle) :-
 	trie_delete_return(TableEntryHandle,ReturnHandle,ANSWER_SUBSUMPTION).
 
-:- mode delete_return(+,+,+).
 delete_return(SubgoalFrame,AnswerTrieLeaf,Type) :-
 	trie_delete_return(SubgoalFrame,AnswerTrieLeaf,Type).
 
@@ -864,15 +864,10 @@ trie_delete_return(_SubgoalFrame,_AnswerTrieLeaf,_Type) :-
 /*----------------------------------------------------------------------*/
 
 trie_dynamic(X) :- dynamic(X), add_trie_index(X).
-
 trie_assert(Term) :- t_assert(Term, _Flag).
-
 trie_assert(Term,Flag) :- t_assert(Term,Flag).
-
 trie_retract(X) :- retract(X).
-
 trie_retract_nr(X) :- retract_nr(X).
-
 trie_retract_all(X) :- retractall(X).
 
 
@@ -880,7 +875,6 @@ trie_retract_all(X) :- retractall(X).
 /* builtins to get (and change) trie nodes - they belong somewhere else */
 /*======================================================================*/
 
-:- mode force_answer_true(?).
 force_answer_true(Goal) :-
 	findall(Leaf,get_leaves(Goal,Leaf),Leaves),
 	(Leaves == []
@@ -893,7 +887,6 @@ force_answer_true(Goal) :-
 		)
 	).
 
-:- mode force_answer_false(?).
 force_answer_false(Goal) :-
 	findall(p(Leaf,DLs),get_leaves_and_dls(Goal,Leaf,DLs),Leaves),
 	(member(p(Leaf,DLs),Leaves),
@@ -917,25 +910,20 @@ get_leaves_and_dls(Goal,Leaf,DLs) :-
 	get_lastnode_cs_retskel(_,Leaf,_,_),
 	get_delay_lists(Leaf,DLs).
 
-:- mode force_truth_value(+,+).
 force_truth_value(AnsLeafNode,TruthValue) :-
 	force_truth_value(AnsLeafNode,TruthValue).
 
-:- mode predicate_has_tables(+).
 predicate_has_tables(Psc):-
 	table_inspection_function(GET_PRED_CALLTRIE_PTR,Psc,Ptr,_,_),
 %	writeln(ptr(Ptr)),
 	Ptr \== 0.
 
-:- mode get_current_scc(+,?).
 get_current_scc(SubgoalFrame,Number):-
 	table_inspection_function(GET_CURRENT_SCC,SubgoalFrame,Number,_,_).
 
-:- mode get_callsto_number(+,?).
 get_callsto_number(SubgoalFrame,Number):- 
 	table_inspection_function(GET_CALLSTO_NUMBER,SubgoalFrame,Number,_,_).
 
-:- mode get_answer_number(+,-).
 get_answer_number(SubgoalFrame,Number):- 
 	table_inspection_function(GET_ANSWER_NUMBER,SubgoalFrame,Number,_,_).
 
@@ -952,11 +940,9 @@ subg_get_visitors_number(_Subg).
 get_visitors_number(SubgoalFrame,Number):- 
 	table_inspection_function(GET_VISITORS_NUMBER,SubgoalFrame,Number,_,_).
 
-:- mode early_complete_on_nth(+,+).
 early_complete_on_nth(SubgoalFrame,Number):- 
 	table_inspection_function(EARLY_COMPLETE_ON_NTH,SubgoalFrame,Number,_,_).
 
-:- mode early_complete_on_delta(+,+,+,+).
 early_complete_on_delta(SubgoalFrame,New,Old,Epsilon):- 
 	(New - Old < Epsilon ->
 	    table_inspection_function(EARLY_COMPLETE,SubgoalFrame,_,_,_)
@@ -965,220 +951,32 @@ early_complete_on_delta(SubgoalFrame,New,Old,Epsilon):-
 print_incomplete_tables:- 
 	table_inspection_function(PRINT_COMPLETION_STACK,-1,_,_,_).
 
-:- mode print_incomplete_tables(+).
 print_incomplete_tables(Stream):- 
 	check_open_stream_or_alias(Stream,print_incomplete_tables/1,1,output,Stream1),
 	table_inspection_function(PRINT_COMPLETION_STACK,Stream1,_,_,_).
 
-:- mode get_scc_dumpfile(+).
 get_scc_dumpfile(F):- 
 	table_inspection_function(GET_SCC_DUMPFILE,F,_,_,_).
 
-:- mode check_variant(?).
-check_variant(Term) :-
-    check_variant(Term,0).
+check_variant(Term):- 
+	table_inspection_function(CHECK_VARIANT,Term,0,_,_).
 
-:- mode check_variant(?,?).
-check_variant(Term0,DontCares):-
-    ('_$multifile'(Term0)
-     ->	'_$multifile_comp'(Term,Term0)
-     ;	Term = Term0
-    ),
-    ('_$trie_asserted'(Term) ->
-	 true
-     ;   type_error('trie-indexed predicate',Term0,check_variant/1,1)
-    ),
-    table_inspection_function(CHECK_VARIANT,Term,DontCares,_,_).
-    
-check_variant_1(Term,DontCares):- 
-    table_inspection_function(CHECK_VARIANT,Term,DontCares,_,_).
+check_variant(Term,DontCares):- 
+	table_inspection_function(CHECK_VARIANT,Term,DontCares,_,_).
 
-%-----------------------
+:- export set_tif_property/3, get_tif_property/3.
 
-:- mode check_table_option(?,?,?,?).
-check_table_option(ans_subsumption,Options,PredCList,_Override) :- !,
-	table_opts_intersect([answer_abstract(_),approximate(_),dynamic,dyn,
-	                      incremental,intern,opaque,subsumptive,subgoal_abstract(_),
-			      compl_semantics],ans_subsumption,Options,PredCList).
-check_table_option(answer_abstract(_),Options,PredCList,_Override) :- !,
-	table_opts_intersect([ans_subsumption,intern,compl_semantics],
-			      answer_abstract(_),Options,PredCList).
-check_table_option(approximate(_),Options,PredCList,_Override) :- !,
-	table_opts_intersect([incremental,subsumptive],
-			      approximate(_),Options,PredCList).
-check_table_option(dyn,Options,PredCList,_Override) :- !,
-	check_table_option(dynamic,Options,PredCList,_Override).
-check_table_option(dynamic,Options,PredCList,_Override) :- !,
-	table_opts_intersect([ans_subsumption,incremental,index(_)],dynamic,Options,PredCList).
-% Can't do incremental + intern until get_calls is fixed
-check_table_option(incremental,Options,PredCList,Override) :- !,
-	(Override = yes -> 
-	   true
-         ; table_opts_intersect([approximate(_),dynamic,dyn,intern,
-	                      nonincremental,opaque,shared,
-			      compl_semantics],incremental,Options,PredCList)).
-check_table_option(intern,Options,PredCList,_Override) :- !,
-	table_opts_intersect([ans_subsumption,answer_abstract(_),approximate(_),incremental,
-	                      subgoal_abstract(_),subsumption,compl_semantics],
-			      intern,Options,PredCList).
-check_table_option(max_answers(_),Options,PredCList,_Override) :- !,
-	table_opts_intersect([subsumptive,compl_semantics],
-			      max_answers(_),Options,PredCList).
-check_table_option(nonincremental,Options,PredCList,Override) :- !,
-	(Override = yes -> 
-	   true
-         ; table_opts_intersect([incremental,opaque],nonincremental,Options,PredCList)).
-% TES: will be allowing subsumptive/opaque & compl_semantics/opaque
-check_table_option(opaque,Options,PredCList,Override) :- !,
-	(Override = yes -> 
-	   true
-         ; table_opts_intersect([incremental,nonincremental],opaque,Options,PredCList)).
-check_table_option(private,Options,PredCList,_Override) :- !,
-	table_opts_intersect([shared],private,Options,PredCList).
-check_table_option(shared,Options,PredCList,_Override) :- !,
-	table_opts_intersect([incremental,opaque,private,subsumptive,compl_semantics],
-	                     shared,Options,PredCList).
-check_table_option(subgoal_abstract(_),Options,PredCList,_Override) :- !,
-	table_opts_intersect([subsumptive],subgoal_abstract(_),Options,PredCList).
-% Assuming that we''ll have subsumptive and opaque soon.
-check_table_option(subsumptive,Options,PredCList,Override) :- !,
-	table_opts_intersect([intern,max_answers(_),opaque,shared,
-	                      subgoal_abstract(_),compl_semantics],subsumptive,Options,PredCList),
-	(Override = yes -> 
-	   true
-         ; table_opts_intersect([variant],subsumptive,Options,PredCList) ).
-check_table_option(index(_),Options,PredCList,_Override) :- !,
-	table_opts_intersect([incremental,intern,max_answers(_),opaque,shared,variant,
-	                      subgoal_abstract(_),compl_semantics],index(_),Options,PredCList).
-check_table_option(variant,Options,PredCList,Override) :- !,
-	(Override = yes -> 
-	   true
-         ; table_opts_intersect([subsumptive],variant,Options,PredCList)).
-check_table_option(compl_semantics,Options,PredCList,_Override) :- !,
-	table_opts_intersect([ans_subsumption,answer_abstract(_),approximate(_),dynamic,dyn,
-	                      incremental,intern,opaque,subsumptive,subgoal_abstract(_)],
-			      compl_semantics,Options,PredCList).
-check_table_option(Option,_Options,_PredCList,_Override) :- !,
-	domain_error(table_option,Option,(table)/1,1,
-	['must be one of ',
-	'ans_subsumption,answer_abstract,approximate,dyn,dynamic,incremental,intern,',
-	'nonincremental,opaque,private,shared,subgoal_abstract,subsumptive,variant']).
-
-%:- import console_writeln/1 from standard.
-table_opts_intersect(Incompats,Decl,Options,PredCList):- 
-%	console_writeln(table_opts_intersect(Incompats,Decl,Options,PredCList)),
-	member(Incomp,Incompats),
-	(comma_member(Incomp,Options) -> 
-	    table_error(('Cannot declare ',PredCList,
-		     ' as tabled with options ',Decl,' and ',Incomp))).
-table_opts_intersect(_Incompats,_Decl,_Options,_PredCList).
-
-/*----------------------------------------------------------------------*/
-
-/* Change Evaluation Method for Tabled Predicate
-   --------------------------------------------- */
-:- mode use_variant_tabling(?).
-use_variant_tabling(CommaList) :-
-	set_eval_method_for_comma(CommaList,VARIANT_EVAL_METHOD).
-
-:- mode use_subsumptive_tabling(?).
-use_subsumptive_tabling(CommaList) :-
-    set_eval_method_for_comma(CommaList,SUBSUMPTIVE_EVAL_METHOD).
-
-set_eval_method_for_comma((PS1,PS2),EvalMethod) :-
-	!, set_eval_method_for_comma(PS1,EvalMethod),
-	set_eval_method_for_comma(PS2,EvalMethod).
-set_eval_method_for_comma(PredSpec,EvalMethod) :-
-	set_tabled_eval_for_pred(PredSpec,EvalMethod).
-
-/*
- * Setting of the evaluation method will fail if calls exist in the
- * Call Trie.
- */
-set_tabled_eval_for_pred(PredSpec,Method) :-
-	( PredSpec = P/N -> functor(Term,P,N); Term = PredSpec ),
-	( set_tabled_eval(Term,Method), fail; true ).
-
-set_tabled_eval(Term,EvalMethod) :-
-	set_tabled_eval(Term,EvalMethod).
-
-/* Here, if a predicate is static, and non-tabled we throw an error,
-   otherwise a no-op */
-:- mode add_table(?).
-add_table(Spec) :-
-	mpa_to_skel(Spec,Call),
-	term_psc(Call,Psc),
-	psc_type(Psc,Type),
-	(Type =:= T_PRED -> /* static and loaded */
-	    ((psc_tabled(Psc, Tabled),Tabled \== 0) ->
-		true
-	      ; permission_error(table,static_code,Spec,(table)/1) )
-	    ;	   (Type =:= T_DYNA, dynamic_pred_has_clauses(Spec,IfCls), IfCls =:= 1
-		    ->	   permission_error(table,'dynamic predicate with clauses',Spec,(table)/1)
-		    ; psc_set_tabled(Psc,1) %% set it as tabled
-		    ->	   true
-		    ;	   permission_error(table,'predicate that cannot be tabled',Spec,(table)/1)
-		   )
-	). 
-
-:- mode retract_table(?).
-retract_table(Spec) :-
-	mpa_to_skel(Spec,Call),
-	term_psc(Call,Psc),
-	psc_set_tabled(Psc,0).  %% set it as non-tabled
-
-/* The following predicates are only called from table/1, 
-   and consistency has already been checked, so it is safe to 	
-   assume that we can just set the bits without further checking. 
-*/
-
-%:- import console_writeln/1 from standard.
-/* Mode can be INCREMENTAL, NONINCREMENTAL, or OPAQUE */
-:- mode add_incr_table(?,+).
-add_incr_table(Spec,Mode) :-
-	mpa_to_skel(Spec,Call),
-	term_psc(Call,Psc),	
-	(predicate_has_tables(Psc) ->
-	   permission_error(add_incremental_tabling,predicate_with_tables,Spec,(table)/1) 
-	 ; psc_set_incr(Psc,Mode)).
-
-:- mode set_psc_table_property(?,+).
-set_psc_table_property(Term,variant):- set_tabled_eval(Term,VARIANT_EVAL_METHOD).
-set_psc_table_property(Term,subsumptive):- set_tabled_eval(Term,SUBSUMPTIVE_EVAL_METHOD).
-set_psc_table_property(Term,incremental):-
-    term_psc(Term,Psc),
-    (predicate_has_tables(Psc) ->
-       permission_error(set_incremental_tabling,predicate_with_tables,Term,(table)/1) 
-     ; add_incr_table(Term,INCREMENTAL)).
-set_psc_table_property(Term,nonincremental):-
-    term_psc(Term,Psc),
-    (predicate_has_tables(Psc) ->
-       permission_error(set_incremental_tabling,predicate_with_tables,Term,(table)/1) 
-     ; add_incr_table(Term,NONINCREMENTAL) ).
-set_psc_table_property(Term,opaque):-
-    term_psc(Term,Psc),
-    (predicate_has_tables(Psc) ->
-       permission_error(set_incremental_tabling,predicate_with_tables,Term,(table)/1) 
-     ; add_incr_table(Term,OPAQUE) ).
-
-%----------------------------------------------------------------------
-:- mode get_tif_property(?,?,?).
 get_tif_property(Term,Property,Value):- 
 	tif_translate(Property,Prop),
 	table_inspection_function(GET_TIF_PROPERTY,Term,Prop,Value,_).
 
-:- mode set_tif_property(?,+,+).
 set_tif_property(Term,Property,Value):- 
-%   writeln(set_tif_property(Term,Property,Value)),
 	tif_translate(Property,Prop),
 	table_inspection_function(SET_TIF_PROPERTY,Term,Prop,Value,_).
 
-tif_translate(subgoal_size,SUBGOAL_SIZE).
-tif_translate(answer_size,ANSWER_SIZE).
+tif_translate(subgoal_depth,SUBGOAL_DEPTH).
+tif_translate(answer_depth,ANSWER_DEPTH).
 tif_translate(intern,INTERNING_GROUND).
-tif_translate(answer_subsumption,TIF_ANSWER_SUBSUMPTION).
-tif_translate(max_answers,TIF_MAX_ANSWERS).
-tif_translate(compl_semantics,TIF_ALTERNATE_SEMANTICS).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Forest Logging
@@ -1187,7 +985,6 @@ tif_translate(compl_semantics,TIF_ALTERNATE_SEMANTICS).
 log_all_forest_start :-
 	start_forest_view(userout).
 
-:- mode log_all_forest_start(+).
 log_all_forest_start(Options):- 
 	check_log_forest_options(Options,File),
 	start_forest_view(File).
@@ -1199,13 +996,11 @@ log_all_forest_end :-
 log_all_forest_flush :-
 	flush_forest_view.
 
-:- mode log_forest(?).
 log_forest(Call):- 
 	start_forest_view(userout),
 	call(Call),
 	stop_forest_view.
 
-:- mode log_forest(?,+).
 log_forest(Call,Options):- 
 	check_log_forest_options(Options,File),
 	% dont reset CTRACE_CALLS
@@ -1219,18 +1014,17 @@ check_log_forest_options(Options,_File):-
 	check_nonvar(Options,log_forest/2,2),
 	fail.
 check_log_forest_options([],File):-
-	(var(File) -> File = userout ; check_atom(File,'check_log_forest_options/2',2)).
+	(var(File) -> File = userout ; true).
 check_log_forest_options([Option|Rest],File):- !,
 	check_nonvar(Option,log_forest/2,2),
 	(Option = file(LogFile) -> File = LogFile
-	   ; Option = level(Level) -> check_atomic(Level,'check_log_forest_options(level(?)/2',1), set_prolog_flag(ctrace,Level)
+	   ; Option = level(Level) -> set_prolog_flag(ctrace,Level)
              ; Option = set_pred(PredSpec,Mode) -> set_forest_logging_for_pred(PredSpec,Mode)
  	       ; domain_error([file/1,level/1],Option,log_forest/2,2,'') ),
 	check_log_forest_options(Rest,File).
 check_log_forest_options(Culprit,_File):- 
 	type_error(list,Culprit,log_forest/2,2).
 
-:- mode start_forest_view(+).
 start_forest_view(File):-
 	table_inspection_function(START_FOREST_VIEW,File,_,_,_),
 	set_prolog_flag(backtrace_on_error,off),
@@ -1244,7 +1038,6 @@ stop_forest_view:-
 flush_forest_view:-
 	table_inspection_function(FLUSH_FOREST_VIEW,_,_,_,_).
 
-:- mode set_forest_logging_for_pred(?,+).
 set_forest_logging_for_pred(PredSpec,Val):- 
  	  (PredSpec = Mod:PredSpec1  -> 
              (PredSpec1 = F/A -> functor(TermIn,F,A) ; TermIn = PredSpec1),
@@ -1260,52 +1053,25 @@ set_forest_logging_for_pred(PredSpec,Val):-
 set_forest_logging_for_pred(PredSpec,_Val):- 
 	type_error(predicate_or_term_indicator,PredSpec,set_forest_logging_for_pred/2,1).
 
-:- mode load_forest_log(+).
 load_forest_log(File):- 
 %	ensure_loaded(term_abstract),
-	load_dync(File,a).
-
-:- mode_on_success(pus_smpl(+,+,+,+)).
-:- dynamic pus_smpl/4.
-
-:- mode_on_success(puc_smpl(+,+,+,+,+)).
-:- dynamic puc_smpl/5.
-
-:- mode_on_success(ns_smpl(+,+,+)).
-:- dynamic ns_smpl/3.
-
-:- mode_on_success(nf_smpl(+,+,+)).
-:- dynamic nf_smpl/3.
-
-:- mode_on_success(del(+,+,+)).
-:- dynamic del/3.
-
-:- mode_on_success(tc(+,+,+,+)).
-:- dynamic tc/4.
-:- index(tc/4,[*(1),*(2)]).
-
-:- mode_on_success(nc(+,+,+,+)).
-:- dynamic nc/4.
-:- index(nc/4,[*(1),*(2)]).
-
-:- mode_on_success(na(+,+,+)).
-:- dynamic na/3.
-:- index(na/3,[2]).
-
-:- mode_on_success(nda(+,+,+,+)).
-:- dynamic nda/4.
-:- index(nda/4,[2]).
-
-%%:- dynamic ar/4.  % where used?
-%%:- index(ar/4,[2,3]).
-%%:- dynamic dar/4.  % where used?
-%%:- index(dar/4,[2,3]).
-%%:- index(ta/2,[1,2]).  % ? where uasse
+	dynamic(pus_smpl/4), 	dynamic(puc_smpl/5), 
+	dynamic(ns_smpl/3),	dynamic(nf_smpl/3),
+	dynamic(cmp/3),
+	dynamic(del/3),
+	dynamic(nc/4),
+	dynamic(ar/4),	dynamic(dar/4),
+	dynamic(na/3),	dynamic(nda/4),
+	index(tc/4,[*(1),*(2)]),
+	index(nc/4,[*(1),*(2)]),
+	index(na/3,[2]),
+	index(nda/4,[2]),
+	index(ar/4,[2,3]),
+	index(dar/4,[2,3]),
+	index(ta/2,[1,2]),
 %	index(cmp/3,[*(1),2]),
-
-:- mode_on_success(cmp(+,+,+)).
-:- dynamic cmp/3.
-:- index(cmp/3,trie).
+	index(cmp/3,trie),
+	load_dync(File,a).
 
 :- import tc/4, cmp/3, nc/4, del/3  from usermod.
 :- import ns_smpl/3, nf_smpl/3, pus_smpl/4, puc_smpl/5 from usermod.
@@ -1337,12 +1103,11 @@ forest_log_overview:-
 	nl,
 	report_sccs.
 
-:- mode forest_log_overview_1(?).
+:- export forest_log_overview_1/1.
 forest_log_overview_1(CondLen):-
 	findall(1,unsimplified(_A,_B), Conds),
 	length(Conds,CondLen).
 
-:- mode three_valued_sccs(?).
 three_valued_sccs(L):-
 	setof(Scc,B^S^S1^Ct^(unsimplified(B,S),cmp(S1,Scc,Ct),variant(S,S1)),L).
 
@@ -1384,7 +1149,7 @@ total_subgoals(0).
 total_noncompleted_subgoals(N):- 
 	cmp_defined,
 	setof(Ctr1,S1^S2^_SCC^_Ctr2^((tc(S1,S2,new,Ctr1) ; nc(S1,S2,new,Ctr1)),
-	                 \+ check_variant_1(cmp(S1,_SCC,_Ctr2),2)),GoalList),!,
+	                 \+ check_variant(cmp(S1,_SCC,_Ctr2),2)),GoalList),!,
 	length(GoalList,N).
 total_noncompleted_subgoals(N):- 
 	\+ cmp(_,_,_),
@@ -1429,7 +1194,6 @@ get_scc_length(SCC,Len):-
 
 %----------------
 
-:- mode analyze_an_scc(+,+).
 analyze_an_scc(Scc,File):-
 	count_subgoals_in_scc(Scc,Subgoals),
 	count_backlinks_in_scc(Scc,Links,Ninks),
@@ -1449,9 +1213,8 @@ count_delays(Scc,Len):-
 
 scc_has_delay(Scc):- 
 	del(_Called,Caller,_Ctr),
-	check_variant_1(cmp(Caller,Scc,_Ctr1),1).
+	check_variant(cmp(Caller,Scc,_Ctr1),1).
 
-:- mode analyze_an_scc(+,+,?).
 analyze_an_scc(Scc,File,Abstraction_in):-
 	functor(Abstraction_in,F,A),
 	(F = ':',A = 2 -> 
@@ -1478,9 +1241,9 @@ count_backlinks_in_scc(SCC,Lnum,Nnum):-
 	length(Ninks,Nnum).
 
 backlink_in_scc(T1,Scc):- 
-	(tc(T1,_T2,incmp,_) ; nc(T1,_T2,incmp,_)),check_variant_1(cmp(T1,Scc,_),1).
+	(tc(T1,_T2,incmp,_) ; nc(T1,_T2,incmp,_)),check_variant(cmp(T1,Scc,_),1).
 negbacklink_in_scc(T1,Scc):- 
-	nc(T1,_T2,State,_),State \== cmp, check_variant_1(cmp(T1,Scc,_),1).
+	nc(T1,_T2,State,_),State \== cmp, check_variant(cmp(T1,Scc,_),1).
 
 %----------------
 
@@ -1555,15 +1318,15 @@ report_links_1(Occs,File):-
 
 count_links_1(S,(F1/A1,F2/A2)):- 
 	(tc(T1,T2,State,_Ctr),State \= cmp ; nc(T1,T2,State,_Ctr),State \= cmp),
-	check_variant_1(cmp(T1,S,_),1),
-	check_variant_1(cmp(T2,S,_),1),
+	check_variant(cmp(T1,S,_),1),
+	check_variant(cmp(T2,S,_),1),
 	get_functor(T1,F1/A1),
 	get_functor(T2,F2/A2).
 
 count_links_1(S,(Abstr1,Abstr2),Module,Abstraction):- 
 	(tc(T1,T2,State,_Ctr),State \= cmp ; nc(T1,T2,State,_Ctr),State \= cmp),
-	check_variant_1(cmp(T1,S,_),1),
-	check_variant_1(cmp(T2,S,_),1),
+	check_variant(cmp(T1,S,_),1),
+	check_variant(cmp(T2,S,_),1),
 	copy_term(Abstraction,Abstraction1),
 	copy_term(Abstraction,Abstraction2),
 	abstract_term(T1,Abstr1,Module,Abstraction1),
@@ -1617,13 +1380,11 @@ get_functor(T,F/Arg):-
 %%% 	writeln(SubgList),
 %%%         get_sdg_info(SubgList,SCCList).
 	
-:- mode get_sdg_info(-).
 get_sdg_info(List):- 
 	get_sdg_info(0,List).
 
-:- import writeln/1 from standard.
+%:- import writeln/1 from standard.
 
-:- mode get_sdg_info(?,?).
 get_sdg_info(CSF,Rest):- 
 	table_inspection_function(INCOMPLETE_SUBGOAL_INFO,CSF,NewCSF,Level,SF,CallsTo,Answers,IsNegCall,GenParent),
 	(SF == 0 -> 
@@ -1644,57 +1405,11 @@ get_sdg_info(CSF,Rest):-
 	          get_sdg_info(NewCSF,Rest1) )
 	      ; true).
 
-%--------
-:- mode get_idg_info(?,?).
-get_idg_info(Graph,LeafGraph):- 
-    get_incr_sccs_with_deps(SccList,_Deplist),
-    idg_scclist_to_adj_graph(SccList,Graph),
-    get_idg_leaf_info(LeafGraph).
-
-idg_scclist_to_adj_graph([],[]).
-idg_scclist_to_adj_graph([ret(Subgoal,SCC)|R],[Term|Graph]):-
-    Term = subgoal(Subgoal,SCC,Callnode,CallsTo,Answers,PosCallnodeList,[]),
-    get_call(Subgoal, SF, _ReturnTemplate,Callnode),
-    get_callsto_number(SF,CallsTo),
-    get_answer_number(SF,Answers),
-    immed_affects_ptr_set(Callnode,PosCallnodeList),
-    idg_scclist_to_adj_graph(R,Graph).
-
-:- mode get_idg_leaf_info(?).
-get_idg_leaf_info(Graph):- 
-    idg_get_incr_dyn_preds(Preds),
-    get_idg_leaf_info_1(Preds,Calls),
-%    writeln(Calls),
-    idg_dyn_incr_list_to_adj_graph(Calls,Graph),!.
-get_idg_leaf_info([]).
-
-    
-:- import findall/4 from setof.
-get_idg_leaf_info_1([],[]).
-get_idg_leaf_info_1([Term|Rest],List):- 
-    findall(Term,get_calls(Term),List,Tail),
-    get_idg_leaf_info_1(Rest,Tail).
-
-idg_dyn_incr_list_to_adj_graph([],[]).
-idg_dyn_incr_list_to_adj_graph([Subgoal|R],[Term|Graph]):-
-    Term = subgoal(Subgoal,na,Callnode,na,na,PosCallnodeList,[]),
-    get_call(Subgoal, _SF, _ReturnTemplate,Callnode),
-    immed_affects_ptr_set(Callnode,PosCallnodeList),
-    idg_dyn_incr_list_to_adj_graph(R,Graph).
-
-idg_get_incr_dyn_preds(List):-
-    setof(PredSpec,idg_get_incr_dyns_1(PredSpec),List).
-
-idg_get_incr_dyns_1(Term):-
-    predicate_property(Term,incremental),
-    predicate_property(Term,dynamic).
-
 remove_gencon_cp([],_Genparent,[]).
 remove_gencon_cp([SF|Rest],SF,Rest):- !.
 remove_gencon_cp([H|T],Genparent,[H|T1]):- 
 	remove_gencon_cp(T,Genparent,T1).
 
-:- mode get_sdg_subgoal_info(?).
 get_sdg_subgoal_info(List):- 
 	get_sdg_subgoal_info(0,List).
 
@@ -1721,7 +1436,6 @@ get_sdg_subgoal_info(CSF,Rest):-
 
 %-------------
 
-:- mode morph_dep_graph(?,+,?).
 morph_dep_graph(SdgIn,Abstr,SdgOut):-	
 	check_ground(Abstr,morph_dep_graph/3,2),
 	(Abstr = Module:Call -> 
@@ -1813,8 +1527,8 @@ get_next_set(List,_Key,[],List).
 %----------------
 
 print_sdg_info:- 
-    get_sdg_info(SDG),
-    print_sdg_info(SDG).
+	get_sdg_info(SDG),
+	print_sdg_info(SDG).
 
 print_sdg_info_modes:- 
 	get_sdg_info(SDG),
@@ -1827,15 +1541,14 @@ print_sdg_info_functor:-
 	morph_dep_graph(SDG,tables:abstract_functor,SDGOut),
 	print_sdg_info(SDGOut).
 
-:- mode print_sdg_info(?).
 print_sdg_info(SDG):- 
 	reverse(SDG,SDG1),
         get_base_level(SDG1,Base),
 	get_subgoal_avl(SDG1,AVL), % writeln(avl(AVL)),
-	sdg_print_each_subgoal(SDG1,Base,AVL).
+	print_each_subgoal(SDG1,Base,AVL).
 
-sdg_print_each_subgoal([],_Base,_AVL).
-sdg_print_each_subgoal([subgoal(Subgoal,Level,_SF,CallsTo,Answers,PosSFList,NegSFList)|R],Base,AVL):- 
+print_each_subgoal([],_Base,_AVL).
+print_each_subgoal([subgoal(Subgoal,Level,_SF,CallsTo,Answers,PosSFList,NegSFList)|R],Base,AVL):- 
         format("Subgoal: ~q~n",Subgoal),
 	(integer(Level) -> 
 	   Index is Level - Base,
@@ -1849,60 +1562,12 @@ sdg_print_each_subgoal([subgoal(Subgoal,Level,_SF,CallsTo,Answers,PosSFList,NegS
           ; get_subgoal_list(NegSFList,AVL,NegSubgList),
 	    format("        Affects negatively ",[]),
 	    print_subgoal_list(NegSubgList),nl),
-	sdg_print_each_subgoal(R,Base,AVL).
+	print_each_subgoal(R,Base,AVL).
 
-%--------
-:- mode print_idg_info(+,?).
-print_idg_info(SDG,Leaves):- 
-	get_subgoal_avl(SDG,AVL), % writeln(avl(AVL)),
-	idg_print_each_subgoal(SDG,AVL),
-	idg_print_each_leaf(Leaves,AVL).
-
-print_idg_info:- 
-    get_idg_info(IDG,Leaves),
-    print_idg_info(IDG,Leaves).
-
-idg_print_each_subgoal([],_AVL).
-idg_print_each_subgoal([subgoal(Subgoal,Level,_SF,CallsTo,Answers,PosSFList,NegSFList)|R],AVL):-
-        numbervars(Subgoal),
-        format("Tabled Subgoal: ~q~n",Subgoal),
-	(integer(Level) -> 
-	   format("        SCC: ~d; Number of calls to this subgoal ~d; Number of answers ~d~n",[Level,CallsTo,Answers])
-         ; format("        Number of calls to this subgoal ~d; Number of answers ~d~n",[CallsTo,Answers]) ),
-	(PosSFList == [] -> true 
-          ; get_subgoal_list(PosSFList,AVL,PosSubgList),
-	    format("        Affects positively ",[]),
-	    print_subgoal_list(PosSubgList),nl),
-	(NegSFList == [] -> true 
-          ; get_subgoal_list(NegSFList,AVL,NegSubgList),
-	    format("        Affects negatively ",[]),
-	    print_subgoal_list(NegSubgList),nl),
-	idg_print_each_subgoal(R,AVL).
-
-idg_print_each_leaf([],_AVL).
-idg_print_each_leaf([subgoal(Subgoal,_Level,_SF,_CallsTo,_Answers,PosSFList,NegSFList)|R],AVL):-
-        numbervars(Subgoal),
-        format("IDG Leaf: ~q~n",Subgoal),
-	(PosSFList == [] -> true 
-          ; get_subgoal_list(PosSFList,AVL,PosSubgList),
-	    format("        Affects positively ",[]),
-	    print_subgoal_list(PosSubgList),nl),
-	(NegSFList == [] -> true 
-          ; get_subgoal_list(NegSFList,AVL,NegSubgList),
-	    format("        Affects negatively ",[]),
-	    print_subgoal_list(NegSubgList),nl),
-	idg_print_each_leaf(R,AVL).
-%idg_print_each_leaf(List,_Avl):-
-%    writeln(could_not_print_out(List)).
-
-%---
-	   
 get_subgoal_list([],_AVL,[]).
 get_subgoal_list([Key|KR],AVL,[Subg|SR]):- 
-    (get_assoc(Key,AVL,Subg) ->
-	 true
-      ;  Subg = '!!!subgoal_not_in_avl'(Key)),
-    get_subgoal_list(KR,AVL,SR).
+	get_assoc(Key,AVL,Subg),
+	get_subgoal_list(KR,AVL,SR).
 
 print_subgoal_list([Subg]):- !,writeq(Subg).
 print_subgoal_list([Subg|R]):- !,writeq(Subg),write(' ; '),print_subgoal_list(R).
@@ -1921,6 +1586,7 @@ get_kvs([subgoal(Subgoal,_Level,SF,_CallsTo,_Answers,_PosSFList,_NegSFList)|R],[
 
 print_sdg_subgoal_info:-
         get_sdg_subgoal_info(Subgoals),
+	writeln(about_to_copy),
         print_sdg_subgoal_info(Subgoals).
 
 print_sdg_subgoal_info(SDG):-
@@ -1947,7 +1613,6 @@ get_subgoals_base_level(SDG,Base):-
 
 %----------------
 
-:- mode sdg_scc_info(?,?).
 sdg_scc_info([],[]).
 sdg_scc_info([subgoal(Subgoal,Level,SF,_CallsTo,Answers,PosList,NegList)|Rest],
              [scc(Level,NumSubgoals,NumAnswers,NumPosEdges,NumNegEdges)|Rest1]):- 
@@ -1972,10 +1637,10 @@ sdg_scc_info_1([subgoal(Subgoal,Level,SF,CallsTo,Answers,PosList,NegList)|Rest],
 %incr_eval_builtin(_BuiltinNo, _A, _B, _C) :-
 %	'_$builtin'(INCR_EVAL_BUILTIN).
 
-:- mode abstract_functor(?,?).
+:- export abstract_modes/2,abstract_functor/2.
+
 abstract_functor(Term,F/A):- functor(Term,F,A).
 
-:- mode abstract_modes(?,?).
 abstract_modes(Term,Moded):-
 	compound(Term),!,
 	Term =.. [F|Args],
@@ -1992,13 +1657,12 @@ abstract_modes_args([H|T],[M|TM]):-
 	abstract_modes_args(T,TM).
 
 %--------------------------------------------------------------------------------
-:- mode get_residual_sccs(?,?,?).
+
 get_residual_sccs(Call,Answer,Scc):-
 	get_answer_leaf(Call,Answer,AnsLeaf),
 	get_residual_sccs_1(AnsLeaf,Scc_1),
 	process_sccs(Scc_1,Scc).
 
-:- mode get_residual_sccs(?,?,?,?,?).
 get_residual_sccs(Call,Answer,Scc,Deps,Signs):-
 	get_answer_leaf(Call,Answer,AnsLeaf),
 	get_residual_sccs_1(AnsLeaf,Scc_1),
@@ -2101,22 +1765,22 @@ process_scc_node(Goal,Leaf,G):-
 	get_returns(SF,Template,L),
 	L = Leaf.
 
-:- mode get_answer_dependencies(?,?,?).
+:- export get_answer_dependencies/3.
 get_answer_dependencies(Call,Answer,Ptr):-
 	get_answer_leaf(Call,Answer,AnsLeaf),
 %	immed_ans_depends_ptr(AnsLeaf,Ptr).
 	trans_ans_depends_ptr(AnsLeaf,Ptr).
 
+:- export trans_ans_depends_ptr/2.
 :- import (table)/1 from standard.
 :- table trans_ans_depends_ptr/2 as variant.
-:- mode trans_ans_depends_ptr(+,?).
 trans_ans_depends_ptr(CallPtr1,CallPtr2):-
 	immed_ans_depends_ptr(CallPtr1,CallPtr2).
 trans_ans_depends_ptr(CallPtr1,CallPtr2):-
 	trans_ans_depends_ptr(CallPtr1,CallPtr3),
 	immed_ans_depends_ptr(CallPtr3,CallPtr2).
 
-:- mode immed_ans_depends_ptr(+,?).
+:- export immed_ans_depends_ptr/2.	
 immed_ans_depends_ptr(Ptr,Ptr2):-
 	table_inspection_function(IMMED_ANS_DEPENDS_PTRLIST, Ptr, PtrList,_,_),
 	member(ret(Ptr2,_),PtrList).		
@@ -2130,16 +1794,15 @@ get_answer_leaf(Call,Answer,AnsLeaf):-
 
 %--------------------------
 
+:- export explain_u_val/3,explain_u_val/7.
 :- import brat_undefined/0 from xsbbrat.
 
-:- mode explain_u_val(?,?,?).
 explain_u_val(Subgoal,Ans,Type):-
 	get_residual_sccs(Subgoal,Ans,Sccs,Deps,Signs),
 %	writeln(scc(Subgoal,Ans,Sccs,Deps,Signs)),
 	subgoal_scc_member(Sccs,Subgoal,Index),
 	explain_u_val(Subgoal,Ans,Sccs,Deps,Signs,Index,Type).
 
-:- mode explain_u_val(?,?,?,?,+,?,?).
 explain_u_val(_Subgoal,_Ans,Sccs,_Deps,_Signs,_Index,unsafe_negation):-
 	memberchk(ret(floundered_undefined(_),_,_),Sccs).
 explain_u_val(_Subgoal,_Ans,Sccs,_Deps,_Signs,_Index,radial_restraint):-
@@ -2164,6 +1827,7 @@ subgoal_scc_member([_|R],Subgoal,Index):-
 
 %----
 
+:- export max_incomplete_subgoals_handler/0.
 :- import max_incomplete_subgoals_user_handler/0 from usermod.
 :- dynamic max_incomplete_subgoals_user_handler/0.
 
@@ -2199,6 +1863,7 @@ inc_subg_analysis_info(SubgNum,SCCNum):-
 
 %----
 
+:- export max_scc_subgoals_handler/0.
 :- import max_scc_subgoals_user_handler/0 from usermod.
 :- dynamic max_scc_subgoals_user_handler/0.
 
@@ -2211,14 +1876,14 @@ max_scc_subgoals_handler:-
 max_scc_subgoals_handler:- 
    max_scc_subgoals_default_handler.
 
-max_scc_subgoals_default_handler:-
+max_scc_subgoals_default_handler:- 
 %	      break_for_tripwires([tables:max_scc_subgoals_header]).
 	      break_for_tripwires([max_scc_subgoals_header()]).
 
 max_scc_subgoals_header:- 
   current_prolog_flag(max_scc_subgoals,Max),
+  format("~n          WARNING!! XSB-oriented math-talk to follow.~n~n~n",[]),
   scc_subg_analysis_info(NumSubgoals,TotEdges,NumAnswers),
-%  writeln(scc_subg_analysis_info(NumSubgoals,TotEdges,NumAnswers)),
   format("A recursive component containing ~d incomplete tabled subgoals is currently under evaluation.~n",
 	 [NumSubgoals]), 
   format("The size of this recursive component exceeds the limit of ~d set by the flag 'max_scc_subgoals'.~n",[Max]),
@@ -2226,25 +1891,23 @@ max_scc_subgoals_header:-
   format("and the total number of answers for all subgoals in this component is ~d~n",[NumAnswers]),
   format("~n  * To continue, reset the flag and then type Ctrl-d~n",[]),
   format("  * To abort, enter the command 'abort/0'~n",[]),
-   format("  * To inspect the incomplete tabled subgoals, enter the command 'show_incomplete_subgoals'~n",[]),!.
-   max_scc_subgoals_header.
-   
+  format("  * To inspect the incomplete tabled subgoals, enter the command 'show_incomplete_subgoals'~n",[]).
 
 scc_subg_analysis_info(NumSubgoals,TotEdges,NumAnswers):- 
-	get_sdg_info(SDG),
-	sdg_scc_info(SDG,SCCs),
-        SCCs = [ThisSCC|_],
-%        get_last(SCCs,ThisSCC),
+	get_sdg_info(SDG), %writeln(SDG),
+	sdg_scc_info(SDG,SCCs), %writeln(SCCs),
+        get_last(SCCs,ThisSCC),
 	ThisSCC =  scc(_Level,NumSubgoals,NumAnswers,NumPosEdges,NumNegEdges),
 	TotEdges is NumPosEdges + NumNegEdges + NumSubgoals -1.  % not counting generator nodes
 
-%get_last([Elt],Elt):- !.
-%get_last([_A|B],Elt):- get_last(B,Elt).
+get_last([Elt],Elt):- !.
+get_last([_A|B],Elt):- get_last(B,Elt).
 
 format(Msg):- format(Msg,[]).
 
 %----
 
+:- export max_table_subgoal_size_handler/0.
 :- import max_table_subgoal_size_user_handler/0 from usermod.
 :- dynamic max_table_subgoal_size_user_handler/0.
 
@@ -2263,11 +1926,11 @@ max_table_subgoal_size_default_handler:-
 
 max_table_subgoal_size_header:- 
   current_prolog_flag(max_table_subgoal_size,Max),
-%  format("~n          WARNING!! XSB-oriented math-talk to follow.~n~n~n",[]),
+  format("~n          WARNING!! XSB-oriented math-talk to follow.~n~n~n",[]),
   format("Subgoal called with size of ~d~n",[Max]),
   format("~n  * To continue, reset the flag and then type Ctrl-d~n",[]),
   format("  * To abort, enter the command 'abort/0'~n",[]),
-  format("  * To inspect the incomplete tabled subgoals, enter the command 'print_sdg_info' or get_isdg_info/1'~n",[]).
+  format("  * To inspect the incomplete tabled subgoals, enter the command 'show_incomplete_subgoals'~n",[]).
 
 %----
 
@@ -2345,161 +2008,62 @@ max_memory_header:-
   current_prolog_flag(max_memory,Max_mem),
   format("~nThe maximum user-set memory of ~d has been exceeded~n",[Max_mem]),
   format("Details can be seen by typing statistics/0~n",[]),
-  format("To support debugging and diagnosis, the limit has been increased by 20\\%.~n",[]),
+  format("To support debugging and diagnosis, the limit has been increased by 20\%.~n",[]),
   format("~n  * To continue set the flag to allow more memory, and then type Ctrl-d~n",[]),
   format("  * To abort, enter the command 'abort/0'~n",[]).
-
-/*---------------------------------------------------------------------*/
-% get_tabling options
-/*
-% assumes predspec is nonvar
-process_predspec(PredSpec,Term):-
-    PredSpec = :(Module, T),!,
-    ((T = F/A) -> functor(T1,F,A) ; T1 = T),
-    term_new_mod(Module, T1, Term).
-process_predspec(PredSpec,Term):-
-    ((PredSpec = F/A) -> functor(Term,F,A) ; Term = PredSpec).
-*/
-
-get_tabling_options(PredSpec,List):-
-%   writeln(get_tabling_options(PredSpec,List)),
-    setof(Option,PredSpec^get_tabling_option(PredSpec,Option),List).
-
-:- mode get_tabling_option(?,?).
-get_tabling_option(Term,Option):-
-%   writeln(get_tabling_option(Term,Option)),
-    (var(Term) -> instantiation_error(get_tabling_options/2,1) ; true),
-%    process_predspec(PredSpec,Term),
-    term_psc(Term,PSC),
-    psc_tabled(PSC, Tabled),  
-    psc_type(PSC, Type),
-%   writeln(get_tabling_option_1(Type,Term,Tabled,PSC,Option)),
-    get_tabling_option_1(Type,Term,Tabled,PSC,Option).
-
-/* Tabling bit is set for dynamic IDG leaves -- this seems a bad
- * design but I didn\'t change it.  So if a term is dynamic and tabled
- * you need to check whether its incremental -- if so its an IDG leaf
- * and if not its a real tabled predicate */
-      
-get_tabling_option_1(Type,_Term,Tabled,PSC,Option):- 
-    psc_get_incr(PSC, Incr),
-%writeln(    psc_get_incr(PSC, Incr)),
-    Tabled /\ 12 > 0,
-    ( (Type = T_DYNA,Incr > 0) -> 
-       get_tabling_option_IDG_leaf(Incr,Option)
-     ; get_tabling_option_2(_Term,Tabled,Incr,PSC,Option) ).
-
-get_tabling_option_IDG_leaf(Incr,Option):- 
-%   writeln(get_tabling_option_IDG_leaf(Incr,Option)),
-    ( Incr == INCREMENTAL -> Option = (updating=incremental) 
-     ; Incr == OPAQUE -> Option = (updating=opaque) ).
-%    ; Option = (updating=none) ) .
-
-get_tabling_option_2(Term,_Tabled,_Incr,PSC,Option):- 
-%   writeln(get_tabling_option_1_2(Term,_Tabled,_Incr,PSC,Option)),
-    (   get_tabling_option_psc(PSC,Option)
-      ; get_tif_property(Term,Property,Value),
-%	writeln(get_tif_property(Term,Property,Value)),
-        process_tif_property(Property,Value,Option) ).
-
-/* Not unifying "default" values -- e.g., that a predicate does not
-   use ground term interning.  Not currently considering the fact that
-   some options, like answer size can be set globally.  I\'ll fix this
-   if it becomes at all important. */
-
-process_tif_property(intern,Value,Option):- !,
-     %	     (Value = 0 -> Option = (ground_term=trie) ; Option = (ground_term=intern))
-     (Value \== 0 -> Option = (ground_term=intern) ; fail).
-process_tif_property(answer_subsumption,Value,Option):- !,
-	(Value = 1 -> Option=(answer_subsumption=true) ; fail).
-process_tif_property(answer_size,Value,Option):- !,
-   (Value = 0 -> fail ; Option = (answer_abstract=Value)).
-process_tif_property(subgoal_size,Value,Option):- !,
-   (Value = 0 -> fail ; Option = (subgoal_abstract=Value)).
-process_tif_property(max_answers,Value,Option):- !,
-   (Value = 0 -> fail ; Option = (max_answers=Value)).
-process_tif_property(subgoal_size,Value,Option):- !,
-   (Value = 0 -> fail ; Option = (subgoal_abstract=Value)).
-process_tif_property(compl_semantics,Value,Option):- !,
-   (Value = 0 -> fail ; Option = (completion_semantics=true)).
-process_tif_property(Property,Value,Property=Value).
-
-% These tabling bits should be broken into bitfields in the PSC record. 
-get_tabling_option_psc(PSC,Option):- 
-	psc_tabled(PSC, Tabled),
-	 ( (Tabled /\ T_VARIANT) > 0 -> Option = (table_reuse=variant)
-          ; (Tabled /\ T_SUBSUMPTIVE) > 0 -> Option = (table_reuse=subsumptive)
-          ; Option= (table_reuse=default) ).
-get_tabling_option_psc(PSC,Option):- 
-	psc_get_incr(PSC, Incr),
-	( Incr == INCREMENTAL -> Option = (updating=incremental) 
-	 ; Incr == OPAQUE -> Option = (updating=opaque)).
-%	 ; Option = (updating=none)).
-get_tabling_option_psc(PSC,Option):-
-        \+ xsb_configuration(engine_mode,'slg-wam'),
-	psc_shared(PSC, Shared),
-	( Shared =\= 0 -> Option = shared ; Option = private ).
 
 /*======================================================================*/
 % ANSWER COMPLETION CODE
 /*======================================================================*/
-:- gensym:conset('_ac_ctr',1).  % start reverse
 
 /* Conditionally called after check_complete and in table_try, when
 answers are returned from a completed table and the subgoal may need
 answer completion. */
 %% answer_completion(+LeaderSubGoalFrameAddr,+Template)
-:- mode answer_completion(+,?).
 answer_completion(SGF,Template) :-
-	%%sgf_goal(SGF,Template,Goal), standard:writeln(userout,answer_completion(Goal,Template)),
-	%%print_residual_pgm(SGF,Template),
-	gensym:conget('_ac_ctr',Dir),
-	ac_loop(SGF,Template,Dir),  % iterate answer-completion
+	%%writeln(userout,answer_completion(SGF,Template)),
+	ac_loop(SGF,Template),	% iterate answer-completion
 	fail.			% not strictly nec since ac_loop will fail
 answer_completion(SGF,Template) :-
 	stat_set_flag(ANSWER_COMPLETION,1),	% turn ANSWER_COMPLETION back on,
 				% was turned off in C before entry
 	trie_get_return(SGF,Template,1).
 
-ac_loop(SGF,Tmp,Dir) :-
-%%	print_residual_pgm(SGF,Tmp),
-%%	gensym:coninc('_ac_ctr'),
-	%% special call to turn off ancestor check and gc call, for efficiency
-	abolish_table_pred(eval_subgoal_in_residual(_,_,_),[abolish_tables_singly,no_cps_check]),
-	stat_set_flag(SIMPLIFICATION_DONE,0), % reset SIMPLIFICATION_DONE
-	(do_all eval_subgoal_in_residual(SGF,Tmp,Dir)),
+ac_loop(SGF,Tmp) :-
+	%%print_residual_pgm(SGF,Tmp),
+	abolish_table_pred(eval_subgoal_in_residual(_,_),[abolish_tables_singly]),
+	stat_set_flag(SIMPLIFICATION_DONE,0),  % reset SIMPLIFICATION_DONE
+	(eval_subgoal_in_residual(SGF,Tmp),fail ; true),
 	delete_answers_for_failing_calls,
-	(stat_flag(SIMPLIFICATION_DONE,SimpFlg), SimpFlg =:= 1
-	 ->	standard:writeln(userout,iterate),
-		Dir1 is (Dir+1) mod 2,
-		gensym:conset('_ac_ctr',Dir1),
-		ac_loop(SGF,Tmp,Dir1)
+	stat_flag(SIMPLIFICATION_DONE,SimpFlg),
+	(SimpFlg =:= 1
+	 ->	%%writeln(userout,iterate),
+		ac_loop(SGF,Tmp)
 	 ;	mark_succeeding_calls_as_answer_completed_and_fail
 	).
 
 delete_answers_for_failing_calls :-
-	get_calls(eval_subgoal_in_residual(ASGF,ATmp,_),ESGF,ETmp),
+	get_calls(eval_subgoal_in_residual(ASGF,ATmp),ESGF,ETmp),
 	\+ trie_get_return(ESGF,ETmp,0),
 	get_returns(ASGF,ATmp,ALeaf),
 	force_truth_value(ALeaf,false),
-	%%sgf_goal(ASGF,ATmp,Goal), standard:writeq(userout,made_false(Goal)),standard:nl(userout),
+	%%writeq(userout,made_false(ASGF,ALeaf)),nl(userout),
 	fail.
 delete_answers_for_failing_calls.
 
 mark_succeeding_calls_as_answer_completed_and_fail :-
-	get_calls(eval_subgoal_in_residual(ASGF,ATmp,_),_,_),
-	once(get_returns(ASGF,ATmp)),  % mark all goals as answer-completed (esp undef)
+	get_calls(eval_subgoal_in_residual(ASGF,ATmp),_,_),
+	once(get_returns(ASGF,ATmp)),
 	set_answer_completed(ASGF),
-	%%standard:writeln(userout,set_answer_completed(ASGF)),
+	%writeln(userout,set_answer_completed(ASGF)),
 	fail.
 
-
-eval_dl_in_residual([],_).
-eval_dl_in_residual([tnot G|Gs],Dir) :- !,
+eval_dl_in_residual([]).
+eval_dl_in_residual([tnot G|Gs]) :- !,
 	get_call(G,SGF,Tmp),
-	tnot eval_subgoal_in_residual(SGF,Tmp,Dir),
-	eval_dl_in_residual(Gs,Dir).
-eval_dl_in_residual([G|Gs],Dir) :-
+	tnot eval_subgoal_in_residual(SGF,Tmp),
+	eval_dl_in_residual(Gs).
+eval_dl_in_residual([G|Gs]) :-
 	(get_call(G,SGF,Tmp)
 	 ->	true
 	 ; excess_vars(G,[],[],Vars), % must be more general
@@ -2510,41 +2074,31 @@ eval_dl_in_residual([G|Gs],Dir) :-
 		fail
 	),	 
 	%%writeln(userout,goal(G,SGF,Tmp)),
-	(Dir =:= 1
-	 -> eval_dl_in_residual(Gs,Dir),
-	    eval_subgoal_in_residual(SGF,Tmp,Dir)
-	 ;  eval_subgoal_in_residual(SGF,Tmp,Dir),
-	    eval_dl_in_residual(Gs,Dir)
+	eval_subgoal_in_residual(SGF,Tmp),
+	eval_dl_in_residual(Gs).
+	
+:- table eval_subgoal_in_residual/2 as variant,opaque.
+eval_subgoal_in_residual(Gs,Tmp) :-
+	(is_answer_completed(Gs)
+	 ->	true		%,writeln(userout,already_ac(Gs))
+	 ;	get_returns_and_dls(Gs,Tmp,DelayLists),
+		%%writeq(userout,dl(Gs,DelayLists)),nl(userout),
+		(DelayLists == []
+		 ->	true  %,writeln(userout,'MISSING DELAY LIST? '(Gs,Tmp))
+		 ;	member(DL,DelayLists),
+			eval_dl_in_residual(DL)
+		)
 	).
-
-:- table eval_subgoal_in_residual/3 as variant,opaque.
-eval_subgoal_in_residual(Gs,Tmp,Dir) :-
-    %%standard:writeln(eval(Gs,Tmp)),
-    get_returns_and_dls(Gs,Tmp,DelayLists),
-    %%standard:writeln(call(Gs,Tmp,DelayLists)),
-    (DelayLists == []
-     ->	true
-     ;	(is_answer_completed(Gs)
-	 -> undefined	       % dont recurse, just constant-sized undefined
-	 ;  member(DL,DelayLists),
-	    eval_dl_in_residual(DL,Dir)
-	)
-    ).
-/**    machine:xwam_state(2,DelayReg),
-    (DelayReg =:= 0
-     ->	standard:writeln(retu(Gs,true))
-     ;	standard:writeln(retu(Gs,undef))
-    ).**/
 
 set_answer_completed(SGF) :-
 	answer_completion_ops(1,SGF,_).
 
-is_answer_completed(SGF) :-
-    answer_completion_ops(2,SGF,Flag),
-    Flag =:= 1.
-
 is_answer_completed(SGF,Flag) :-
 	answer_completion_ops(2,SGF,Flag).
+
+is_answer_completed(SGF) :-
+	answer_completion_ops(2,SGF,Flag),
+	Flag =:= 1.
 
 answer_completion_ops(_Op,_SGF,_Res) :-
 	'_$builtin'(ANSWER_COMPLETION_OPS).
@@ -2562,31 +2116,11 @@ print_residual_pgm(Goal) :-
 	print_residual_pgm(Goal,SGF,Tmp).
 print_residual_pgm(_Goal) :- writeln(userout,end_of_pgm).
 
-sgf_goal(SGF,Tmp,Goal) :-
-    (sgf_goal(SGF,Tmp,SGF0,Goal),
-     SGF0 = SGF
-     ->	true
-     ;	Goal = SGF
-    ).
-
-:- table sgf_goal/4.
-sgf_goal(SGFP,Tmp,SGF,Goal) :-
-    get_returns_and_dls(SGFP,Tmp,DelayLists),
-    member(DL,DelayLists),
-    member(Goal0,DL),
-    (Goal0 = tnot(Goal1) -> true ; Goal1 = Goal0),
-    get_call(Goal1,SGF0,Tmp0),
-    (Goal = Goal1, SGF = SGF0
-     ;
-     sgf_goal(SGF0,Tmp0,SGF,Goal)
-    ).
-
 print_residual_pgm(SGF,Tmp) :-
 	abolish_table_pred(print_residual_pgm(_,_,_)),
 	writeln(userout,''),
 	writeln(userout,'Residual Program:'),
-	sgf_goal(SGF,Tmp,Goal),
-	print_residual_pgm(Goal,SGF,Tmp).
+	print_residual_pgm(unknown,SGF,Tmp).
 print_residual_pgm(_SGF,_Tmp) :- writeln(userout,end_of_pgm).
 
 :- table print_residual_pgm/3 as variant, opaque.
@@ -2595,9 +2129,11 @@ print_residual_pgm(Goal,SGF,Tmp) :-
 	nl(userout),
 	(DelayLists == []
 	 ->	print_clause([Goal,SGF,Tmp])
-	 ;	(do_all
-		 member(DL,DelayLists),
-		 print_clause(([Goal,SGF,Tmp] :- DL))
+	 ;	(member(DL,DelayLists),
+		 print_clause(([Goal,SGF,Tmp] :- DL)),
+		 fail
+		 ;
+		 true
 		),
 		(member(DL,DelayLists),
 		 member(Goal0,DL),
@@ -2621,14 +2157,16 @@ print_residual_pgm(Goal,SGF,Tmp) :-
 print_clause((Head:-Body)) :- !,
 	writeq(userout,Head),
 	writeln(userout,' :- '),
-	(do_all
-	 append(_,[Goal|Goals],Body),
+	(append(_,[Goal|Goals],Body),
 	 write(userout,'    '),
 	 writeq(userout,Goal),
 	 (Goals == []
 	  ->	 writeln(userout,'.')
 	  ;	 writeln(userout,',')
-	 )
+	 ),
+	 fail
+	 ;
+	 true
 	).
 print_clause(Head) :-
 	writeq(userout,Head),
@@ -2637,11 +2175,8 @@ print_clause(Head) :-
 /*======================================================================*/
 /* Deprecated (but maintained for backwards compatability) */
 
-:- mode abolish_table_call(?,+).
 abolish_table_call(Term,Options) :-
 	abolish_table_subgoals(Term,Options).
-
-:- mode abolish_table_call(?).
 abolish_table_call(Term) :-
 	abolish_table_subgoals(Term).
 
@@ -2666,7 +2201,6 @@ dump_table_counts :-
 /* return module, predicate, arity, number of calls, and number of
 answers, for all tabled predicates.  */
 
-:- mode table_counts(?,?,?,?,?).
 table_counts(Module,Pred,Arity,CallCnt,AnsCnt) :-
 	current_predicate(Module:Pred/Arity),
 	Module:Pred/Arity \== usermod:':'/2, % messes up later calls
@@ -2687,8 +2221,10 @@ table_counts(Module,Pred,Arity,CallCnt,AnsCnt) :-
 	).
 
 
-:- export explain_u_val/4.
+%end_of_file.
 
+:- export explain_u_val/4.
+:- import brat_undefined/0 from xsbbrat.
 explain_u_val(Call,Answer,Reason,Type):-
 	get_answer_leaf(Call,Answer,AnswerLeaf),
 %	brat_undefined,
@@ -2710,20 +2246,20 @@ explain_u_val_1(SF,_BratLeaf,FlounderedLeaf,_AnswerLeaf,floundered,_Type):-
 /* ---------------------- end of file tables.P ------------------------ */
 /* 07/05/01  -- work area for functions under development */
 
-%find_components(Call):- 
-%	get_call(Call,CallStr,Return),	% vars of 'Call' are put into 'Return'
-%	trie_get_return(CallStr,Return),
-%	get_lastnode_cs_retskel(_,Leaf,_,_),
-%	table_inspection_function(FIND_COMPONENTS,Leaf,_,_,_).
-%
-%find_forward_dependencies(Call):- 
-%	get_call(Call,CallStr,Return),	% vars of 'Call' are put into 'Return'
-%	trie_get_return(CallStr,Return),
-%	get_lastnode_cs_retskel(_,Leaf,_,_),
-%	table_inspection_function(FIND_FORWARD_DEPENDENCIES,Leaf,_,_,_).
+find_components(Call):- 
+	get_call(Call,CallStr,Return),	% vars of 'Call' are put into 'Return'
+	trie_get_return(CallStr,Return),
+	get_lastnode_cs_retskel(_,Leaf,_,_),
+	table_inspection_function(FIND_COMPONENTS,Leaf,_,_,_).
 
-% find_answers(Pred):- 
-%	table_inspection_function(FIND_ANSWERS,Pred,_,_,_).
+find_forward_dependencies(Call):- 
+	get_call(Call,CallStr,Return),	% vars of 'Call' are put into 'Return'
+	trie_get_return(CallStr,Return),
+	get_lastnode_cs_retskel(_,Leaf,_,_),
+	table_inspection_function(FIND_FORWARD_DEPENDENCIES,Leaf,_,_,_).
+
+find_answers(Pred):- 
+	table_inspection_function(FIND_ANSWERS,Pred,_,_,_).
 
 end_of_file.
 
@@ -2768,37 +2304,4 @@ table_state(Call, State) :-
 	     ;  State = AnsSetStatus )
 	 ; PredType == undefined -> State = undef
         )
-
-/*
-* get_tabling_option_1(T_DYNA,_Term,_Tabled,PSC,Option):- 
-*     !,  % Dynamic but not tabled.
-*     psc_get_incr(PSC, Incr),
-*     ( Incr == INCREMENTAL -> Option = (updating=incremental) 
-*      ; Incr == OPAQUE -> Option = (updating=opaque)
-*     ; Option = (updating=none) ) .
-* get_tabling_option_1(Type,Term,Tabled,PSC,Option):- 
-*    psc_get_incremental(PSC,Incr),
-*    writeln(get_tabling_option_1_2(Term,Type,Tabled,Incr,PSC,Option)),
-*     (Tabled /\ 12 > 0),
-*     \+ (Type = T_DYNA,Incr > 0),
-*     (   get_tabling_option_psc(PSC,Option)
-*       ; get_tif_property(Term,Property,Value),
-* %	writeln(get_tif_property(Term,Property,Value)),
-* 	(Property = intern ->
-* 	     (Value = 0 -> Option = (ground_term=trie) ; Option = (ground_term=intern))
-*          ; (Property = answer_subsumption ->
-* 		(Value = 1 -> Option=(answer_subsumption=true) ; fail)
-* 	    ;   Option = (Property=Value) ) ) ).
-* */
-   
-* add_alt_semantics(Spec,Mode) :-
-* 	mpa_to_skel(Spec,Call),
-* 	term_psc(Call,Psc),	
-	* (predicate_has_tables(Psc) ->
-* 	   permission_error(add_alt_semantics,predicate_with_tables,Spec,(table)/1) 
-* 	 ; alt_semantics(Mode,C_Mode),
-* 	   psc_set_alt_semantics(Psc,C_Mode)).
-* 
-* alt_semantics(compl_semantics,COMPL_SEMANTICS):- !.
-* alt_semantics(wfs_semantics,WFS_SEMANTICS).
 

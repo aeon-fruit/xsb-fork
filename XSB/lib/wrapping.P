@@ -35,19 +35,16 @@ declaration or not. */
 /* wrap/2 is just used for testing -- process_from is called by foreign*/
 :- import length/2 from basics.
 
-:- mode wrap(+,+).
 wrap(InFile,OutFile) :-
 	see(InFile),
 	tell(OutFile),
 	write_header,
 	repeat,
 	read(Line),
-	(Line = end_of_file
-	 -> seen, told
-	 ;  check_ground(Line,'wrap/2',read),
+	(Line = end_of_file ->
+	    seen, told;
 	    process_directive(Line),
-	    fail
-	).
+	    fail).
 
 write_header :-
 	write('/*'),nl,
@@ -69,7 +66,6 @@ process_directive(Directive) :-
 	seen,told,
 	throw(error(cinterf_wrapper(undefined_directive(Directive)))).
 
-:- mode process_from(+,?,+).
 process_from(from(PDecl,CDecl),/(PredName,Arity),NeedsCTXT) :-
 	write('/* New Definition: '),
 	process_pdecl(PDecl,PredName,Arity,NArgUseList),

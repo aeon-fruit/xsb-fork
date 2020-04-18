@@ -38,4 +38,3 @@
 :- import vprag_occ/2, vprag_loc/2, vprag_locnew/2, vprag_use/2, vprag_type/2,
 	  vprag_nouse/2, vprag_type1/2
      from varproc.
-:- import check_integer/3, check_ground/3 from error_handler.

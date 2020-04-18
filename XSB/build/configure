@@ -630,7 +630,6 @@ INTERPROLOGSRC
 ODBC_CFLAGS
 ODBCOBJ
 ODBCSRC
-call_scheme
 word_size
 engine_mode
 xsb_full_version_name
@@ -667,7 +666,6 @@ arch_install_config_prefix
 arch_config_prefix
 LD
 CROSS_SIMULATOR
-force_dynmodule
 mt_mode
 topdir
 full_config_name
@@ -779,7 +777,6 @@ with_curl_incdir
 with_pcre_libdir
 with_pcre_incdir
 with_dbdrivers
-with_no_dbdrivers
 with_odbc_libdir
 with_odbc_incdir
 with_mysql_libdir
@@ -791,7 +788,6 @@ with_odbc
 with_iodbc
 with_smodels
 with_itkwish
-with_stdcall
 enable_no_cygwin
 enable_general_tagging
 enable_debug
@@ -1448,7 +1444,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-no-cygwin           Compile with the gss option -mno-cygwin (default: disabled)
-                                Cygwins don't support this flag since many years ago
+                                The latest Cygwins don't support this flag
   --enable-general-tagging     When this option is enabled XSB will determine
                                which bits in the address to tag during
                                runtime. This option is the last resort, if
@@ -1517,8 +1513,7 @@ Optional Packages:
   --with-curl-incdir=DIR       the location of the include files for the Curl library is at DIR
   --with-pcre-libdir=DIR       the location of the libpcre.so is at DIR
   --with-pcre-incdir=DIR       the location of the include files for the PCRE library is at DIR
-  --with-dbdrivers             configure with the dbdrivers package
-  --with-no-dbdrivers          configure without the dbdrivers package
+  --with-dbdrivers             configure dbdrivers package
   --with-odbc-libdir=DIR       provide info on where the ODBC libraries are
   --with-odbc-incdir=DIR       provide info on where the ODBC include files are
   --with-mysql-libdir=DIR       provide info on where the MySQL libraries are
@@ -1532,9 +1527,7 @@ Optional Packages:
                                 path is the path where smodels has
                                 been installed and compiled
   --with-itkwish=DIR		DIR where the itkwish shell is located
-  --with-stdcall		use the __stdcall call convention for DLLs in Windows
-                                Affects Win32 only. Ignored in Win64.
-  --with-pita       compile XSB with PITA
+  --with-pita=DIR       compile XSB with PITA, with CUDD in directory DIR
 
 Some influential environment variables:
   CC          C compiler command
@@ -2743,12 +2736,6 @@ if test "${with_dbdrivers+set}" = set; then :
 fi
 
 
-# Check whether --with-no-dbdrivers was given.
-if test "${with_no_dbdrivers+set}" = set; then :
-  withval=$with_no_dbdrivers;
-fi
-
-
 # Check whether --with-odbc-libdir was given.
 if test "${with_odbc_libdir+set}" = set; then :
   withval=$with_odbc_libdir;
@@ -2812,13 +2799,6 @@ fi
 # Check whether --with-itkwish was given.
 if test "${with_itkwish+set}" = set; then :
   withval=$with_itkwish;
-fi
-
-
-
-# Check whether --with-stdcall was given.
-if test "${with_stdcall+set}" = set; then :
-  withval=$with_stdcall;
 fi
 
 
@@ -2973,15 +2953,11 @@ do
 		--with-gcc | --with-cc* | --with-cilk | --with-acc | \
 		--with-bits64 | --with-bits32 | --with-aout | \
                 --with-cflags* | \
-		--with-optimization* | --with-config-tag* | \
-                --with-site-prefix* | --with-includes* | \
-		--with-static-libraries* | --with-dynamic-libraries* | \
-                --with-xpath* | \
+		--with-optimization* | --with-config-tag* | --with-site-prefix* | --with-includes* | \
+		--with-static-libraries* | --with-dynamic-libraries* | --with-xpath* | \
 		--with-curl* | --with-pcre* | --with-mysql* | \
-		--with-dbdrivers | --with-no-dbdrivers | --with-oracle | --with-odbc* | \
-                --with-iodbc* | \
-                --with-stdcall | \
-		--with-smodels* | --with-itkwish* | --with-pita )
+		--with-dbdrivers | --with-oracle | --with-odbc* | --with-iodbc* | \
+		--with-smodels* | --with-itkwish* | --with-pita* )
 		    ;;
 	    *)
                     echo "configure: error: unrecognized option: $1"
@@ -3030,16 +3006,6 @@ if test "$bits64" = "yes" &&  test "$bits32" = "yes"; then
 fi
 
 # ---------------------- end testing inconsistencies  ----------------------
-
-chmod +x makexsb
-chmod +x MSVC.sh
-chmod +x config.guess
-chmod +x config.sub
-chmod +x touch.sh
-chmod +x clean_pkgs.sh
-chmod +x pkg_config.sh
-chmod +x ../syslib/CompileChangedFiles.sh
-
 
 # make sure new files are readable
 umask 022
@@ -5127,7 +5093,7 @@ fi
 if test -n "$with_includes"; then
     echo "    Appending directories to the C include path:"
     for arg in $with_includes; do
-                arg=`echo "-I\"${arg}\"" | sed 's,\([^/]\)/*$,\1,'`
+                arg=`echo "-I${arg}" | sed 's,\([^/]\)/*$,\1,'`
         c_site_includes="${c_site_includes} $arg"
         echo "		$arg"
     done
@@ -5137,24 +5103,10 @@ fi
 if test -n "$with_pita" && test -d "$topdir/packages/pita"; then
     cd "$topdir/packages/pita"
     echo "***Configuring pita"
-    echo "***Configuring CUDD"
-    cd "cudd-3.0.0" && autoreconf && ./configure CFLAGS="-Wall -Wextra -g -O3 -fPIC"
-    echo "***Compiling CUDD"
-    make
-    cd ..
-    echo "***End configuring CUDD"
     echo `pwd`
     chmod 700 ./configure
-    ./configure
+    ./configure  --with-pita="$with_pita"  > /dev/null
     cd $build_dir
-fi
-
-if test -n "${with_no_dbdrivers}"; then
-    with_dbdrivers=
-elif test "${with_odbc+set}" = "set" -a "${host_os}" = "cygwin"; then
-    with_dbdrivers=
-else
-    with_dbdrivers=yes
 fi
 
 if test -n "${with_dbdrivers}" && test -d "$topdir/packages/dbdrivers"; then
@@ -5694,6 +5646,23 @@ $as_echo "#define TIME_WITH_SYS_TIME 1" >>confdefs.h
 fi
 
 
+for ac_header in sys/resource.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sys/resource.h" "ac_cv_header_sys_resource_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_resource_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SYS_RESOURCE_H 1
+_ACEOF
+
+else
+  have_errors=yes
+fi
+
+done
+
+test "${have_errors}" = "yes" &&
+    as_fn_error $? "sys/resource.h is missing on your system" "$LINENO" 5
+
 for ac_func in malloc
 do :
   ac_fn_c_check_func "$LINENO" "malloc" "ac_cv_func_malloc"
@@ -5934,13 +5903,6 @@ if test "${with_oracle+set}" = "set" ; then
     $as_echo "#define ORACLE 1" >>confdefs.h
 
     with_oracle=yes
-fi
-
-call_scheme="__cdecl"
-if test "${with_stdcall+set}" = "set" ; then
-    call_scheme="__stdcall"
-    $as_echo "#define XSB_STDCALL 1" >>confdefs.h
-
 fi
 
 #if test "${with_oracle+set}" = "set" ; then
@@ -6231,9 +6193,6 @@ DYNMOD_SHAREDLIB_EXTENSION=so
 # do not work right with symlinks. So, for CYGWIN we use cp -pf
 config_ln_command="ln -s "
 
-# Normally we also run makexsb dynmodule - except for Cygwin
-force_dynmodule="yes"
-
 # Set OS-specific variables for XSB
 case "$canonical" in
     *alpha*)    $as_echo "#define FOREIGN_ELF 1" >>confdefs.h
@@ -6397,8 +6356,6 @@ case "$canonical" in
         ;;
     *-cygwin*)  $as_echo "#define CYGWIN 1" >>confdefs.h
 
-                $as_echo "#define FOREIGN_ELF 1" >>confdefs.h
-
                 real_host_os=cygwin
 
                 builtins_opt_level=-${with_optimization-"O3 -fno-strict-aliasing"}
@@ -6423,38 +6380,8 @@ case "$canonical" in
                 fi
 
                 config_ln_command="cp -fp "
-                force_dynmodule="no"
-        ;;
-
-     *-mingw*)  $as_echo "#define MINGW 1" >>confdefs.h
-
-                real_host_os=mingw
-
-                                builtins_opt_level=-${with_optimization-"O3 -fno-strict-aliasing"}
-                loader_opt_level=-${with_optimization-"O3 -fno-strict-aliasing"}
-
-                config_ln_command="cp -fp "
         ;;
 esac
-
-if test "${real_host_os}" != "mingw" ; then
-    for ac_header in sys/resource.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "sys/resource.h" "ac_cv_header_sys_resource_h" "$ac_includes_default"
-if test "x$ac_cv_header_sys_resource_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_SYS_RESOURCE_H 1
-_ACEOF
-
-else
-  have_errors=yes
-fi
-
-done
-
-    test "${have_errors}" = "yes" &&
-        as_fn_error $? "sys/resource.h is missing on your system" "$LINENO" 5
-fi
 
 if test "${general_tagging}" = "yes" ; then
    $as_echo "#define GENERAL_TAGGING 1" >>confdefs.h
@@ -6534,7 +6461,7 @@ if test "${do_debugging}" = "yes" ; then
     fi
 fi
 
-if test "${CC}" = "gcc" -a "${host_os}" != "windows" -a "${host_os}" != "cygwin" ; then
+if test "${CC}" = "gcc" -a "${host_os}" != "windows"  ; then
         LD=gcc
     XSBMOD_LDFLAGS="-nodefaultlibs -nostartfiles ${XSBMOD_LDFLAGS}"
 else
@@ -6577,10 +6504,10 @@ if test "${with_odbc}" = yes ; then
 		    XSBMOD_LDFLAGS="$(iodbc-config --libs) ${XSBMOD_LDFLAGS}" || \
 			XSBMOD_LDFLAGS="-L/usr/lib -liodbc ${XSBMOD_LDFLAGS}"
                 else
-		    ODBC_CFLAGS="$(odbc_config --cflags 2> /dev/null)"
-                    LDFLAGS="$(odbc_config --libs 2> /dev/null) ${LDFLAGS}" || \
+		    ODBC_CFLAGS="$(odbc_config --cflags)"
+                    LDFLAGS="$(odbc_config --libs) ${LDFLAGS}" || \
 			LDFLAGS="-L/usr/lib -lodbc ${LDFLAGS}"
-                    XSBMOD_LDFLAGS="$(odbc_config --libs 2> /dev/null) ${XSBMOD_LDFLAGS}" || \
+                    XSBMOD_LDFLAGS="$(odbc_config --libs) ${XSBMOD_LDFLAGS}" || \
 			XSBMOD_LDFLAGS="-L/usr/lib -lodbc ${XSBMOD_LDFLAGS}"
                 fi
     esac
@@ -6860,8 +6787,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     if test  "$os_type" = "windows"; then
         XASPLIBNAME=xasppkg.dll
         XASPDEFFILE=xasppkg.def
-        smoCFLAGS="-I\"${arch_config_prefix}\" -I\"${with_smodels}\""
-        smoLDFLAGS="-L\"${arch_config_prefix}/bin\" -L\"${with_smodels}\""
+        smoCFLAGS="-I${arch_config_prefix} -I${with_smodels}"
+        smoLDFLAGS="-L${arch_config_prefix}/bin -L${with_smodels}"
         smoLIB="-lsmodels -lxsb"
         if test "${enable_no_cygwin}" = "yes"; then
             CXX="${CXX} -mno-cygwin"
@@ -6869,7 +6796,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     else
         XASPLIBNAME=xasppkg.so
         XASPDEFFILE=
-        smoCFLAGS="-I\"${arch_config_prefix}\" -I\"${with_smodels}\""
+        smoCFLAGS="-I${arch_config_prefix} -I${with_smodels}"
         smoLDFLAGS="-L${arch_config_prefix}/bin"
         smoLIB="${with_smodels}/.libs/libsmodels.a"
     fi
@@ -6966,9 +6893,9 @@ else
     java_compiler="$JAVA_HOME/bin/javac"
 fi
 
-java_platform_specific_hdr_path="`ls "${java_path}/"*/jni_md.h 2> /dev/null`"
+java_platform_specific_hdr_path="`ls "${java_path}/"*/jni_md.h`"
 java_platform_specific_hdr_path="`dirname "${java_platform_specific_hdr_path}"`"
-java_platform_specific_hdr_path_alt="`ls "${java_path}/"jni_md.h 2> /dev/null`"
+java_platform_specific_hdr_path_alt="`ls "${java_path}/"jni_md.h`"
 java_platform_specific_hdr_path_alt="`dirname "${java_platform_specific_hdr_path_alt}"`"
 
 if test -f "$java_path/jni.h" -a -f "$java_platform_specific_hdr_path/jni_md.h" ; then
@@ -7021,11 +6948,11 @@ if test "$interprolog_native_engine" = "yes"; then
     INTERPROLOGOBJ="interprolog_callback.o"
 
     if test -n "$JAVA_HEADER_PATH" ; then
-	loaderCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${loaderCFLAGS}"
-	builtinsCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${builtinsCFLAGS}"
-	emuloopCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${emuloopCFLAGS}"
-	trutilsCFLAGS=" -I\"${JAVA_HEADER_PATH}\" ${trutilsCFLAGS}"
-	CFLAGS=" -I\"${JAVA_HEADER_PATH}\" $CFLAGS"
+	loaderCFLAGS=" -I${JAVA_HEADER_PATH} ${loaderCFLAGS}"
+	builtinsCFLAGS=" -I${JAVA_HEADER_PATH} ${builtinsCFLAGS}"
+	emuloopCFLAGS=" -I${JAVA_HEADER_PATH} ${emuloopCFLAGS}"
+	trutilsCFLAGS=" -I${JAVA_HEADER_PATH} ${trutilsCFLAGS}"
+	CFLAGS=" -I${JAVA_HEADER_PATH} $CFLAGS"
     fi
 fi
 
@@ -7091,7 +7018,6 @@ fi
 
 
 
-
 # Just something so we won't forget to set it in the future
 emumake_goal=doodledandy
 
@@ -7126,8 +7052,6 @@ fi
 
 
 
-
-# call_scheme is ignored in Win 64 and non-windoze systems
 
 
 

@@ -53,7 +53,6 @@
 /* preprocess(+pred(Sym,Cls,_), - list of pred(Sym,Cls,Prag), #SymTab)	*/
 /*======================================================================*/
 
-:- mode preprocess(?,?,?).
 preprocess(pred(Sym,Clauses,_), PredDefs, SymTab) :-
 	find_prag(Sym, PredPrag),	% find pragma for the pred
 	have_hardcut(Clauses, HardCut),
@@ -104,7 +103,6 @@ pre_cutclauses([clause(A,B,P)|CRest], [clause(NA,NB,P)|NCRest]) :-
 /*	NOTE: have_hardcut/2 is also used in cp_opt.P and spec.P.  	*/
 /*======================================================================*/
 
-:- mode have_hardcut(?,?).
 have_hardcut([], 0).
 have_hardcut([clause(_, Body,_)|Rest], HardCut) :-
 	have_hardcut_1(Body, HardCut0),
@@ -220,20 +218,20 @@ all_inline_tests(goal(sym(Pred,Arity,_,_),Args),inlinegoal(Pred,Arity,Args)) :-
 /*	state (without unification).					*/
 /*======================================================================*/
 
-inline_test(>, 2).
-inline_test(>=, 2).
-inline_test(=<, 2).
-inline_test(<, 2).
-inline_test(=:=, 2).
-inline_test(=\=, 2).
+inline_test('>', 2).
+inline_test('>=', 2).
+inline_test('=<', 2).
+inline_test('<', 2).
+inline_test('=:=', 2).
+inline_test('=\=', 2).
 
-inline_test(==, 2).
-inline_test(@=, 2).
-inline_test(\==, 2).
-inline_test(@<, 2).
-inline_test(@=<, 2).
-inline_test(@>, 2).
-inline_test(@>=, 2).
+inline_test('==', 2).
+inline_test('@=', 2).
+inline_test('\==', 2).
+inline_test('@<', 2).
+inline_test('@=<', 2).
+inline_test('@>', 2).
+inline_test('@>=', 2).
 
 inline_test(var, 1).
 inline_test(nonvar, 1).
@@ -278,12 +276,10 @@ ti_prag(Sym, Prag) :-
 
 empty_ifthen_else(inlinegoal(true,0,[]), inlinegoal(true,0,[])).
 
-:- mode gensym_pred(+,?).
 gensym_pred(P, NP) :-
 	cmp_gensym('_#', N2),
 	str_cat(P, N2, NP).
 
-:- mode cmp_gensym(+,?).
 cmp_gensym(Root,Sym) :-
 	coninc('_$compiler_gensym_ctr',Cnt),
 	number_codes(Cnt,CntC),

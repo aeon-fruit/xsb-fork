@@ -72,7 +72,7 @@
 	    ordering/1
 	]).
 
-:- import nb_delete/1, nb_getval/2, nb_setval/2, strip_module/3
+:- import nb_delete/1, nb_getval/2, nb_setval/2, term_variables/2,strip_module/3
           from swi.
 :- import instantiation_error/2from error_handler.
 

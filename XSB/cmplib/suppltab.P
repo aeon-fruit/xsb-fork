@@ -35,7 +35,6 @@
 /*	      dependency graph are already broken.			*/
 /*======================================================================*/
 
-:- mode supplementary_tabling(?,?).
 supplementary_tabling(module(SymTab,DL,CL,QR,Pars), module(SymTab,DL,CL1,QR,Pars)) :-
 	( ( option(auto_table)	% This breaks all loops
 	  ; call_themselves(CL, LoopPreds, CL), LoopPreds == []
@@ -61,14 +60,14 @@ supplementary_tabling(module(SymTab,DL,CL,QR,Pars), module(SymTab,DL,CL1,QR,Pars
 /*	results (also, a garbage collector would be welcome).		*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode 'supplementary tabling'(+,+).
+:- mode 'supplementary tabling'(+,+).
 
 'supplementary tabling'([], _).
 'supplementary tabling'([Pred|Preds], AllPreds) :-
 	pred_edb_dependency(Pred, AllPreds),
 	'supplementary tabling'(Preds, AllPreds).
 
-%%:- mode pred_edb_dependency(+,+).
+:- mode pred_edb_dependency(+,+).
 
 pred_edb_dependency(Pred, AllPreds) :-
 	Pred = pred(Sym,Cls,_Prag),
@@ -89,7 +88,7 @@ pred_edb_dependency(Pred, AllPreds) :-
 	; assert(edb_dep(Name,Arity,0))
 	).
 
-%%:- mode edb_dependencies(+,+,+,+,-,-).
+:- mode edb_dependencies(+,+,+,+,-,-).
 
 edb_dependencies([], _, _, Dep,Dep, []).
 edb_dependencies([Cl|Cls], Sym, Preds, DepIn,DepOut, [CD|CDs]) :-
@@ -98,7 +97,7 @@ edb_dependencies([Cl|Cls], Sym, Preds, DepIn,DepOut, [CD|CDs]) :-
 	max(DepIn, CD, DepMid),
 	edb_dependencies(Cls, Sym, Preds, DepMid,DepOut, CDs).
 
-%%:- mode clause_dependency(+,+,+,-).
+:- mode clause_dependency(+,+,+,-).
 
 clause_dependency(and(G1,G2), Sym, Preds, Dep) :-
 	clause_dependency(G1, Sym, Preds, D1),
@@ -125,7 +124,7 @@ clause_dependency(goal(GoalSym,_), Sym, Preds, Dep) :-
 	).
 
 /*======================================================================*/
-/* 'supplementary folding'(+Preds, ?SymTab, +NPin, -NPout)		*/
+/* 'supplementary folding'(+Preds, #SymTab, +NPin, -NPout)		*/
 /*	Performs the second step of supplementary tabling.  The		*/
 /*	predicates whose clauses require folding are already recorded	*/
 /*	(using assert/1) in the database.  This allows the operation to	*/
@@ -138,7 +137,7 @@ clause_dependency(goal(GoalSym,_), Sym, Preds, Dep) :-
 /*		 difference lists (especially in suppl_fold/8).		*/
 /*======================================================================*/
 
-%%:- mode 'supplementary folding'(+,?,?,?).
+:- mode 'supplementary folding'(+,#,#,#).
 
 'supplementary folding'([], _, NP, NP).
 'supplementary folding'([Pred|Preds], SymTab, NPin, NPout) :-
@@ -159,7 +158,7 @@ clause_dependency(goal(GoalSym,_), Sym, Preds, Dep) :-
 /*	      -ClausesOut, #NewPredsIn, #NewPredsOut)			*/
 /*======================================================================*/
 
-%%:- mode suppl_fold(+,+,+,+,?,-,?,?).
+:- mode suppl_fold(+,+,+,+,#,-,#,#).
 
 suppl_fold([], _, _, _, _, [], NP, NP).
 suppl_fold([Cl|Cls], [CD|CDs], EDB_Dep, Name, SymTab,
@@ -173,7 +172,7 @@ suppl_fold([Cl|Cls], [CD|CDs], EDB_Dep, Name, SymTab,
 	),
 	suppl_fold(Cls, CDs, EDB_Dep, Name, SymTab, NewCls, NPmid, NPout).
 
-%%:- mode fold_clause(+,+,+,+,+,?,-,+,-).
+:- mode fold_clause(+,+,+,+,+,#,-,+,-).
 
 fold_clause(Body, HeadArgs, CD, EDB_Dep, Name,
 	    SymTab, NewBody, NewPredsIn, NewPredsOut) :-
@@ -185,10 +184,10 @@ fold_clause(Body, HeadArgs, CD, EDB_Dep, Name,
 
 /*----------------------------------------------------------------------*/
 /* new_preds(+Pieces, +GoalArgs, +NewSyms, +Name,			*/
-/*	     ?SymTab, +NewPredsIn, -NewPredsOut, -NewBody)		*/
+/*	     #SymTab, +NewPredsIn, -NewPredsOut, -NewBody)		*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode new_preds(+,+,+,+,?,+,-,-).
+:- mode new_preds(+,+,+,+,#,+,-,-).
 
 new_preds([P], _, _, _, _, NP, NP, P).
 new_preds([P1,P2|Ps], [GA|GAs], [Sym|Syms], Name,
@@ -200,12 +199,11 @@ new_preds([P1,P2|Ps], [GA|GAs], [Sym|Syms], Name,
 	Pred = pred(Sym,[clause(HeadArgs,Body,_)],_Prag),
 	new_preds([P2|Ps], GAs, Syms, Name, SymTab, NPmid, NPout, NewBody).
 
-%%:- mode new_pred(+,-,+,-,+,-).
+:- mode new_pred(+,-,+,-,+,-).
 
 new_pred([], [], A,A, P,P).
 new_pred([Arg|Args], [HeadArg|HeadArgs], Ain,Aout, Pin,Pout) :-
-	Arg = varocc(Id), check_integer(Id,'new_pred/6',1),
-	HeadArg = varocc(NewId),
+	Arg = varocc(Id), HeadArg = varocc(NewId),
 	name(Id, L), NL = [0'_,0'v|L], name(NewId, NL),
 	Amid is Ain+1,
 	Pmid = and(inlinegoal(=,2,[HeadArg,Arg]),Pin),
@@ -228,7 +226,7 @@ pieces(Body, CD, EDB_Dep, Pieces, GoalSyms, GoalArgs) :-
 	pieces(RevBodyList, CD, EDB_Dep, [],PL, [],GoalSyms, [],GoalArgs),
 	lists_to_bodies(PL, Pieces).
 
-%%:- mode pieces(+,+,+,+,-,+,-,+,-).
+:- mode pieces(+,+,+,+,-,+,-,+,-).
 
 pieces(BodyList, CD, EDB_Dep, Pin,Pout, GSin,GSout, GAin,GAout) :-
 	( CD > EDB_Dep ->
@@ -241,7 +239,7 @@ pieces(BodyList, CD, EDB_Dep, Pin,Pout, GSin,GSout, GAin,GAout) :-
 	; reverse(BodyList, RBL), Pout = [RBL|Pin], GSout = GSin, GAout = GAin
 	).
 
-%%:- mode piece(+,+,+,+,-,+,-,-).
+:- mode piece(+,+,+,+,-,+,-,-).
 
 piece(BodyList, D, Limit, Pin,Pout, NewGoal, PD, RestBodyList) :-
 	( D < Limit ->
@@ -277,7 +275,7 @@ piece(BodyList, D, Limit, Pin,Pout, NewGoal, PD, RestBodyList) :-
  *	).
   -----*/
 
-%%:- mode goal_dep(+,-).
+:- mode goal_dep(+,-).
 
 goal_dep(and(G1,G2), Dep) :-
 	goal_dep(G1, D1), goal_dep(G2, D2), Dep is D1 + D2.
@@ -294,19 +292,19 @@ goal_dep(goal(GoalSym,_), Dep) :-
 /*	are the arguments in the head of the original clause.		*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode cv(+,+,-).
+:- mode cv(+,+,-).
 
 cv([], HA, [CV]) :- cv1(HA, CV), closetail(CV).
 cv([P|Ps], HA, [CV|CVs]) :- cv(P, CV), closetail(CV), cv(Ps, HA, CVs).
 
-%%:- mode cv(+,?).
+:- mode cv(+,?).
 
 cv(and(G1,G2), CV) :- cv(G1, CV), cv(G2, CV).
 cv(not(G), CV) :- cv(G, CV).
 cv(inlinegoal(_,_,Args), CV) :- cv1(Args, CV).
 cv(goal(_,Args), CV) :- var(Args) -> true ; cv1(Args, CV).
 
-%%:- mode cv1(+,?).
+:- mode cv1(+,?).
 
 cv1([], _).
 cv1([Arg|Args], CV) :- cv2(Arg, CV), cv1(Args, CV).
@@ -320,7 +318,7 @@ cv2(Arg, CV):-
 /*----------------------------------------------------------------------*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode args_of_new_goals(+,?).
+:- mode args_of_new_goals(+,#).
 
 args_of_new_goals([_,_], []).
 args_of_new_goals([VL1,VL2,VL3|VLs], [CallVarList|CallVarLists]) :-
@@ -328,7 +326,7 @@ args_of_new_goals([VL1,VL2,VL3|VLs], [CallVarList|CallVarLists]) :-
 	merge(VL2, CallVarList, NewVL2),
 	args_of_new_goals([NewVL2,VL3|VLs], CallVarLists).
 
-%%:- mode args_of_new_goal(+,+,?).
+:- mode args_of_new_goal(+,+,#).
 
 args_of_new_goal([], _, []).
 args_of_new_goal([Var|Vars], Vs, CallVarList) :-
@@ -344,7 +342,7 @@ needed(Var, VL) :- member(VarList, VL), memberchk(Var, VarList).
 /*	main concern.  Also, disjunctions in the Body are not handled.	*/
 /*----------------------------------------------------------------------*/
 
-%%:- mode can_be_folded(+).
+:- mode can_be_folded(+).
 
 can_be_folded(not(_)).
 can_be_folded(goal(_,_)).
@@ -357,12 +355,12 @@ can_be_folded(and(G1,G2)) :- can_be_folded(G1), can_be_folded(G2).
 
 max(X, Y, Max) :- ( X > Y -> Max = X ; Max = Y ).
 
-%%:- mode rbl(+,+,-).
+:- mode rbl(+,+,-).
 
 rbl(Body, SoFar, RBL) :-	% Makes a ReversedBodyList out of Body.
 	( Body = and(G1,G2) -> rbl(G2, [G1|SoFar], RBL) ; RBL = [Body|SoFar] ).
 
-%%:- mode lists_to_bodies(+,-).
+:- mode lists_to_bodies(+,-).
 
 lists_to_bodies([], []).
 lists_to_bodies([HL|TL], [HB|TB]) :-

@@ -311,11 +311,11 @@ export_binding(Y,X) :-
 % 'solve_='(Nf)
 %
 % Solves linear equation Nf = 0 where Nf is in normal form.
-/**
+
 'solve_='(Nf) :-
 	deref(Nf,Nfd),	% dereferences and turns Nf into solvable form Nfd
 	solve(Nfd).
-**/
+
 % 'solve_=\\='(Nf)
 %
 % Solves linear inequality Nf =\= 0 where Nf is in normal form.
@@ -472,7 +472,7 @@ iterate_dec(OptVar,Opt) :-
 % Increases the bound on the variables of the linear equation of OptVar as much
 % as possible and returns the resulting optimal bound in Opt. Fails if for some
 % variable, a status of unlimited is found.
-/**
+
 iterate_inc(OptVar,Opt) :-
 	get_attr(OptVar,itf,Att),
 	arg(4,Att,lin([I,R|H])),
@@ -482,7 +482,7 @@ iterate_inc(OptVar,Opt) :-
 	;   Status = optimum,
 	    Opt is R + I
 	).
-***/
+
 %
 % Status = {optimum,unlimited(Indep,DepT),applied}
 % If Status = optimum, the tables have not been changed at all.
@@ -910,7 +910,7 @@ solve(H,Lin,_,Bind0,BindT) :-
 % solve_x(H,Lin,I,X,[Bind|BindT],BindT)
 %
 %
-/**
+
 solve_x(Lin,X) :-
 	Lin = [I,_|H],
 	solve_x(H,Lin,I,X,Bindings,[]),
@@ -939,7 +939,7 @@ solve_x(H,Lin,_,X,Bind0,BindT) :-
 	    bs_collect_binding(Hom,X,Inhom,Bind0,BindT),
 	    eq_classes(NV,NVT,ClassesUniq)
 	).
-**/
+
 % solve_ord_x(Lin,OrdX,ClassX)
 %
 % Does the same thing as solve_x/2, but has the ordering of X and its class as
@@ -1254,21 +1254,21 @@ detach_bounds_vlv(OrdV,Lin,Class,Var,NewLin) :-
 % basis_drop(X)
 %
 % Removes X from the basis of the class to which X belongs.
-/**
+
 basis_drop(X) :-
 	get_attr(X,itf,Att),
 	arg(6,Att,class(Cv)),
 	class_basis_drop(Cv,X).
-***/
+
 % basis(X,Basis)
 % 
 % Basis is the basis of the class to which X belongs.
-/**
+
 basis(X,Basis) :-
 	get_attr(X,itf,Att),
 	arg(6,Att,class(Cv)),
 	class_basis(Cv,Basis).
-**/
+
 % basis_add(X,NewBasis)
 %
 % NewBasis is the result of adding X to the basis of the class to which X
@@ -1300,7 +1300,7 @@ basis_pivot(Leave,Enter) :-
 %
 % Pivot ignoring rhs and active states
 %
-/**
+
 pivot(Dep,Indep) :-
 	get_attr(Dep,itf,AttD),
 	arg(4,AttD,lin(H)),
@@ -1312,7 +1312,7 @@ pivot(Dep,Indep) :-
 	K is -1.0/Coeff,
 	add_linear_ff(H0,K,[0.0,0.0,l(Dep* -1.0,OrdDep)],K,Lin),
 	backsubst(Class,Ord,Lin).
-**/
+
 % pivot_a(Dep,Indep,IndepT,DepT)
 %
 % Removes Dep from the basis, puts Indep in, and pivots the equation of

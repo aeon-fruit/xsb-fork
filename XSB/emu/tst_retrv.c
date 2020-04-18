@@ -736,8 +736,8 @@ ALNptr tst_collect_relevant_answers(CTXTdeclc TSTNptr tstRoot, TimeStamp ts,
 
   /* Check that a term was passed in
      ------------------------------- */
-  //  if (numTerms < 1)
-  //    TST_Collection_Error("Called with < 1 terms",NoCleanupRequired);
+  if (numTerms < 1)
+    TST_Collection_Error("Called with < 1 terms",NoCleanupRequired);
 
 
   /* Initialize data structures

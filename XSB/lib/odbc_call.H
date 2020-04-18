@@ -67,9 +67,9 @@
    retract/1
    from assert.
 
-:- import writeln/1, writeln/2, write/1 , =.. /2, atomic/1, atom_codes/2,
+:- import writeln/1, writeln/2, write/1 , '=..'/2, atomic/1, atom_codes/2,
    atom/1, number_codes/2, name/2, number/1, integer/1, nl/0,
-   \= /2, functor/3, abort/1, structure/1, throw/1
+   '\='/2, functor/3, abort/1, structure/1, throw/1
    from standard.
 
 :- import concat_atom/2 from string.

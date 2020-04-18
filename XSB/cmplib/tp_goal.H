@@ -36,4 +36,4 @@
 	vprag_occ/2, vprag_type1/2
    from varproc.
 :- import append/3, member/2 from basics.
-:- import check_integer/3 from error_handler.
+

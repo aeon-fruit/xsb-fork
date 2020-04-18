@@ -47,7 +47,7 @@ CPP_PROJ=/nologo /MD /W3 /EHsc /O2 /I "$(ARCHDIR)" \
 		 /Fo"$(ARCHOBJDIR)\\" /Fd"$(ARCHOBJDIR)\\" /c 
 	
 SOURCE=$(MYPROGRAM).c
-"$(ARCHOBJDIR)\$(MYPROGRAM).obj" : $(SOURCE) "$(INTDIR)" $(ARCHDIR)\xsb_config.h
+"$(ARCHOBJDIR)\$(MYPROGRAM).obj" : $(SOURCE) "$(INTDIR)"
 	$(CPP) $(CPP_PROJ) $(SOURCE)
 
 LINK_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib \

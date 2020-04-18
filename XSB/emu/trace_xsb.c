@@ -90,10 +90,10 @@ int count_sccs(CTXTdecl) {
 
   //  printf("open %x COMPL %x\n",openreg,COMPLSTACKBOTTOM);
   while (csf < COMPLSTACKBOTTOM) {
-    //    printf("comp level %d\n",compl_leader_level(csf));
-    if (compl_leader_level(csf) != last_scc) {
+    //    printf("comp level %d\n",compl_level(csf));
+    if (compl_level(csf) != last_scc) {
       ctr++;
-      last_scc = compl_leader_level(csf);
+      last_scc = compl_level(csf);
       //      printf("ctr: %d\n",ctr);
     }
     csf = prev_compl_frame(csf);	       
@@ -107,8 +107,7 @@ char *pspace_cat[NUM_CATS_SPACE] =
    "foreign     ","table       ","findall     ","profile     ",
    "mt-private  ","buffer      ","gc temp     ","hash        ",
    "interprolog ","thread      ","read canon  ","leaking...  ",
-   "special     ","intern      ","other       ","incr table  ",
-   "odbc        "};
+   "special     ","other       ","incr table  ","odbc        "};
 
 #define DETAILED_STATISTICS 1
 //-----------------------------------------------------------------------------------------------

@@ -111,7 +111,6 @@ argument(Tail,Tail,_,r).
 
 /*-------------- Build_graph/1 -----------------*/
 
-:- mode build_graph(?).
 build_graph(module(_,_,ClList,QrList,_Par)) :-
 	build_call_graph(ClList),
 	cut_check(ClList),
@@ -201,7 +200,7 @@ str_check([Arg|Args],Cl) :-
 	str_check(Args,Cl).
 
 el_check(structure(Sym,Args),Cl) :-
-	( Sym=sym((\+),1,_,_) ; Sym=sym('fail_if',1,_,_) ),
+	( Sym=sym('\+',1,_,_) ; Sym=sym('fail_if',1,_,_) ),
 	args([],_,Args,t(P,A)),
 	!,
 	error1(P,A,Cl).

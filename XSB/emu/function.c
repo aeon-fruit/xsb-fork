@@ -90,7 +90,6 @@ char * function_names[30] = {"","+","-","*","/","/\\","\\/","","","sin",
   } while (0)
 
 extern void inline bld_boxedfloat(CTXTdeclc CPtr, Float);
-int xsb_eval(CTXTdeclc Cell exp, FltInt *value);
 
 int  unifunc_call(CTXTdeclc int funcnum, CPtr regaddr)
 {
@@ -352,485 +351,429 @@ static double xsb_calculate_epsilon(void)
 
 
 /* xsb_eval evaluates a Prolog term representing an arithmetic
-   expression and returns its value as an integer or float. 
-   Is recursive, so C runstack may overflow for deep expressions!
-   Should be rewritten!
-*/
-
-#ifndef MULTI_THREAD
-Integer eval_stk_size;
-FltInt *eval_stk;
-Integer eval_stk_toprec;
-#endif
-
-#define INIT_EVAL_STK_SIZE 24
-
-void expand_eval_stk(CTXTdecl) {
-  size_t new_size;
-  if (eval_stk_size == 0) new_size = INIT_EVAL_STK_SIZE;
-  else new_size = 2 * eval_stk_size;
-  eval_stk = (FltInt *)mem_realloc(eval_stk,eval_stk_size*sizeof(FltInt),new_size*sizeof(FltInt),OTHER_SPACE);
-  eval_stk_size = new_size;
-}
-
-int xsb_eval_bin_op(char *op, Cell expr, FltInt fiop1, FltInt fiop2, FltInt *value) {
-  switch (op[0]) {
-  case '+':
-    if (strcmp(op,"+")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)+fiint_val(fiop2));
-	else set_flt_val(value,fiint_val(fiop1)+fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)+fiint_val(fiop2));
-	else set_flt_val(value,fiflt_val(fiop1)+fiflt_val(fiop2));
-    }
-    break;
-  case '*':
-    if (strcmp(op,"*")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)*fiint_val(fiop2));
-	else set_flt_val(value,fiint_val(fiop1)*fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)*fiint_val(fiop2));
-	else set_flt_val(value,fiflt_val(fiop1)*fiflt_val(fiop2));
-      break;
-    } else if (strcmp(op,"**")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_flt_val(value,(Float)pow((Float)fiint_val(fiop1),(Float)fiint_val(fiop2)));
-	else set_flt_val(value,(Float)pow((Float)fiint_val(fiop1),fiflt_val(fiop2)));
-      } else {
-	if (isfiint(fiop2)) set_flt_val(value,(Float)pow(fiflt_val(fiop1),(Float)fiint_val(fiop2)));
-	else if (fiflt_val(fiop1) < 0) set_and_return_fail(value);
-	else set_flt_val(value,(Float)pow(fiflt_val(fiop1),fiflt_val(fiop2)));
-      }
-      break;
-    } else set_and_return_fail(value);
-    
-  case '^':
-    if (strcmp(op,"^")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_int_val(value,(Integer)pow((Float)fiint_val(fiop1),(Float)fiint_val(fiop2)));
-	else set_flt_val(value,(Float)pow((Float)fiint_val(fiop1),fiflt_val(fiop2)));
-      } else {
-	if (isfiint(fiop2)) set_flt_val(value,(Float)pow(fiflt_val(fiop1),(Float)fiint_val(fiop2)));
-	else if (fiflt_val(fiop1) < 0) set_and_return_fail(value);
-	else set_flt_val(value,(Float)pow(fiflt_val(fiop1),fiflt_val(fiop2)));
-      }
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'a':
-    if (strcmp(op,"atan")==0 || strcmp(op,"atan2")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_flt_val(value,(Float)atan2((Float)fiint_val(fiop1),(Float)fiint_val(fiop2)));
-	else set_flt_val(value,(Float)atan2((Float)fiint_val(fiop1),fiflt_val(fiop2)));
-      } else
-	if (isfiint(fiop2)) set_flt_val(value,(Float)atan2(fiflt_val(fiop1),(Float)fiint_val(fiop2)));
-	else set_flt_val(value,(Float)atan2(fiflt_val(fiop1),fiflt_val(fiop2)));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'r':
-    if (strcmp(op,"rem")==0) { /* % is C rem */
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)%fiint_val(fiop2));
-	else set_int_val(value,fiint_val(fiop1)%(Integer)fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) set_int_val(value,(Integer)fiflt_val(fiop1)%fiint_val(fiop2));
-	else set_int_val(value,(Integer)fiflt_val(fiop1)%(Integer)fiflt_val(fiop2));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'd':
-    if (strcmp(op,"div")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,(Integer)floor((Float)fiint_val(fiop1) / (Float)fiint_val(fiop2)));
-      } else arithmetic_abort(CTXTc get_str_arg(expr,2),"div",get_str_arg(expr,1));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'm':
-    if (strcmp(op,"mod")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) 
-	  set_int_val(value,fiint_val(fiop1)-(Integer)floor((Float)fiint_val(fiop1)/fiint_val(fiop2))*fiint_val(fiop2));
-	else set_flt_val(value,fiint_val(fiop1)-(Float)floor(fiint_val(fiop1)/fiflt_val(fiop2))*fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) 
-	  set_flt_val(value,fiflt_val(fiop1)-(Float)floor(fiflt_val(fiop1)/fiint_val(fiop2))*fiint_val(fiop2));
-	else set_flt_val(value,fiflt_val(fiop1)-(Float)floor(fiflt_val(fiop1)/fiflt_val(fiop2))*fiflt_val(fiop2));
-      break;
-    } else if (strcmp(op,"min")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) 
-	  if (fiint_val(fiop1)<fiint_val(fiop2)) set_int_val(value,fiint_val(fiop1));
-	  else set_int_val(value,fiint_val(fiop2));
-	else 
-	  if (fiint_val(fiop1)<fiflt_val(fiop2)) set_int_val(value,fiint_val(fiop1));
-	  else set_flt_val(value,fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) 
-	  if (fiflt_val(fiop1)<fiint_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
-	  else set_int_val(value,fiint_val(fiop2));
-	else 
-	  if (fiflt_val(fiop1)<fiflt_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
-	  else set_flt_val(value,fiflt_val(fiop2));
-      break;
-    } else if (strcmp(op,"max")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) 
-	  if (fiint_val(fiop1)>fiint_val(fiop2)) set_int_val(value,fiint_val(fiop1));
-	  else set_int_val(value,fiint_val(fiop2));
-	else 
-	  if (fiint_val(fiop1)>fiflt_val(fiop2)) set_int_val(value,fiint_val(fiop1));
-	  else set_flt_val(value,fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) 
-	  if (fiflt_val(fiop1)>fiint_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
-	  else set_int_val(value,fiint_val(fiop2));
-	else 
-	  if (fiflt_val(fiop1)>fiflt_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
-	  else set_flt_val(value,fiflt_val(fiop2));
-      break;
-    } else set_and_return_fail(value);
-    
-  case '-':
-    if (strcmp(op,"-")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)-fiint_val(fiop2));
-	else set_flt_val(value,fiint_val(fiop1)-fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)-fiint_val(fiop2));
-	else set_flt_val(value,fiflt_val(fiop1)-fiflt_val(fiop2));
-      break;
-    } else set_and_return_fail(value);
-    
-  case '/':
-    if (strcmp(op,"/")==0) {
-      if (isfiint(fiop1)) {
-	if (isfiint(fiop2)) set_flt_val(value,(Float)fiint_val(fiop1)/(Float)fiint_val(fiop2));
-	else set_flt_val(value,(Float)fiint_val(fiop1)/fiflt_val(fiop2));
-      } else
-	if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)/(Float)fiint_val(fiop2));
-	else set_flt_val(value,fiflt_val(fiop1)/fiflt_val(fiop2));
-      break;
-    } else if (strcmp(op,"//")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) / fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else if (strcmp(op,"/\\")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) & fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else set_and_return_fail(value);
-    
-  case '<':
-    if (strcmp(op,"<<")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) << fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else set_and_return_fail(value);
-    
-  case '>':
-    if (strcmp(op,"><")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) ^ fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else if (strcmp(op,">>")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) >> fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else set_and_return_fail(value);
-    
-  case '\\':
-    if (strcmp(op,"\\/")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) | fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else set_and_return_fail(value);
-  case 'x':
-    if (strcmp(op,"xor")==0) {
-      if (isfiint(fiop1) && isfiint(fiop2)) {
-	set_int_val(value,fiint_val(fiop1) ^ fiint_val(fiop2));
-      } else set_and_return_fail(value);
-      break;
-    } else set_and_return_fail(value);
-  default:
-    set_and_return_fail(value);
-  } /* end switch */
-  return 1;
-}
-
-int xsb_eval_un_op(char *op, FltInt fiop1, FltInt *value) {
-  switch (op[0]) {
-  case '-':
-    if (strcmp(op,"-")==0) {
-      if (isfiint(fiop1)) set_int_val(value,-fiint_val(fiop1));
-      else set_flt_val(value,-fiflt_val(fiop1));
-      break;
-    } else set_and_return_fail(value);
-    
-  case '+':
-    if (strcmp(op,"+")==0) {
-      if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
-      else set_flt_val(value,fiflt_val(fiop1));
-      break;
-    } else set_and_return_fail(value);
-    
-  case '\\':
-    if (strcmp(op,"\\")==0) {
-      if (isfiint(fiop1)) set_int_val(value,~fiint_val(fiop1));
-      else set_int_val(value,~((Integer)fiint_val(fiop1)));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 's':
-    if (strcmp(op,"sin")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)sin((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)sin(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"sqrt")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)sqrt((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)sqrt(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"sign")==0) {
-      if (isfiint(fiop1)) 
-	if (fiint_val(fiop1) > 0) set_int_val(value,1);
-	else if (fiint_val(fiop1) == 0) set_int_val(value,0);
-	else set_int_val(value,-1);
-      else if (fiflt_val(fiop1) > 0.0) set_int_val(value,1);
-      else if (fiflt_val(fiop1) == 0.0) set_int_val(value,0);
-      else set_int_val(value,-1);
-      break;
-    } else if (strcmp(op,"sinh")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)sinh((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)sinh(fiflt_val(fiop1)));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'c':
-    if (strcmp(op,"cos")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)cos((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)cos(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"ceiling")==0) {
-      if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
-      else  set_int_val(value,-(Integer)floor(-fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"cosh")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)cosh((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)cosh(fiflt_val(fiop1)));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 't':
-    if (strcmp(op,"tan")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)tan((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)tan(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"truncate")==0) {
-      if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
-      else if (fiflt_val(fiop1) > 0) set_int_val(value,(Integer)floor(fiflt_val(fiop1)));
-      else set_int_val(value,-(Integer)floor(-fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"tanh")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)tanh((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)tanh(fiflt_val(fiop1)));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'f':
-    if (strcmp(op,"float")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)fiint_val(fiop1));
-      else set_flt_val(value,fiflt_val(fiop1));
-      break;
-    } else if (strcmp(op,"floor")==0) {
-      if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
-      else set_int_val(value,(Integer)floor(fiflt_val(fiop1)));
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'e':
-    if (strcmp(op,"exp")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)exp((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)exp(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"erf")==0) {
-#ifdef WIN_NT
-      xsb_warn(CTXTc "erf function NOT defined");
-      set_flt_val(value,0.0);
-#else
-      if (isfiint(fiop1)) set_flt_val(value,(Float)erf((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)exp(fiflt_val(fiop1)));
-#endif
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'l':
-    if (strcmp(op,"log")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)log((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)log(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"log10")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)log10((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)log10(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"lgamma")==0) {
-#ifdef WIN_NT
-      xsb_warn(CTXTc "lgamma function NOT defined");
-      set_flt_val(value,0.0);
-#else
-      if (isfiint(fiop1)) set_flt_val(value,(Float)lgamma((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)lgamma(fiflt_val(fiop1)));
-#endif
-      break;
-    } else set_and_return_fail(value);
-    
-  case 'a':
-    if (strcmp(op,"asin")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)asin((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)asin(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"acos")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)acos((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)acos(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"atan")==0) {
-      if (isfiint(fiop1)) set_flt_val(value,(Float)atan((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)atan(fiflt_val(fiop1)));
-      break;
-    } else if (strcmp(op,"abs")==0) {
-      if (isfiint(fiop1)) 
-	if (fiint_val(fiop1) >= 0) set_int_val(value,fiint_val(fiop1));
-	else set_int_val(value,-fiint_val(fiop1));
-      else
-	if (fiflt_val(fiop1) >= 0) set_flt_val(value,fiflt_val(fiop1));
-	else set_flt_val(value,-fiflt_val(fiop1));
-      break;
-    } else if (strcmp(op,"asinh")==0) {
-#ifdef WIN_NT
-      xsb_warn(CTXTc "asinh function NOT defined");
-      set_flt_val(value,0.0);
-#else
-      if (isfiint(fiop1)) set_flt_val(value,(Float)asinh((Float)fiint_val(fiop1)));
-      else set_flt_val(value,(Float)asinh(fiflt_val(fiop1)));
-#endif
-      break;
-      //		PM: the following two function definitions are incomplete as they need to
-      //			handle out of range errors but I haven't figured out yet how to do it!
-      //	  } else if (strcmp(op,"acosh")==0) {
-      //	    if (isfiint(fiop1)) set_flt_val(value,(Float)acosh((Float)fiint_val(fiop1)));
-      //	    else set_flt_val(value,(Float)acosh(fiflt_val(fiop1)));
-      //	    break;
-      //	  } else if (strcmp(op,"atanh")==0) {
-      //	    if (isfiint(fiop1)) set_flt_val(value,(Float)atanh((Float)fiint_val(fiop1)));
-      //	    else set_flt_val(value,(Float)atanh(fiflt_val(fiop1)));
-      //	    break;
-    } else set_and_return_fail(value);
-    
-  case 'r':
-    if (strcmp(op,"round")==0) {
-      if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
-      else  set_int_val(value,(Integer)floor(fiflt_val(fiop1)+0.5));
-      break;
-    } else set_and_return_fail(value);
-    
-  default:
-    set_and_return_fail(value);
-  } /* end switch */
-  return 1;
-}
-
-int xsb_eval_con_op(char *con, FltInt *value) {
-  if (strcmp(con,"pi")==0) {
-    set_flt_val(value,(const Float)3.1415926535897932384);
-  } else if (strcmp(con,"e")==0) {
-    set_flt_val(value,(const Float)2.7182818284590452354);
-  } else if (strcmp(con,"epsilon")==0) {
-    set_flt_val(value,(const Float)xsb_calculate_epsilon());
-  } else set_and_return_fail(value);      
-  return 1;
-}
-
-/*
-                     |   ^   |
-                     |-------|
-eval_stk_toprec -->  | expr  |
-                     | index |
-                     | arg 1 |
-                     | arg 2 |  (if arity = 2)
-                     |-------|
-                     | expr  |
-                     | ....  |  prev rec
-                     .........
-                   bottom of stack
- */
+   expression and returns its value as an integer or float. */
 
 int xsb_eval(CTXTdeclc Cell expr, FltInt *value) {
-  FltInt fiop1, fiop2, fiop3;
 
   XSB_Deref(expr);
   if (isointeger(expr)) set_int_val(value,oint_val(expr));
-  else if (isofloat(expr)) set_flt_val(value,ofloat_val(expr));
-  else if (isstring(expr)) return xsb_eval_con_op(string_val(expr),value);
+  else if (isofloat(expr)) 
+    set_flt_val(value,ofloat_val(expr));
   else if (isconstr(expr)) {
-    int arity = get_arity(get_str_psc(expr));
-    eval_stk_toprec = arity + 1;
-    if (eval_stk_toprec >= eval_stk_size) expand_eval_stk(CTXT);
-    set_int_val((&eval_stk[eval_stk_toprec]),expr);
-    set_int_val((&eval_stk[eval_stk_toprec-1]),0);
+    Psc op_psc = get_str_psc(expr);
+    int arity = get_arity(op_psc);
+    if (arity == 2) {
+      Cell op1, op2;
+      FltInt fiop1, fiop2;
+      op1 = get_str_arg(expr,1);
+      op2 = get_str_arg(expr,2);
+      /* this evaluates recursively even before it checks whether the operator 
+	 is valid.  May be a problem. */
+      if (xsb_eval(CTXTc op1, &fiop1) && xsb_eval(CTXTc op2, &fiop2)) {
+	switch (get_name(op_psc)[0]) {
+	case '+':
+	  if (strcmp(get_name(op_psc),"+")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)+fiint_val(fiop2));
+	      else set_flt_val(value,fiint_val(fiop1)+fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)+fiint_val(fiop2));
+	      else set_flt_val(value,fiflt_val(fiop1)+fiflt_val(fiop2));
+	  }
+	  break;
+	case '*':
+	  if (strcmp(get_name(op_psc),"*")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)*fiint_val(fiop2));
+	      else set_flt_val(value,fiint_val(fiop1)*fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)*fiint_val(fiop2));
+	      else set_flt_val(value,fiflt_val(fiop1)*fiflt_val(fiop2));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"**")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_flt_val(value,(Float)pow((Float)fiint_val(fiop1),(Float)fiint_val(fiop2)));
+	      else set_flt_val(value,(Float)pow((Float)fiint_val(fiop1),fiflt_val(fiop2)));
+	    } else {
+	      if (isfiint(fiop2)) set_flt_val(value,(Float)pow(fiflt_val(fiop1),(Float)fiint_val(fiop2)));
+	      else if (fiflt_val(fiop1) < 0) return 0;
+	      else set_flt_val(value,(Float)pow(fiflt_val(fiop1),fiflt_val(fiop2)));
+	    }
+	    break;
+	  } else set_and_return_fail(value);
 
-    while (eval_stk_toprec >= 0) {
-      Psc op_psc = get_str_psc(eval_stk[eval_stk_toprec].fival.valint);
-      int arity = get_arity(op_psc);
-      int index = ((int)(eval_stk[eval_stk_toprec-1].fival.valint)) + 1;
-      if (index <= arity) {
-	expr = get_str_arg((Cell)eval_stk[eval_stk_toprec].fival.valint,index);
-	XSB_Deref(expr);
-	set_int_val((&eval_stk[eval_stk_toprec-1]),index);
-	if (isointeger(expr)) set_int_val((&eval_stk[eval_stk_toprec-index-1]),oint_val(expr));
-	else if (isofloat(expr)) set_flt_val((&eval_stk[eval_stk_toprec-index-1]),ofloat_val(expr));
-	else if (isstring(expr)) {
-	  if (!xsb_eval_con_op(string_val(expr), &fiop3)) set_and_return_fail(value);
-	  eval_stk[eval_stk_toprec-index-1] = fiop3;
-	} else if (isconstr(expr)) {
-	  // push to stack; expand stack if nec
-	  eval_stk_toprec = eval_stk_toprec + get_arity(get_str_psc(expr)) + 2;
-	  if (eval_stk_toprec >= eval_stk_size) expand_eval_stk(CTXT);
-	  set_int_val((&eval_stk[eval_stk_toprec]),expr);
-	  set_int_val((&eval_stk[eval_stk_toprec-1]),0);
-	} else set_and_return_fail(value);
-      } else {  /* have args, so eval operator */
-	if (arity == 2) {
-	  fiop1 = eval_stk[eval_stk_toprec-2];
-	  fiop2 = eval_stk[eval_stk_toprec-3];
-	  expr = (Cell)eval_stk[eval_stk_toprec].fival.valint;
-	  if (!xsb_eval_bin_op(get_name(op_psc),expr,fiop1,fiop2,&fiop3)) set_and_return_fail(value);
-	  eval_stk_toprec = eval_stk_toprec - arity - 2;
-	  if (eval_stk_toprec <= 0) {
-	    *value = fiop3;
-	    return 1;
-	  }
-	  eval_stk[eval_stk_toprec - eval_stk[eval_stk_toprec-1].fival.valint - 1] = fiop3;
-	} else if (arity == 1) {
-	  fiop1 = eval_stk[eval_stk_toprec-2];
-	  if (!xsb_eval_un_op(get_name(op_psc),fiop1,&fiop3)) set_and_return_fail(value);
-	  eval_stk_toprec = eval_stk_toprec - arity - 1;
-	  if (eval_stk_toprec <= 0) {
-	    *value = fiop3;
-	    return 1;
-	  }
-	  eval_stk[eval_stk_toprec - eval_stk[eval_stk_toprec-1].fival.valint - 1] = fiop3;
-	} else set_and_return_fail(value);
-      }
-    }
+	case '^':
+	  if (strcmp(get_name(op_psc),"^")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_int_val(value,(Integer)pow((Float)fiint_val(fiop1),(Float)fiint_val(fiop2)));
+	      else set_flt_val(value,(Float)pow((Float)fiint_val(fiop1),fiflt_val(fiop2)));
+	    } else {
+	      if (isfiint(fiop2)) set_flt_val(value,(Float)pow(fiflt_val(fiop1),(Float)fiint_val(fiop2)));
+	      else if (fiflt_val(fiop1) < 0) return 0;
+	      else set_flt_val(value,(Float)pow(fiflt_val(fiop1),fiflt_val(fiop2)));
+	    }
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'a':
+	  if (strcmp(get_name(op_psc),"atan")==0 || strcmp(get_name(op_psc),"atan2")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_flt_val(value,(Float)atan2((Float)fiint_val(fiop1),(Float)fiint_val(fiop2)));
+	      else set_flt_val(value,(Float)atan2((Float)fiint_val(fiop1),fiflt_val(fiop2)));
+	    } else
+	      if (isfiint(fiop2)) set_flt_val(value,(Float)atan2(fiflt_val(fiop1),(Float)fiint_val(fiop2)));
+	      else set_flt_val(value,(Float)atan2(fiflt_val(fiop1),fiflt_val(fiop2)));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'r':
+	  if (strcmp(get_name(op_psc),"rem")==0) { /* % is C rem */
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)%fiint_val(fiop2));
+	      else set_int_val(value,fiint_val(fiop1)%(Integer)fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) set_int_val(value,(Integer)fiflt_val(fiop1)%fiint_val(fiop2));
+	      else set_int_val(value,(Integer)fiflt_val(fiop1)%(Integer)fiflt_val(fiop2));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'd':
+	  if (strcmp(get_name(op_psc),"div")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,(Integer)floor((Float)fiint_val(fiop1) / (Float)fiint_val(fiop2)));
+	    } else arithmetic_abort(CTXTc op2,"div",op1);
+	    break;
+	  } else set_and_return_fail(value);
+	  
+	case 'm':
+	  if (strcmp(get_name(op_psc),"mod")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) 
+		set_int_val(value,fiint_val(fiop1)-(Integer)floor((Float)fiint_val(fiop1)/fiint_val(fiop2))*fiint_val(fiop2));
+	      else set_flt_val(value,fiint_val(fiop1)-(Float)floor(fiint_val(fiop1)/fiflt_val(fiop2))*fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) 
+		set_flt_val(value,fiflt_val(fiop1)-(Float)floor(fiflt_val(fiop1)/fiint_val(fiop2))*fiint_val(fiop2));
+	      else set_flt_val(value,fiflt_val(fiop1)-(Float)floor(fiflt_val(fiop1)/fiflt_val(fiop2))*fiflt_val(fiop2));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"min")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) 
+		if (fiint_val(fiop1)<fiint_val(fiop2)) set_int_val(value,fiint_val(fiop1));
+		else set_int_val(value,fiint_val(fiop2));
+	      else 
+		if (fiint_val(fiop1)<fiflt_val(fiop2)) set_int_val(value,fiint_val(fiop1));
+		else set_flt_val(value,fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) 
+		if (fiflt_val(fiop1)<fiint_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
+		else set_int_val(value,fiint_val(fiop2));
+	      else 
+		if (fiflt_val(fiop1)<fiflt_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
+		else set_flt_val(value,fiflt_val(fiop2));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"max")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) 
+		if (fiint_val(fiop1)>fiint_val(fiop2)) set_int_val(value,fiint_val(fiop1));
+		else set_int_val(value,fiint_val(fiop2));
+	      else 
+		if (fiint_val(fiop1)>fiflt_val(fiop2)) set_int_val(value,fiint_val(fiop1));
+		else set_flt_val(value,fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) 
+		if (fiflt_val(fiop1)>fiint_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
+		else set_int_val(value,fiint_val(fiop2));
+	      else 
+		if (fiflt_val(fiop1)>fiflt_val(fiop2)) set_flt_val(value,fiflt_val(fiop1));
+		else set_flt_val(value,fiflt_val(fiop2));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '-':
+	  if (strcmp(get_name(op_psc),"-")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_int_val(value,fiint_val(fiop1)-fiint_val(fiop2));
+	      else set_flt_val(value,fiint_val(fiop1)-fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)-fiint_val(fiop2));
+	      else set_flt_val(value,fiflt_val(fiop1)-fiflt_val(fiop2));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '/':
+	  if (strcmp(get_name(op_psc),"/")==0) {
+	    if (isfiint(fiop1)) {
+	      if (isfiint(fiop2)) set_flt_val(value,(Float)fiint_val(fiop1)/(Float)fiint_val(fiop2));
+	      else set_flt_val(value,(Float)fiint_val(fiop1)/fiflt_val(fiop2));
+	    } else
+	      if (isfiint(fiop2)) set_flt_val(value,fiflt_val(fiop1)/(Float)fiint_val(fiop2));
+	      else set_flt_val(value,fiflt_val(fiop1)/fiflt_val(fiop2));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"//")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) / fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else if (strcmp(get_name(op_psc),"/\\")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) & fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '<':
+	  if (strcmp(get_name(op_psc),"<<")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) << fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '>':
+	  if (strcmp(get_name(op_psc),"><")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) ^ fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else if (strcmp(get_name(op_psc),">>")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) >> fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '\\':
+	  if (strcmp(get_name(op_psc),"\\/")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) | fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else set_and_return_fail(value);
+	case 'x':
+	  if (strcmp(get_name(op_psc),"xor")==0) {
+	    if (isfiint(fiop1) && isfiint(fiop2)) {
+	      set_int_val(value,fiint_val(fiop1) ^ fiint_val(fiop2));
+	    } else return 0;
+	    break;
+	  } else set_and_return_fail(value);
+	default:
+	  set_and_return_fail(value);
+	} /* end switch */
+      } else set_and_return_fail(value);
+
+    } else if (arity == 1) {
+      Cell op1;
+      FltInt fiop1;
+      op1 = get_str_arg(expr,1);
+      if (xsb_eval(CTXTc op1, &fiop1)) {
+      /***
+	  builtin_function(sin, 1, 9).
+	  builtin_function(cos, 1, 10).
+	  builtin_function(tan, 1, 11).
+	  builtin_function(float, 1, 13).
+	  builtin_function(floor, 1, 14).
+	  builtin_function(exp, 1, 15).
+	  builtin_function(log, 1, 16).
+	  builtin_function(log10, 1, 17).
+	  builtin_function(sqrt, 1, 18).
+	  builtin_function(asin, 1, 19).
+	  builtin_function(acos, 1, 20).
+	  builtin_function(atan, 1, 21).
+	  builtin_function(abs, 1, 22).
+	  builtin_function(truncate, 1, 23).
+	  builtin_function(round, 1, 24).
+	  builtin_function(ceiling, 1, 25).
+	  builtin_function(sign, 1, 26).
+      **/
+	switch (get_name(op_psc)[0]) {
+	case '-':
+	  if (strcmp(get_name(op_psc),"-")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,-fiint_val(fiop1));
+	    else set_flt_val(value,-fiflt_val(fiop1));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '+':
+	  if (strcmp(get_name(op_psc),"+")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
+	    else set_flt_val(value,fiflt_val(fiop1));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case '\\':
+	  if (strcmp(get_name(op_psc),"\\")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,~fiint_val(fiop1));
+	    else set_int_val(value,~((Integer)fiint_val(fiop1)));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 's':
+	  if (strcmp(get_name(op_psc),"sin")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)sin((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)sin(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"sqrt")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)sqrt((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)sqrt(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"sign")==0) {
+	    if (isfiint(fiop1)) 
+	      if (fiint_val(fiop1) > 0) set_int_val(value,1);
+	      else if (fiint_val(fiop1) == 0) set_int_val(value,0);
+	      else set_int_val(value,-1);
+	    else if (fiflt_val(fiop1) > 0.0) set_int_val(value,1);
+	    else if (fiflt_val(fiop1) == 0.0) set_int_val(value,0);
+	    else set_int_val(value,-1);
+	    break;
+	  } else if (strcmp(get_name(op_psc),"sinh")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)sinh((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)sinh(fiflt_val(fiop1)));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'c':
+	  if (strcmp(get_name(op_psc),"cos")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)cos((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)cos(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"ceiling")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
+	    else  set_int_val(value,-(Integer)floor(-fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"cosh")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)cosh((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)cosh(fiflt_val(fiop1)));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 't':
+	  if (strcmp(get_name(op_psc),"tan")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)tan((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)tan(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"truncate")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
+	    else if (fiflt_val(fiop1) > 0) set_int_val(value,(Integer)floor(fiflt_val(fiop1)));
+	    else set_int_val(value,-(Integer)floor(-fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"tanh")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)tanh((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)tanh(fiflt_val(fiop1)));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'f':
+	  if (strcmp(get_name(op_psc),"float")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)fiint_val(fiop1));
+	    else set_flt_val(value,fiflt_val(fiop1));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"floor")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
+	    else set_int_val(value,(Integer)floor(fiflt_val(fiop1)));
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'e':
+	  if (strcmp(get_name(op_psc),"exp")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)exp((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)exp(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"erf")==0) {
+#ifdef WIN_NT
+	    xsb_warn(CTXTc "erf function NOT defined");
+	    set_flt_val(value,0.0);
+#else
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)erf((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)exp(fiflt_val(fiop1)));
+#endif
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'l':
+	  if (strcmp(get_name(op_psc),"log")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)log((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)log(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"log10")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)log10((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)log10(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"lgamma")==0) {
+#ifdef WIN_NT
+	    xsb_warn(CTXTc "lgamma function NOT defined");
+	    set_flt_val(value,0.0);
+#else
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)lgamma((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)lgamma(fiflt_val(fiop1)));
+#endif
+	    break;
+	  } else set_and_return_fail(value);
+
+	case 'a':
+	  if (strcmp(get_name(op_psc),"asin")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)asin((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)asin(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"acos")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)acos((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)acos(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"atan")==0) {
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)atan((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)atan(fiflt_val(fiop1)));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"abs")==0) {
+	    if (isfiint(fiop1)) 
+	      if (fiint_val(fiop1) >= 0) set_int_val(value,fiint_val(fiop1));
+	      else set_int_val(value,-fiint_val(fiop1));
+	    else
+	      if (fiflt_val(fiop1) >= 0) set_flt_val(value,fiflt_val(fiop1));
+	      else set_flt_val(value,-fiflt_val(fiop1));
+	    break;
+	  } else if (strcmp(get_name(op_psc),"asinh")==0) {
+#ifdef WIN_NT
+	    xsb_warn(CTXTc "asinh function NOT defined");
+	    set_flt_val(value,0.0);
+#else
+	    if (isfiint(fiop1)) set_flt_val(value,(Float)asinh((Float)fiint_val(fiop1)));
+	    else set_flt_val(value,(Float)asinh(fiflt_val(fiop1)));
+#endif
+	    break;
+//		PM: the following two function definitions are incomplete as they need to
+//			handle out of range errors but I haven't figured out yet how to do it!
+//	  } else if (strcmp(get_name(op_psc),"acosh")==0) {
+//	    if (isfiint(fiop1)) set_flt_val(value,(Float)acosh((Float)fiint_val(fiop1)));
+//	    else set_flt_val(value,(Float)acosh(fiflt_val(fiop1)));
+//	    break;
+//	  } else if (strcmp(get_name(op_psc),"atanh")==0) {
+//	    if (isfiint(fiop1)) set_flt_val(value,(Float)atanh((Float)fiint_val(fiop1)));
+//	    else set_flt_val(value,(Float)atanh(fiflt_val(fiop1)));
+//	    break;
+	  } else set_and_return_fail(value);
+
+	case 'r':
+	  if (strcmp(get_name(op_psc),"round")==0) {
+	    if (isfiint(fiop1)) set_int_val(value,fiint_val(fiop1));
+	    else  set_int_val(value,(Integer)floor(fiflt_val(fiop1)+0.5));
+	    break;
+	  } else set_and_return_fail(value);
+
+	default:
+	  set_and_return_fail(value);
+	} /* end switch */
+      } else  /* bad subexpression */
+	set_and_return_fail(value);
+    } else  /* not binary or unary functor or string */
+      set_and_return_fail(value);
+  } else if (isstring(expr)) {
+    if (strcmp(string_val(expr),"pi")==0) {
+      set_flt_val(value,(const Float)3.1415926535897932384);
+    } else if (strcmp(string_val(expr),"e")==0) {
+      set_flt_val(value,(const Float)2.7182818284590452354);
+    } else if (strcmp(string_val(expr),"epsilon")==0) {
+      set_flt_val(value,(const Float)xsb_calculate_epsilon());
+    } else set_and_return_fail(value);      
   } else set_and_return_fail(value);
   return 1;
 }
-

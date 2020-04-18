@@ -1,9 +1,0 @@
-
-test:- 
-	p(A,B),writeln(p(A,B)),fail.
-test.
-
-:- include('inctest1').
-p(a,c).
-p(a,d).
-:- include('inctest2').

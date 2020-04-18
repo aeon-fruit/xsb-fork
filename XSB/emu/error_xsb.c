@@ -488,7 +488,7 @@ DllExport void call_conv xsb_evaluation_error(CTXTdeclc int type,char *descripti
   int isNew;
 
   if (flags[EXCEPTION_ACTION]) {
-    undefPair = insert("floundered_undefined",1,pair_psc(insert_module(0,"xsbbrat")),&isNew); 
+    undefPair = insert("floundered_undefined",1,pair_psc(insert_module(0,"tables")),&isNew); 
     //    printf("undefPair %p\n",undefPair);
     Utip = get_tip(CTXTc pair_psc(undefPair));				
     delay_negatively(TIF_Subgoals(Utip));					
@@ -1285,7 +1285,7 @@ void arithmetic_abort(CTXTdeclc Cell op1, char *OP, Cell op2) {
     }
   }
   else { // Delay on Exception 
-    undefPair = insert("floundered_undefined",1,pair_psc(insert_module(0,"xsbbrat")),&isNew); 
+    undefPair = insert("floundered_undefined",1,pair_psc(insert_module(0,"tables")),&isNew); 
     //    printf("undefPair %p\n",undefPair);
     Utip = get_tip(CTXTc pair_psc(undefPair));				
     delay_negatively(TIF_Subgoals(Utip));					
@@ -1427,7 +1427,7 @@ DllExport void call_conv xsb_log(char *description, ...)
   va_list args;
   char filenamestr[50];
 
-  //  if (flags[LOG_ALL_FILES_USED]) {
+  if (flags[LOG_ALL_FILES_USED]) {
     if (!logfile_opened) {
       if (flags[LOG_ALL_FILES_USED] > 1) {
 	sprintf(filenamestr,"XSB_LOGFILE_%d.txt",(int)(flags[LOG_ALL_FILES_USED]));
@@ -1439,7 +1439,7 @@ DllExport void call_conv xsb_log(char *description, ...)
     vfprintf(logfile, description, args);
     va_end(args);
     fflush(logfile);
-    //  }
+  }
 }
 
 DllExport void call_conv xsb_warn(CTXTdeclc char *description, ...)
@@ -1668,23 +1668,23 @@ void print_incomplete_tables_on_abort(CTXTdecl) {
 }
 
 /*
- * void print_incomplete_tables_on_abort(CTXTdecl) {
- *   FILE * abort_stream;
- *   char etcdir[MAXPATHLEN];
- *   char * tempnamptr;
- * 
- *   if (openreg < COMPLSTACKBOTTOM && flags[EXCEPTION_PRE_ACTION]  ) {
- *     snprintf(etcdir,MAXPATHLEN,"%s%cetc",install_dir_gl,SLASH);
- *     tempnamptr = tempnam(etcdir,"scc_dump_");
- *     strncpy(abort_file_gl,tempnamptr,2*MAXPATHLEN);
- *     free(tempnamptr);
- *     //    printf("abort file %s\n",abort_file_gl);
- *     abort_stream = fopen(abort_file_gl,"w");
- *     print_completion_stack(CTXTc abort_stream);
- *     fflush(abort_stream);
- *     fclose(abort_stream);
- *   }
- * }
+void print_incomplete_tables_on_abort(CTXTdecl) {
+  FILE * abort_stream;
+  char etcdir[MAXPATHLEN];
+  char * tempnamptr;
+
+  if (openreg < COMPLSTACKBOTTOM && flags[EXCEPTION_PRE_ACTION]  ) {
+    snprintf(etcdir,MAXPATHLEN,"%s%cetc",install_dir_gl,SLASH);
+    tempnamptr = tempnam(etcdir,"scc_dump_");
+    strncpy(abort_file_gl,tempnamptr,2*MAXPATHLEN);
+    free(tempnamptr);
+    //    printf("abort file %s\n",abort_file_gl);
+    abort_stream = fopen(abort_file_gl,"w");
+    print_completion_stack(CTXTc abort_stream);
+    fflush(abort_stream);
+    fclose(abort_stream);
+  }
+}
 */
 
 int unwind_stack(CTXTdecl)

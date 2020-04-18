@@ -1,2 +1,0 @@
-
-test:-  [incremental_trie_1],test_seq.

@@ -54,20 +54,19 @@
 :- import retractall/1,asserta/1 from assert. 
  
 :- import check_nonvar/3, check_atom/3,default_error_handler/1,domain_error/5,
-	  instantiation_error/3, misc_error/1, permission_error/4, type_error/4,
-	  check_ground/3
+          instantiation_error/3, misc_error/1, permission_error/4, type_error/4
           from error_handler.
 
 :- import thread_request/9 from machine.
 :- import stat_set_flag/2, term_psc/2 from machine.
 
-:- import call/1, catch/3, integer/1,throw/1, (;)/2 /*,call_cleanup/2*/ from standard.
+   :- import call/1, catch/3, integer/1,throw/1, (;)/2 /*,call_cleanup/2*/ from standard.
 
 :- import '_$thread_exit_ball'/2 from usermod.
 
 :- import add_aliases_flag_error/4, remove_alias/3, get_alias/3 from file_io.
 
-   /* Higher level */
+/* Higher level */
 :- export par_execute/1, n_par_execute/2.
 
 

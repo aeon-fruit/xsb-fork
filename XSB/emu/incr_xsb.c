@@ -57,9 +57,6 @@
 #include "hashtable.h"
 #include "hashtable_itr.h"
 
-// defined in call_graph_xsb.c
-int immediate_depends_callnode_ptrlist(CTXTdeclc callnodeptr);
-
 /* This is already defined in builtin.c; need to factor this out */
 #define ptoc_addr(regnum)	(void *)ptoc_int(CTXTc regnum)
 
@@ -158,36 +155,23 @@ xsbBool incr_eval_builtin(CTXTdecl)
 }
     */
 
-#ifdef INCR_SUBST
-  case PSC_SET_INCR: {
-    Psc psc = (Psc)ptoc_addr(2);   
-    int ibits = (int)ptoc_int(CTXTc 3);
-    if (ibits < 4) {  //  opaque, nincremental,incremental (as opposed to intern) 
-	psc_set_incr(psc,(int)ptoc_int(CTXTc 3));
-	//      printf("%s/%d:%u incr set to %d\n",get_name(psc),get_arity(psc),psc,ptoc_int(3));
-    } else {
-      psc_set_intern(psc,ibits);
-    }
-      break;
-  }
-#else
   case PSC_SET_INCR: {
     Psc psc = (Psc)ptoc_addr(2);   
     int ibits = (int)ptoc_int(CTXTc 3);
     if (ibits < 4) {
       if (!(get_tabled(psc) == T_TABLED_SUB && ptoc_int(CTXTc 3) == INCREMENTAL)) {
-  	psc_set_incr(psc,(int)ptoc_int(CTXTc 3));
+	psc_set_incr(psc,(int)ptoc_int(CTXTc 3));
 	//      printf("%s/%d:%u incr set to %d\n",get_name(psc),get_arity(psc),psc,ptoc_int(3));
+      } else {
+	xsb_abort("Cannot incrementally maintain a subsumptive table (%s/%d)",get_name(psc),get_arity(psc));
       }
-      //	xsb_abort("Cannot incrementally maintain a subsumptive table (%s/%d)",get_name(psc),get_arity(psc));
-  } else {
+    } else {
       psc_set_intern(psc,ibits);
     }
-    break;
+      break;
   }
-#endif
-  
-case PSC_GET_INCR: {
+
+  case PSC_GET_INCR: {
     Psc psc = (Psc)ptoc_addr(2);   
     if (get_incr(psc))
 	ctop_int(CTXTc 3,INCREMENTAL);
@@ -225,22 +209,18 @@ case PSC_GET_INCR: {
 
   case IMMED_DEPENDS_LIST: {
     VariantSF sf;
-    int idl_flag = 0;
-    callnodeptr callnode_ptr;
-    sf = get_call(CTXTc ptoc_tag(CTXTc 2), NULL,&idl_flag,&callnode_ptr);
-    //    printf("IDL sf %p\n",sf);
+
+    sf = get_call(CTXTc ptoc_tag(CTXTc 2), NULL);
     if (IsNonNULL(sf)) 
-      return(immediate_depends_list(CTXTc sf->callnode));
+      return(immediate_inedges_list(CTXTc sf->callnode));
     else return FALSE;
     break;
   }
 
   case IMMED_AFFECTS_LIST: {
     VariantSF sf;
-    int idl_flag = 0;
-    callnodeptr callnode_ptr;
 
-    sf  = get_call(CTXTc ptoc_tag(CTXTc 2), NULL,&idl_flag,&callnode_ptr);
+    sf  = get_call(CTXTc ptoc_tag(CTXTc 2), NULL);
     if (IsNonNULL(sf)) 
     return immediate_outedges_list(CTXTc sf->callnode);
     else return FALSE;
@@ -248,16 +228,13 @@ case PSC_GET_INCR: {
   }
 
   case IS_AFFECTED: {
+    
     Psc psc = term_psc((Cell)(ptoc_tag(CTXTc 2)));
-    int idl_flag = 0;
-    callnodeptr callnode_ptr;
-
-    if (get_type(psc) != T_DYNA && get_incr(psc)) { /* make sure its incremental, but isn't a leaf node of the IDG */
-      VariantSF sf  = get_call(CTXTc ptoc_tag(CTXTc 2), NULL,&idl_flag,&callnode_ptr);
+    if (get_type(psc) != T_DYNA && get_incr(psc)) {    /* make sure its incremental, but  isn't a leaf node of the IDG */
+      VariantSF sf  = get_call(CTXTc ptoc_tag(CTXTc 2), NULL);
       if(IsNonNULL(sf)){
 	callnodeptr c=sf->callnode;
-	//	if(IsNonNULL(c) &&  (c->falsecount!=0)) {
-	if(IsNonNULL(c)) {
+	if(IsNonNULL(c) &&  (c->falsecount!=0)) {
 	  ctop_int(CTXTc 3, (Integer) c->falsecount);
 	  //	  ctop_int(CTXTc 4, (Integer) has_answers(sf) );
 	  ctop_int(CTXTc 4, (Integer) c->no_of_answers );
@@ -295,11 +272,9 @@ case PSC_GET_INCR: {
       affected calls that the input call depends on, in postorder.         */
   case RETURN_LAZY_CALL_LIST: {
     VariantSF sf;
-    int idl_flag = 0;
     int rc = 0, flag, dfs_ret;
-    callnodeptr callnode_ptr;
 
-    sf = get_call(CTXTc ptoc_tag(CTXTc 2), NULL,&idl_flag,&callnode_ptr);
+    sf = get_call(CTXTc ptoc_tag(CTXTc 2), NULL);
 
     // maybe check callnodeptr here.
     if (IsNonNULL(sf))  {
@@ -310,7 +285,7 @@ case PSC_GET_INCR: {
       }
       else if (flag == CALL_LIST_CREATE_EVAL) {
 	lazy_affected = empty_calllist(CTXT);
-	dfs_ret = dfs_dependency_edges(CTXTc subg_callnode_ptr(sf),  &lazy_affected, CALL_LIST_EVAL);
+	dfs_ret = dfs_inedges(CTXTc subg_callnode_ptr(sf),  &lazy_affected, CALL_LIST_EVAL);
 	//	fprintf(stddbg,"dfs returned %d flag = %d\n",dfs_ret,flag);
 	if (!dfs_ret ) 
 	  rc = return_lazy_call_list(CTXTc sf->callnode);
@@ -319,7 +294,7 @@ case PSC_GET_INCR: {
       }
       else if (flag == CALL_LIST_INSPECT)  {
 	lazy_affected = empty_calllist(CTXT);
-	dfs_ret = dfs_dependency_edges(CTXTc subg_callnode_ptr(sf),  &lazy_affected, CALL_LIST_INSPECT);
+	dfs_ret = dfs_inedges(CTXTc subg_callnode_ptr(sf),  &lazy_affected, CALL_LIST_INSPECT);
 	//	fprintf(stddbg,"dfs returned %d flag = %d\n",dfs_ret,flag);
 	rc = return_lazy_call_list(CTXTc sf->callnode);
 	return rc;
@@ -331,14 +306,12 @@ case PSC_GET_INCR: {
 
   // Will not call incremental facts.
   case CALL_IF_AFFECTED: {
-    VariantSF sf;
-    Cell callTerm;
-    int idl_flag = 0;
-    callnodeptr callnode_ptr;
-    
+  VariantSF sf;
+  Cell callTerm;
+
   callTerm = ptoc_tag(CTXTc 2);
 
-  sf = get_call(CTXTc callTerm, NULL,&idl_flag,&callnode_ptr);
+  sf = get_call(CTXTc callTerm, NULL);
 
   if(IsNonNULL(sf)){
     callnodeptr c=sf->callnode;
@@ -356,62 +329,45 @@ case PSC_GET_INCR: {
     break;
   }
 
-    // Using callnodes for dependencies now.
-    //  case IMMED_AFFECTS_PTRLIST: {
-    //    VariantSF sf;
-    //			   
-    //    sf  = (VariantSF) ptoc_int(CTXTc 2);
-    //    printf("sf2 %p\n",sf);
-    //    return immediate_affects_ptrlist(CTXTc sf->callnode);
-    //    break;
-    //  }
+  case IMMED_AFFECTS_PTRLIST: {
+    VariantSF sf;
 
-    //  case GET_SUBGOAL_FRAME: {
-    //    VariantSF sf;
-    //    int idl_flag = 0;
-    //    callnodeptr callnode_ptr;
-    
-    //    sf  = get_call(CTXTc ptoc_tag(CTXTc 2), NULL,&idl_flag,&callnode_ptr);
+    sf  = (VariantSF) ptoc_int(CTXTc 2);
+    //    printf("sf2 %p\n",sf);
+    return immediate_affects_ptrlist(CTXTc sf->callnode);
+    break;
+  }
+
+  case GET_SUBGOAL_FRAME: {
+    VariantSF sf;
+
+    sf  = get_call(CTXTc ptoc_tag(CTXTc 2), NULL);
     //    printf("sf1 %p\n",sf);
-    //    if (IsNonNULL(sf)) {
-    //      ctop_int(CTXTc 3, (Integer) sf);
-    //      return TRUE;
-    //    }
-    //    else return FALSE;
-    //    break;
-    //  }
+    if (IsNonNULL(sf)) {
+      ctop_int(CTXTc 3, (Integer) sf);
+      return TRUE;
+    }
+    else return FALSE;
+    break;
+  }
 
   case GET_INCR_SCCS: {
 
     return get_incr_sccs(CTXTc ptoc_tag(CTXTc 2));
   }
 
-  case IMMED_DEPENDS_CALLNODE_PTRLIST: {
-    callnodeptr callnode;
+  case IMMED_DEPENDS_PTRLIST: {
+    VariantSF sf;
 
-    callnode = (callnodeptr) ptoc_int(CTXTc 2);
-    return immediate_depends_callnode_ptrlist(CTXTc callnode);
-    break;
-  }
-
-  case IMMED_AFFECTS_CALLNODE_PTRLIST: {
-    callnodeptr callnode;
-			   
-    callnode = (callnodeptr) ptoc_int(CTXTc 2);
-    return immediate_affects_callnode_ptrlist(CTXTc callnode);
-    break;
-  }
-
-  case CN_TO_SF: {
-    callnodeptr callnode;
-    callnode = (callnodeptr) ptoc_int(CTXTc 2);    
-    ctop_int(CTXTc 3, (Integer) callnode_sf(callnode));
+    sf  = (VariantSF) ptoc_int(CTXTc 2);
+    //    printf("sf2 %p\n",sf);
+    return immediate_depends_ptrlist(CTXTc sf->callnode);
     break;
   }
 
   default:
-    xsb_abort("Unknown Incremental Evaluation Builtin %d\n",builtin_number);
-    //    xsb_exit("Unknown Incremental Evaluation Builtin: %d\n.", builtin_number);
+    xsb_abort("Unknown Incremental Evaluation Builtin");
+    xsb_exit("Unknown Incremental Evaluation Builtin: %d\n.", builtin_number);
     break;
   }
   return TRUE;

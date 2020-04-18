@@ -82,7 +82,7 @@
 	]).
 
 :- import length/2 from basics.
-%%:- import term_variables_swi/2 from swi.
+:- import term_variables/2 from swi.
 :- import instantiation_error/2, domain_error/4 from error_handler.
 
 %goal_expansion(geler(X,Y),geler(clpr,X,Y)).
@@ -940,7 +940,6 @@ nf_power(N,Sum,Norm) :-
 % N>0
 %
 % iterative method: X^N = X*(X^N-1)
-/**
 nf_power_pos(1,Sum,Norm) :- 
 	!,
 	Sum = Norm.
@@ -948,7 +947,6 @@ nf_power_pos(N,Sum,Norm) :-
 	N1 is N-1,
 	nf_power_pos(N1,Sum,Pn1),
 	nf_mul(Sum,Pn1,Norm).
-**/
 %
 % N>0
 %
@@ -1203,10 +1201,8 @@ transg(wait_linear_retry(Nf,Res,Goal)) -->
 	},
 	[clpr:{Term=Res},Goal].
 	
-/**
 integerp(X) :-
 	floor(X)=:=X.
-**/
 
 integerp(X,I) :-
 	floor(X)=:=X,

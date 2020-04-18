@@ -44,25 +44,14 @@ get_error_goal(error(_Tag,context(context(_Msg,Goal),_Backtrace)),Goal).
 */
 
 :- import read_atom_to_term/2 from string.
-:- mode xsb_error_get_tag(+,?).
 xsb_error_get_tag(error(Tag,_),Tag).
-
-:- mode xsb_error_get_message(+,?).
 xsb_error_get_message(error(_Tag,context(MaybeM,_Backtrace)),Message):- 
 	(MaybeM = context(MaybeM1,_Goal) -> 
 	 (MaybeM1 = context(Message,_Tid) ; MaybeM1 = Message)
 	  ; MaybeM = Message),!.
-
-:- mode xsb_error_get_goal(+,?).
 xsb_error_get_goal(error(_Tag,context(context(_Msg,GoalAtom),_Backtrace)),Goal):- read_atom_to_term(GoalAtom,Goal).
-
-:- mode xsb_error_get_goalatom(+,?).
 xsb_error_get_goalatom(error(_Tag,context(context(_Msg,Goal),_Backtrace)),Goal).
-
-:- mode xsb_error_get_tid(+,?).
 xsb_error_get_tid(error(_Tag,context(context(context(_Msg,Tid),_Goal),_Backtrace)),Tid).
-
-:- mode xsb_error_get_backtrace(+,?).
 xsb_error_get_backtrace(error(_Tag,context(_MaybeM,Backtrace)),Backtrace).
 
 :- import default_user_error_handler/1 from usermod.
@@ -72,7 +61,6 @@ xsb_error_get_backtrace(error(_Tag,context(_MaybeM,Backtrace)),Backtrace).
 /* Types of errors are based on Section 7.12 of the ISO Standard, but
    Ive added tabling_error.  (see manual for types and explanation).
    User handlers only work for main -- otherwise use on-exit */
-:- mode default_error_handler(?).
 default_error_handler(Error) :- 
 %       standard:writeln(default_error_handler(Error)),
 	xsb_thread_self(Thread),
@@ -87,7 +75,6 @@ default_error_handler(Error) :-
 
 %----
 :- import thread_exit_handler/1 from thread.
-:- mode ccall_error_handler(?).
 ccall_error_handler(thread_exit(Term)) :-
 	thread_exit_handler(Term),   
 	!.				% cut should be unnecessary, as thread should have exited by here
@@ -111,14 +98,12 @@ ccall_error_handler(Error) :-
 :- dynamic '_$thread_exit_ball'/2.
 :- thread_shared('_$thread_exit_ball'(_,_)).
 
-:- mode default_sys_error_handler(?).
+%:- import writeln/1 from standard.
 default_sys_error_handler(error(Error,Msg,Backtrace)) :- !,
 	default_sys_error_handler(error(Error,context(Msg,Backtrace))).
 default_sys_error_handler(error(Error,Context)) :- 
 	nonvar(Context),
-	Context = context(Msg_or_Ctxt,Backtrace),
-	ground(Backtrace),
-	!,
+	Context = context(Msg_or_Ctxt,Backtrace),!,
 %	writeln(default_sys_error_handler(error(Error,context(Msg_or_Ctxt,Backtrace)))),
 	get_message(Msg_or_Ctxt,Msg),
 	% here is where we may do something abt backtraces.
@@ -179,25 +164,21 @@ default_sys_error_handler_main(_Error,_Message,BT,Backtrace):-
 
 %-----
 :- import functor/3 from standard.
-%:- import writeln/1 from standard.
 /* TLS: for now ignoring backtraces in Ccall; Ignoring Mt engine.
          Note that for ISO errors we get a comma-list that may have
          terms in it.  Im handling that specially, to make it look
          pretty.*/
 
-default_ccall_error_handler(E) :-
+default_ccall_error_handler(error(Error,MsgIn,_Backtrace)) :-
 	% here is where we may do something abt backtraces.
 	% xsb_flag(backtrace_on_error,BT),
 	% xsb_thread_self(Thread),
-         (error(Error,context(MsgIn,_Backtrace)) = E ->
-            get_sys_error_description(error(Error,MsgIn),MsgList),
-	    (atom(Error) -> ErrorAtom = Error ; functor(Error,ErrorAtom,_))
-	  ; MsgList = ('++Error[XSB/Runtime] Unhandled Exception: ',E),
-	    ErrorAtom = unknown_error_type),
+	(get_sys_error_description(error(Error,MsgIn),MsgList) -> 
+	    true
+	  ; MsgList = ('++Error[XSB/Runtime] Unhandled Exception: ',MsgIn)),
 	transform_error_message(MsgList,MsgList1),
 	concat_atom(MsgList1,MsgAtom),
-%	writeln(msgAtom(MsgAtom)),
-%	writeln(errorAtom(ErrorAtom)),
+	(atom(Error) -> ErrorAtom = Error ; functor(Error,ErrorAtom,_)),
 	ccall_store_error(ErrorAtom,MsgAtom).
 
 transform_error_message((A,B),(NewA,NewB)):- !,
@@ -211,24 +192,22 @@ transform_error_message_1(A,NewA):-
 	
 %-----
 % Cancellation.
-:- mode default_sys_error_handler_nonmain(?,+,+,?).
 default_sys_error_handler_nonmain(thread_cancel,Thread,Backtrace,Msg):- !,
 	(thread_property(Thread,detached(false)) -> 
 	       get_backtrace(Backtrace,ReadBT),
-	       assert('_$thread_exit_ball'(Thread,
-	                                   cancelled(error(thread_cancel,Msg,ReadBT))),0,1)
+	       asserta('_$thread_exit_ball'(Thread,
+	                                    cancelled(error(thread_cancel,Msg,ReadBT))))
 	     ; true),
 	internal_thread_exit(THREAD_CANCELLED).
 % Error: non-cancellation.
 default_sys_error_handler_nonmain(Error,Thread,Backtrace,Msg):- 
 	(thread_property(Thread,detached(false)) -> 
 	    get_backtrace(Backtrace,ReadBT),
-	    assert('_$thread_exit_ball'(Thread,exception(error(Error,Msg,ReadBT))),0,1)
+	    asserta('_$thread_exit_ball'(Thread,exception(error(Error,Msg,ReadBT))))
 	;   true),
 	internal_thread_exit(THREAD_EXCEPTION).
 
 % get_sys_error_description/3
-:- mode get_sys_error_description(+,?,+).
 get_sys_error_description(error(Error,Msg,Backtrace), 
 	                        ExceptionDescription, BacktraceList) :- !,
 	get_sys_error_description(error(Error,Msg), ExceptionDescription),
@@ -238,7 +217,6 @@ get_sys_error_description(error(Error,Msg), ExceptionDescription, []) :-
 
 % get_sys_error_description/2
 % This needs to handle either comma lists or lists as input -- just as message/[1,2]
-:- mode get_sys_error_description(?,?).
 get_sys_error_description(error(domain_error(Valid_type,Culprit),Msg), ExceptionDesc) :-
 	ExceptionDesc = ('++Error[XSB/Runtime/P]: [Domain (',Culprit,' not in domain ',
 	                          Valid_type,')] ', Msg).
@@ -299,14 +277,12 @@ get_message(Msg,Msg).
 /*get_backtrace(+, -) gets backtrace as built by build_xsb_backtrace:
 list pair, with car=forward continuation, cdr=backward continuation.
 backward is [] if xsb not started with -p option */
-:- mode get_backtrace(+,?).
 get_backtrace([ForPscs|BackPscs], [['Forward Continuation...'|PFor]|['Backward Continuation...'| PBack]]) :-
 	get_mod_pred_arity_list(ForPscs,PFor),
 	get_mod_pred_arity_list(BackPscs,PBack).
 
 
 /* get backtrace as list of Mod:Pred/Arity, with ? if unknown */
-:- mode get_backtrace_list(+,?).
 get_backtrace_list([],[]).
 get_backtrace_list([Psc|Pscs],[Mod:Name/Arity|Preds]) :-
 	(Psc =:= 0
@@ -317,22 +293,16 @@ get_backtrace_list([Psc|Pscs],[Mod:Name/Arity|Preds]) :-
 	),
 	get_backtrace_list(Pscs,Preds).
 
-/* TES: In certain cases, (e.g., when ?- aaa is executed in a compiled
- * file, and aaa is undefined) the data can be non-zero and the
- * filename 0.  Accordingly, I added the check for FileName0 = 0 */
-
-:- mode psc_modname_filename(+,?,?).
 psc_modname_filename(Psc,ModName,FileName) :-
 	psc_data(Psc,ModPscOrFile),
 	(integer(ModPscOrFile)
 	 ->	(ModPscOrFile =:= 0
 		 ->	ModName = usermod, % 0 also means usermod
-			FileName = '(unknown file name)'
+			FileName = unknown
 		 ;	psc_name(ModPscOrFile,ModName),
 			psc_ep(ModPscOrFile,FileName0),
-			(FileName0 = 0 ->
-			     FileName = '(unknown file name)'
-			   ; xsb_filename(FileName0,FileName))
+			xsb_filename(FileName0,FileName)
+			%,standard:writeln(userout,mf(ModPscOrFile,FileName))
 		)
 	 ;	ModName = usermod,
 		FileName = ModPscOrFile
@@ -358,10 +328,8 @@ get_mod_pred_arity_list([Psc|Pscs], [ModPred|ModPreds]) :-
 list pair, with car=forward continuation, cdr=backward continuation.
 backward is [] if xsb not started with -p option */
 
-:- mode print_backtrace(+).
 print_backtrace(BT) :- print_backtrace(BT,STDERR).
 
-:- mode print_backtrace(+,+).
 print_backtrace([[]],_Stream) :- !.  % if empty, don't print anything
 print_backtrace([],_Stream) :- !.  % if empty, don't print anything
 print_backtrace([For|Back],Stream) :-
@@ -402,91 +370,75 @@ print_mod_pred_arity_list([Psc|Pscs],Stream) :-
 
 % ISO-compatable (and other) convenience predicates
 
-:- mode domain_error(+,?,+,+).
 domain_error(Valid_type,Culprit,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(domain_error(Valid_type,Culprit),context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
-
-:- mode domain_error(+,?,+,+,?).
 domain_error(Valid_type,Culprit,Predicate,Arg,Msg):- 
 	xsb_backtrace(Bt),
 	throw(error(domain_error(Valid_type,Culprit),context((' in arg ',Arg,' of predicate ',Predicate, ' (',Msg,')'),Bt))).
 %------
-:- mode evaluation_error(+,+,+).
 evaluation_error(Flag,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(evaluation_error(Flag),context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
 %------
-:- mode existence_error(+,?,+,+).
 existence_error(Object_type,Culprit,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(existence_error(Object_type,Culprit),context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
 %------
 % obsolete TLS
-:- mode instantiation_error(+,+).
 instantiation_error(Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(instantiation_error,context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
-
-:- mode instantiation_error(+,+,+).
 instantiation_error(Predicate,Arg,State):- 
 	xsb_backtrace(Bt),
 	throw(error(instantiation_error,context((' in arg ',Arg,' of predicate ',Predicate,': must be ',State),Bt))).
 %------
 % Misc Errors (nee aborts)
-:- mode misc_error(?).
 misc_error(Message):- 
 	xsb_backtrace(Bt),
 	throw(error(misc_error,context(Message,Bt))).
 
-:- mode misc_error(?,+).
 misc_error(Message,Lev_in):- 
         conget('_$break_level',BL),
 	(BL < Lev_in -> Level = BL ; Level = Lev_in),
 	xsb_backtrace(Bt),
 	throw(error(misc_error(Level),context(Message,Bt))).
 
-:- mode preprocessing_error(?).
 preprocessing_error(Message) :-
 	throw(error(preprocessing_error,context(Message,_))).
 
 %------
-:- mode permission_error(+,+,?,+).
 permission_error(Op,Obj_type,Culprit,Predicate):- 
 	xsb_backtrace(Bt),
 	throw(error(permission_error(Op,Obj_type,Culprit),context((' in ',Predicate),Bt))).
 
 %------
-:- mode representation_error(+,+,+).
 representation_error(Flag,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(representation_error(Flag),context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
 %------
-:- mode resource_error(+,+).
+
 resource_error(Flag,Predicate):- 
 	xsb_backtrace(Bt),
 	throw(error(resource_error(Flag),context((' in predicate ',Predicate),Bt))).
 
 %------
 % PM: TODO - Replace usage of term syntax_error/1 with syntax_error/2
-:- mode syntax_error(?).
 syntax_error(Message):- 
 	xsb_backtrace(Bt),
 	SyntaxError =.. [syntax_error,_], % syntax_error/1 term in usermod
 	throw(error(SyntaxError,context(Message,Bt))).
 %------
-:- mode system_error(+,+,+).
 system_error(Flag,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(system_error(Flag),context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
 %------
-:- mode table_error(?).
 table_error(Message):- 
 	xsb_backtrace(Bt),
 	throw(error(table_error,context(Message,Bt))).
 
 %------
-:- mode table_error(+,?,+,+).
+
 table_error(Subtype,Message,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(typed_table_error(Subtype),context((Message,' in arg ',Arg,' of predicate ',Predicate),Bt))).
@@ -497,7 +449,6 @@ abort_on_thread_cancel:-
 	throw(error(thread_cancel,context(Id,[[]]))).
 
 %------
-:- mode type_error(+,?,+,+).
 type_error(Valid_type,Culprit,Predicate,Arg):- 
 	xsb_backtrace(Bt),
 	throw(error(type_error(Valid_type,Culprit),context((' in arg ',Arg,' of predicate ',Predicate),Bt))).
@@ -510,40 +461,27 @@ type_error(Valid_type,Culprit,Predicate,Arg):-
 
 %-------------
 % Checks that a term is an atom.
-:- mode check_atom(?,+,+).
 check_atom(Term,Predicate,Arg) :- 
 	(atom(Term) -> 
 	    true
 	 ;  type_error(atom,Term,Predicate,Arg) ).
 
 %-------------
-% Checks that a term is an atom or number
-:- mode check_atomic(?,+,+).
-check_atomic(Term,Predicate,Arg) :- 
-    (atomic(Term)
-     ->	true
-     ;	type_error(atom,Term,Predicate,Arg)
-    ).
-
-%-------------
 check_cyclic(_Term,_Pred,_Arg):- '_$builtin'(CHECK_CYCLIC).
 
 %-------------
-:- mode check_integer(?,+,+).
 check_integer(Term,Predicate,Arg) :- 
 	(integer(Term) -> 
 	    true
 	 ;  type_error(integer,Term,Predicate,Arg) ).
 
 %-------------
-:- mode check_number(?,+,+).
 check_number(Term,Predicate,Arg) :- 
 	(number(Term) -> 
 	    true
 	 ;  type_error(number,Term,Predicate,Arg) ).
 
 %-------------
-:- mode check_nonneg_integer(?,+,+).
 check_nonneg_integer(Term,Predicate,Arg) :- 
 	(integer(Term)
 	 ->	(Term >= 0
@@ -553,7 +491,6 @@ check_nonneg_integer(Term,Predicate,Arg) :-
 	 ;	type_error(integer,Term,Predicate,Arg)
 	).
 
-:- mode check_pos_integer(?,+,+).
 check_pos_integer(Term,Predicate,Arg) :- 
 	(integer(Term)
 	 ->	(Term > 0
@@ -564,7 +501,6 @@ check_pos_integer(Term,Predicate,Arg) :-
 	).
 
 %-------------
-:- mode check_callable(?,+,+).
 check_callable(Term,Predicate,Arg):- 
 	(callable(Term) -> 
 	    true
@@ -573,7 +509,6 @@ check_callable(Term,Predicate,Arg):-
 
 %-------------
 % Checks that a term is ground
-:- mode check_ground(?,+,+).
 check_ground(Term,Predicate,Arg) :- 
 	(ground(Term) -> 
 	    true
@@ -581,13 +516,11 @@ check_ground(Term,Predicate,Arg) :-
 
 %-------------
 % Checks that a term is not a variable
-:- mode check_nonvar(?,+,+).
 check_nonvar(Term,Predicate,Arg) :- 
 	(var(Term) -> 
 	    instantiation_error(Predicate,Arg,nonvar)
              ;  true).
 
-:- mode check_one_thread(?,+,+).
 check_one_thread(Op,Obj_type,Predicate):- 
 	stat_flag(NUM_THREADS, Value),
 	(Value > 1 -> 
@@ -598,7 +531,6 @@ check_one_thread(Op,Obj_type,Predicate):-
 	
 %-------------
 % Checks that a term is a variable
-:- mode check_var(?,+,+).
 check_var(Term,Predicate,Arg) :- 
 	(var(Term) -> 
 	    true
@@ -607,7 +539,6 @@ check_var(Term,Predicate,Arg) :-
 %-------------
 
 % Checks that Term is a list containing no variable elements
-:- mode check_nonvar_list(?,+,+).
 check_nonvar_list(Term,Predicate,Arg) :- 
 	check_nonvar(Term,Predicate,Arg),
 	(	check_nonvar_list1(Term,Predicate,Arg) -> 
@@ -616,7 +547,6 @@ check_nonvar_list(Term,Predicate,Arg) :-
 	).
 
 % Checks that Term can be grounded to a list.
-:- mode check_listable(?,+,+).
 check_listable(Term,Predicate,Arg) :-
 	(listable(Term)
 	 ->	true
@@ -638,7 +568,6 @@ check_nonvar_list1([],_Predicate,_Arg).
 
 % Checks that Term is either an atom or a list all of whose elements
 % are atoms.  This is how ptoc_longstring should be checked. 
-:- mode check_atom_list(?,+,+).
 check_atom_list(Term,Predicate,Arg) :- 
 	check_nonvar(Term,Predicate,Arg),
 	(	(	atom(Term) 
@@ -660,7 +589,6 @@ check_atom_list1([],_Predicate,_Arg).
 %------
 
 % Checks that Term is a comma list containing no variable elements
-:- mode check_nonvar_comma_list(?,+,+).
 check_nonvar_comma_list(Term,Predicate,Arg):- 
 	check_nonvar(Term,Predicate,Arg),
 	(check_nonvar_comma_list_1(Term,Predicate,Arg) -> 
@@ -680,7 +608,6 @@ check_nonvar_comma_list_1(Term,Predicate,Arg):-
 
 %------
 
-:- mode permission_warning(+,+,?,?,+).
 permission_warning(Op,Obj_type,Culprit,Msg,PredInd):- 
 	warningln(('[Permission (Operation) ',Op,' on ',Obj_type,': ',Culprit,'] in ',
 	            PredInd,' ',Msg)).
@@ -711,7 +638,6 @@ memory_type(THREAD_SPACE,' (currently expanding thread  space)').
 memory_type(READ_CAN_SPACE,' (currently expanding canonical i/o space)').
 memory_type(LEAK_SPACE,' (currently expanding leak space)').
 memory_type(SPECIAL_SPACE,' (currently expanding special space)').
-memory_type(INTERN_SPACE,' (currently expanding intern space)').
 memory_type(OTHER_SPACE,' (currently expanding other space)').
 memory_type(INCR_TABLE_SPACE,' (currently expanding incremental tabling space)').
 memory_type(ODBC_SPACE,' (currently expanding odbc space)').

@@ -34,11 +34,10 @@ ALL = 	aggregs${OBJEXT} array${OBJEXT} assoc_xsb${OBJEXT} \
 	ordsets${OBJEXT} ora_call${OBJEXT} \
 	packaging${OBJEXT} random${OBJEXT} scrptutl${OBJEXT} \
 	socket${OBJEXT} storage${OBJEXT} swi${OBJEXT} \
-	ugraphs${OBJEXT} wrapping${OBJEXT} \
+	ugraphs${OBJEXT} wrapping${OBJEXT} write_term${OBJEXT} \
 	xsb_ciao${OBJEXT} xnmr${OBJEXT} justifyLP${OBJEXT} \
 	xsb_profiling${OBJEXT} xsb_lint_impexp${OBJEXT} \
 	dump_table${OBJEXT} \
-	base64${OBJEXT} \
 	globalvar${OBJEXT} pairlist${OBJEXT} pretty_print${OBJEXT} \
 	prolog_db${OBJEXT} range_trees$(OBJEXT)
 

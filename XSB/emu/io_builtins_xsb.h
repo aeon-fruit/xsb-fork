@@ -44,7 +44,6 @@ typedef struct  {
 } stream_record;
 
 extern stream_record open_files[];      /* Table of file pointers for open files */
-extern char   float_format[];
 
 #define OPENFILES_MUTEX(i) &(open_files[i].stream_mutex) 
 #define OPENFILES_MUTEX_OWNER(i) (open_files[i].stream_mutex_owner) 

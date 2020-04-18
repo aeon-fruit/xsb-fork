@@ -105,22 +105,12 @@ inline static TSTNptr tst_escape_search(CTXTdeclc TSTNptr tstRoot, xsbBool *isNe
   TSTNptr tstn;
 
   tstn = TSTN_Child(tstRoot);
-  //  if (!IsNULL(tstn)) {
-  //    printf("tes tstn %p escape %d deleted %d instr %x\n",tstn,IsEscapeNode(tstn),IsDeletedNode(tstn),TSC_Instr(tstn));
-  //  }
-  //  else printf("tes null tstn\n");
   if ( IsNULL(tstn) ) {
     TST_InsertEscapeNode(tstRoot,tstn);
     *isNew = TRUE;
   }
-  else if ( IsDeletedNode(tstn) ) {  // for incremental tabling
-    //      TST_InsertEscapeNode(tstRoot,tstn);
-      *isNew = FALSE;
-  }
-  else if ( IsEscapeNode(tstn) ) {
-    debug_incr(("catching escape node\n"));
+  else if ( IsEscapeNode(tstn) )
     *isNew = FALSE;
-  }
   else
     TrieError_AbsentEscapeNode(tstRoot);
   return tstn;
@@ -209,12 +199,12 @@ TSTNptr subsumptive_tst_search(CTXTdeclc TSTNptr tstRoot, int nTerms, CPtr termV
 #ifdef DEBUG_VERBOSE
  {
     int i;
-    printf("------------------------------------------------------------\n");
-    printf("Entered subsumptive_tst_search() with the following terms (size = %d):",nTerms);
+    fprintf(stddbg,"------------------------------------------------------------\n");
+    fprintf(stddbg,"Entered subsumptive_tst_search() with the following terms:");
     for (i = 0; i < nTerms; i++) {
-      printf("\t");
-      printterm(stdout, (Cell)(termVector - i),25);
-      printf("\n");
+      fprintf(stddbg,"\t");
+      printterm(stddbg, (Cell)(termVector - i),25);
+      fprintf(stddbg,"\n");
     }
   }
 #endif
@@ -231,16 +221,15 @@ TSTNptr subsumptive_tst_search(CTXTdeclc TSTNptr tstRoot, int nTerms, CPtr termV
     }
     else {
       TermStackLog_ResetTOS;
-      tstn = iter_sub_trie_lookup(CTXTc tstRoot,&path_type,ANSWER_TRIE_LOOKUP);
+      tstn = iter_sub_trie_lookup(CTXTc tstRoot,&path_type);
       if ( path_type == NO_PATH ) {
 	Trail_Unwind_All;
 	tstn = tst_insert(CTXTc tstRoot, stl_restore_variant_cont(CTXT),
 			  NO_INSERT_SYMBOL, maintainTSI);
 	*isNew = TRUE;
       }
-      else {
+      else
 	*isNew = FALSE;
-      }
     }
 
 #ifdef DEBUG_VERBOSE

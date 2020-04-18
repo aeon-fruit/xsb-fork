@@ -1,1 +1,0 @@
-test(Str) :- load_dyn(longatom), writeln(Str,'Longnames OK').

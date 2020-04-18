@@ -41,13 +41,10 @@
 
 :- export array_new/2, array_elt/3, array_update/3, array_update/4.
 
-:- mode array_new(?,+).
 array_new(A, Size) :- functor(A, array, Size).
 
-:- mode array_elt(?,+,?).
 array_elt(A, I, V) :- arg(I,A,V).
 
-:- mode array_update(+,?,?).
 array_update(N,Array,V) :-setarg(N,Array,V).
 
 /* backward compatability */

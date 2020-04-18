@@ -85,7 +85,6 @@ xsb_configuration(compile_mode, '@compile_mode@').
 xsb_configuration(scheduling_strategy, '(@xsb_scheduling_strategy@)').
 xsb_configuration(engine_mode, '@engine_mode@').
 xsb_configuration(word_size, '64').
-xsb_configuration(call_scheme, '__cdecl').
 
 %%%%% DON'T EDIT BELOW HERE!!!!
 %%
@@ -200,19 +199,9 @@ xsb_configuration(site_config_libdir, SiteConfigLibdir) :-
 	   must be done from the current directory!
 */
 xsb_configuration(user_config_libdir, UserConfigLibdir) :-
-        xsb_configuration(user_auxdir, UserAuxDir),
-        xsb_configuration(configuration, Config),
-        slash(Slash),
-        fmt_write_string(UserConfigLibdir,
-                         '%s%sconfig%s%s',
-                         f(UserAuxDir,Slash,Slash,Config)).
-
-%% This is the path for .xsb dir. First look in the XSB_USER_AUXDIR envionment
-xsb_configuration(user_auxdir, UserAuxDir) :-
-        machine:getenv('XSB_USER_AUXDIR',UserAuxDir),
-        UserAuxDir \= '',
-        !.
-xsb_configuration(user_auxdir, UserAuxDir) :-
-        slash(Slash),
-        xsb_configuration(user_home, UserHome),
-        fmt_write_string(UserAuxDir,'%s%s.xsb', f(UserHome,Slash)).
+     xsb_configuration(user_home, UserHome),
+     xsb_configuration(configuration, Config),
+     slash(Slash),
+     fmt_write_string(UserConfigLibdir,
+		      '%s%s.xsb%sconfig%s%s',
+		      f(UserHome,Slash,Slash,Slash,Config)).

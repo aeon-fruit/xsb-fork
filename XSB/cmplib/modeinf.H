@@ -24,44 +24,56 @@
 
 
 :- export modeanalyze/3, force_modeinf_loaded/0.
-:- mode modeanalyze(+,?,+).
+:- mode modeanalyze(++, ?, ++).
 
 :- export mode_subsumes_chk/2.
 
 :- import
+	trie_assert/1, trie_retract/1,
+	trie_retract_all/1, trie_dynamic/1,
 	abolish_table_pred/1, get_calls/3, get_returns/2
     from tables.
-:- import (table)/1 from standard.
 
-:- import assert/1, (dynamic)/1, retractall/1
-   from assert.
+:- import assert/1, clause/2, (dynamic)/1, retractall/1 from assert.
 
 :- import 
-   abort/0, cputime/1, call/1, file_exists/1, functor/3,
-   (index)/3, (index)/2, nl/1, read/1, repeat/0, %statistics/0,
-   see/1, seeing/1, seen/0, arg/3,
-   write/1, write/2, writeln/1, writeln/2, writeq/2, 
-   ('=..')/2, write_canonical/2, open/3, close/1, (',')/2
+	abort/0, atom_codes/2, cputime/1, call/1, file_exists/1, functor/3,
+	(index)/3, name/2, nl/1, read/1, repeat/0, statistics/0,
+	see/1, seeing/1, seen/0, (table)/1,
+	write/1, write/2, writeln/1, writeln/2, writeq/2, 
+	('=..')/2, write_canonical/2, open/3, close/1
    from standard.
+
 :- import file_time/2 from file_io.
+
 :- import message/1, time_message/2, warning/1, option/1 from auxlry.
-:- import findall/3, sort/2 from setof.
+
+:- import inline_predicate/2 from builtin.
+
+:- import findall/3 from setof.
 :- import
-	copy_term/2, ith/3, length/2, member/2, memberchk/2,
-	select/3, append/3
+	append/3, copy_term/2, ith/3, length/2, member/2, memberchk/2,
+	select/3
    from basics.
-   :- import str_cat/3, atom_to_term/2 from string.
+
+:- import str_cat/3 from string.
 :- import conset/2, conget/2 from gensym.
 :- import libpath/1 from loader.
-:- import subsumes/2, subsumes_chk/2, variant/2 from subsumes.
-:- import extract_symlist/3, sym_prop/2, sym_propin/2, sym_find/4
-   from symtab.
-:- import numbervars/1 from num_vars.
-:- import (:-)/2, (:-)/1 from usermod.
 
 :- import '_$call_user'/1 from usermod.
 :- dynamic '_$call_user'/1.
+:- dynamic '_$done_before'/2.
 
-:- import library_directory/1 from usermod.
-:- import log_ith/3 from basics.
-:- import term_new_mod/3 from machine.
+:- import bagPO/3, bagPO1/3 from aggregs.
+:- import subsumes_chk/2 from subsumes.
+:- import get_maximal_calls/1, get_maximal_returns/1 from usermod.
+:- import all_calls/1 from usermod.
+
+
+
+:- import extract_symlist/3, sym_prop/2, sym_propin/2 from symtab.
+
+%:- export prop_iff/2, prop_iff/1, prop_iff_list/2.
+%:- export prop_if_list/2, prop_if/3, prop_if/2.
+
+:- import apply/2, (:-)/2, (:-)/1 from usermod.

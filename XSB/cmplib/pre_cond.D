@@ -2,18 +2,22 @@
 % DO NOT EDIT; ALL CHANGES WILL BE LOST!
 
 :- mode arg_same(?,?).
-:- mode args_same(?,?).
 :- mode compl_cond(?,?,?,?,?).
-:- mode get_test(?,?,?).
-:- mode inline_neg(?,?).
 :- mode inline_neg0(?,?,?).
+:- mode args_same(?,?).
+:- mode inline_neg(?,?).
+:- mode get_test(?,?,?).
 
-:- mode_on_success arg_same(A,A).
-:- mode_on_success args_same(A,A).
-:- mode_on_success compl_cond(A,B,g,A,B).
-:- mode_on_success compl_cond(ng,ng,ng,A,B).
-:- mode_on_success get_test(A,A,g).
-:- mode_on_success get_test(A,g,A).
-:- mode_on_success get_test(ng,ng,A).
-:- mode_on_success inline_neg(A,A).
-:- mode_on_success inline_neg0(g,g,g).
+:- '_$mode_pattern'(get_test(_969428,_969428,g)).
+:- '_$mode_pattern'(get_test(ng,ng,ng)).
+:- '_$mode_pattern'(get_test(ng,g,ng)).
+:- '_$mode_pattern'(inline_neg(g,g)).
+:- '_$mode_pattern'(inline_neg(ng,ng)).
+:- '_$mode_pattern'(compl_cond(ng,ng,g,ng,ng)).
+:- '_$mode_pattern'(compl_cond(ng,ng,ng,ng,ng)).
+:- '_$mode_pattern'(compl_cond(ng,ng,ng,ng,g)).
+:- '_$mode_pattern'(compl_cond(ng,ng,ng,g,ng)).
+:- '_$mode_pattern'(compl_cond(ng,ng,ng,g,g)).
+:- '_$mode_pattern'(compl_cond(ng,g,g,ng,g)).
+:- '_$mode_pattern'(compl_cond(g,ng,g,g,ng)).
+:- '_$mode_pattern'(compl_cond(g,g,g,g,g)).

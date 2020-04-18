@@ -34,12 +34,10 @@
  		\+ (General = Specific)
  	    ).*/
 
-:- mode subsumes_chk(?,?).
 subsumes_chk(General, Specific) :-
 	\+ \+ subsumes(General,Specific).
 
 % ISO
-:- mode subsumes_term(?,?).
 subsumes_term(General, Specific) :-
 	\+ \+ subsumes(General,Specific).
 
@@ -53,7 +51,6 @@ subsumes_term(General, Specific) :-
 	subsumes_chk(General, Specific),
 	General = Specific. */
 
-:- mode subsumes(?,?).
 subsumes(General, Specific) :-
 	excess_vars(Specific,[],[],Vars),
 	General = Specific,
@@ -111,9 +108,7 @@ variant1(X,Y,N) :-
 *****************/
 
 /******* Version that handles attributed variables **********/
-:- mode variant(?,?).
-variant(X,Y) :- X == Y, !.		% for efficiency
-variant(X,Y) :- \+ (X=Y), !, fail. % NOT for efficiency, required; may call attribute handler(?)
+variant(X,Y) :- \+ (X=Y), !, fail. % for efficiency; may call attribute handler(?)
 variant(X,Y) :- \+ variant1(X,Y,0,_), !, fail.
 variant(_,_).
 

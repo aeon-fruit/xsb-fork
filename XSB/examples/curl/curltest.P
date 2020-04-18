@@ -1,9 +1,5 @@
 :- import slash/1 from machine.
-:- import
-        load_page/5,
-        url_properties/2, url_properties/3,
-        encode_url/2
-   from curl.
+:- import load_page/5, url_properties/2, url_properties/3, encode_url/2, get_redir_url/2 from curl.
 :- import str_match/5, substring/4, str_cat/3 from string.
 :- import file_seek/4, file_getbuf/4 from file_io.
 
@@ -80,8 +76,7 @@ test_all :-
 
 test_no_options(OutPath) :- 
 	open(url('zend.com'),read, X), 
-	slash(Slash),
-        fmt_write_string(OutFile, '%s%sno_options.html', f(OutPath, Slash)),
+	slash(Slash), fmt_write_string(OutFile, '%s%sno_options.html', f(OutPath, Slash)),
 	tell(OutFile), write_page(X), told,  
 	close(X).
 
@@ -133,34 +128,46 @@ test_timeout(OutPath) :-
 	close(X).
 
 test_properties_no_opt(OutPath) :-
-	url_properties(url('https://mail.google.com'), [Size, ModifyTime, RedirURL]), 
+	url_properties(url('https://mail.google.com'), [DirEnc, FileBase, Suffix, Size, ModifyTime]), 
 	slash(Slash), fmt_write_string(OutFile, '%s%sprop_no_opt.txt', f(OutPath, Slash)),
 	tell(OutFile), 
 	writeln('test_url_properties_no_opt on https://mail.google.com'), 
+	write('Directory = '), writeln(DirEnc), 
+	write('FileBase = '), writeln(FileBase), 
+	write('Suffix = '), writeln(Suffix), 
 	write('Size = '), writeln(Size), 
 	write('Modified Time = '), writeln(ModifyTime), 
-	write('Redirection URL = '), writeln(RedirURL), 
 	told.
 
 test_properties(OutPath) :-
-	url_properties(url('http://www.cs.sunysb.edu/~cse532/'), [redirect(false)], [Size, ModifyTime,RedirURL]), 
+	url_properties(url('http://www.cs.sunysb.edu/~cse532/'), [redirect(false)], [DirEnc, FileBase, Suffix, Size, ModifyTime]), 
 	slash(Slash), fmt_write_string(OutFile, '%s%sproperties.txt', f(OutPath, Slash)),
 	tell(OutFile), 
 	write(test_url_properties), writeln(' on http://www.cs.sunysb.edu/~cse532/ where url body is not loaded'), 
+	write('Directory = '), writeln(DirEnc), 
+	write('FileBase = '), writeln(FileBase), 
+	write('Suffix = '), writeln(Suffix), 
 	write('Size = '), writeln(Size), 
 	write('Modified Time = '), writeln(ModifyTime), 
-	write('Redirection URL = '), writeln(RedirURL), 
 	told.
 
 test_properties_auth(OutPath) :-
-	url_properties(url('http://browserspy.dk/password-ok.php'), [auth('test', 'test')], [Size, ModifyTime,RedirURL]), 
+	url_properties(url('http://browserspy.dk/password-ok.php'), [auth('test', 'test')], [DirEnc, FileBase, Suffix, Size, ModifyTime]), 
 	slash(Slash), fmt_write_string(OutFile, '%s%sprop_auth.txt', f(OutPath, Slash)),
 	tell(OutFile), 
 	write(test_url_properties_auth), writeln(' on http://browserspy.dk/password-ok.php'), 
+	write('Directory = '), writeln(DirEnc), 
+	write('FileBase = '), writeln(FileBase), 
+	write('Suffix = '), writeln(Suffix), 
 	write('Size = '), writeln(Size), 
 	write('Modified Time = '), writeln(ModifyTime), 
-	write('Redirection URL = '), writeln(RedirURL), 
 	told.
+
+test_get_redir_url :-
+	get_redir_url(url('http://www.cs.stonybrook.edu/~cse532/'), UrlNew1), 
+	writeln(UrlNew1), 
+	get_redir_url(file('test.html'), UrlNew2), 
+	writeln(UrlNew2).
 
 test_user_agent(OutPath) :- 
 	open(url('zend.com'),read, X, [user_agent('http://zend.com')]), 

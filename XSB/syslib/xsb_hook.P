@@ -30,39 +30,16 @@
 :- thread_shared 
 	xsb_exit_hook(_),
 	xsb_assert_hook(_),
-	xsb_intercept_assert_hook(_),
 	xsb_retract_hook(_),
-	xsb_intercept_retractall_hook(_),
 	xsb_before_prompt_hook(_),
 	xsb_undefined_predicate_hook(_).
-
-:- mode_on_success(xsb_hook_class_active(+)).
-:- mode_on_success(xsb_exit_hook(?)).
-:- mode_on_success(xsb_assert_hook(?)).
-:- mode_on_success(xsb_intercept_assert_hook(?)).
-:- mode_on_success(xsb_retract_hook(?)).
-:- mode_on_success(xsb_intercept_retractall_hook(?)).
-:- mode_on_success(xsb_before_prompt_hook(?)).
-:- mode_on_success(xsb_undefined_predicate_hook(?)).
 
 :- dynamic
-	xsb_hook_class_active(_),
 	xsb_exit_hook(_),
 	xsb_assert_hook(_),
-	xsb_intercept_assert_hook(_),
 	xsb_retract_hook(_),
-	xsb_intercept_retractall_hook(_),
 	xsb_before_prompt_hook(_),
 	xsb_undefined_predicate_hook(_).
-:- dynamic rename_dyn_pred(_,_).
-
-xsb_hook_class(xsb_exit_hook(_),exit).
-xsb_hook_class(xsb_assert_hook(_),assert).
-xsb_hook_class(xsb_intercept_assert_hook(_),assert).
-xsb_hook_class(xsb_retract_hook(_),retract).
-xsb_hook_class(xsb_intercept_retractall_hook(_),retract).
-xsb_hook_class(xsb_before_prompt_hook(_),prompt).
-xsb_hook_class(xsb_undefined_predicate_hook(_),undefined_predicate).
 
 %% A hook is of the form hookname(HookPredicate)
 %% hookname(_) just lists the callable hooks of the given kind.
@@ -76,8 +53,6 @@ xsb_hook_class(xsb_undefined_predicate_hook(_),undefined_predicate).
 %% such a hook type must all be 1-ary predicates.
 
 %% Hook handling
-
-:- mode add_xsb_hook(?).
 add_xsb_hook(Hook) :-
 	call(Hook), !.  % hook is already there
 add_xsb_hook(Hook) :-
@@ -86,42 +61,17 @@ add_xsb_hook(Hook) :-
 	->  ( term_psc(Call,Psc),
 		psc_type(Psc,Type),
 		Type > T_ORDI
-	     ->	(xsb_hook_class(Hook,HookType)
-		 -> (xsb_hook_class_active(HookType)
-		     ->	true
-		     ;	assert(xsb_hook_class_active(HookType),1,1)
-		    )
-		 ;  abort(['ADD_XSB_HOOK: undefined hook class for ',HookName])
-		),
-		assert(Hook,1,1)
-	     ;	abort(['ADD_XSB_HOOK: undefined hook ',Call,' in ',HookName])
+	    ->    assert(Hook)
+	    ;     abort(['ADD_XSB_HOOK: undefined hook ',Call,' in ',HookName])
 	    )
 	;   abort(['ADD_XSB_HOOK: ',Hook,' must be a callable literal'])
 	).
 
-:- mode remove_xsb_hook(?).
 remove_xsb_hook(Hook) :-
 	(   callable(Hook)
-	 -> retractall(Hook),
-	    (xsb_hook_class(Hook,HookType)
-	     ->	(xsb_hook_class(NHook,HookType),
-		 call_c(NHook)
-		 -> true
-		 ;  retractall(xsb_hook_class_active(HookType))
-		)
-	     ;	abort(['REMOVE_XSB_HOOK: Unrecognized hook: ',Hook])
-	    )
+	->  retractall(Hook)
 	;   abort(['REMOVE_XSB_HOOK: ',Hook,' must be a callable literal'])
 	).
-
-:- mode set_rename_dyn_pred(?,?).
-set_rename_dyn_pred(From,To) :-
-    retractall(rename_dyn_pred(From,_)),
-    assert(rename_dyn_pred(From,To),1,1).
-
-:- mode reset_rename_dyn_pred(?).
-reset_rename_dyn_pred(From) :-
-    retractall(rename_dyn_pred(From,_)).
 
 %% call_xsb_hook(hookname(X)) calls all "hookname" hooks one by one.
 %% Hook must be of the form hookName(_)
@@ -145,7 +95,6 @@ call_one_hook(Hook) :-
 
 
 %% executes all hooks of a given type
-:- mode call_xsb_hook(?,+).
 call_xsb_hook(Hook,HookType) :-
 	(HookType == all
 	 ->	call_xsb_hook_all(Hook)
@@ -173,9 +122,8 @@ call_one_hook(Hook,ArgList) :-
 	;   abort(['CALL_XSB_HOOK: ',HookName, ' is not the name of a hook'])
 	).
 
-:- mode call_xsb_hook(?,?,+).
 call_xsb_hook(Hook,ArgList,HookType) :-
-    (HookType == all
+	(HookType == all
 	 ->	call_xsb_hook_all(Hook,ArgList)
 	 ; HookType == until_true
 	 ->	once(call_one_hook(Hook,ArgList))

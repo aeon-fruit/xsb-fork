@@ -2,5 +2,7 @@
 % DO NOT EDIT; ALL CHANGES WILL BE LOST!
 
 :- mode default_assert_size(?).
+:- mode default_compile_size(?).
 
-:- mode_on_success default_assert_size(g).
+:- '_$mode_pattern'(default_compile_size(g)).
+:- '_$mode_pattern'(default_assert_size(g)).

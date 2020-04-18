@@ -46,7 +46,7 @@
 /*	  (unintended) meaning if a/2 is called with the second		*/
 /*	  argument bound.						*/
 /*----------------------------------------------------------------------*/
-:- mode set_dcg_style(+).
+
 set_dcg_style(xsb) :-      stat_set_flag(18, 0), !.
 set_dcg_style(standard) :- stat_set_flag(18, 1), !. % Quintus,C-Prolog,SICStus
 set_dcg_style(X) :- write(X), writeln(': invalid DCG style'), fail.
@@ -65,7 +65,6 @@ reset_dcg_mode :-
 
 :- import invalidate_table_for/2 from usermod.
 :- dynamic invalidate_table_for/2.
-:- mode set_dcg_supported_table(?).
 set_dcg_supported_table(TSkel) :-
 	table_state(TSkel,PType,_CType,_AStat),
 	PType \== undefined,
@@ -74,24 +73,20 @@ set_dcg_supported_table(TSkel) :-
 	 ;	assert((invalidate_table_for(word(_,_,_),_):- abolish_table_pred(TSkel)))
 	).
 
-:- mode tphrase_set_string_auto_abolish(+).
 tphrase_set_string_auto_abolish(List) :-
 	invalidate_tables_for(word(_,_,_),_),
 	tphrase_set_string_keeping_tables(List).
 
-:- mode tphrase_set_string(+).
 tphrase_set_string(List) :-
 	abolish_all_tables,   % since changing EDB tables depend on.
 	tphrase_set_string_keeping_tables(List).
 
-:- mode tphrase_set_string_keeping_tables(+).
 tphrase_set_string_keeping_tables(List) :-
 	retractall(word(_,_,_)),
 	retractall(num_words(_)),
 	assert_word_list(List,0,N),
 	assert(num_words(N)).
 
-:- mode tphrase_string_length(?).
 tphrase_string_length(N) :-
 	(num_words(N)
          ->     true
@@ -104,7 +99,6 @@ assert_word_list([Word|Words],N0,N) :-
 	assert(word(N0,Word,N1)),
 	assert_word_list(Words,N1,N).
 
-:- mode tphrase_add_word(+,+,+).
 tphrase_add_word(From,Word,To) :-
 	assert(word(From,Word,To)).
 
@@ -114,7 +108,6 @@ tphrase_print_words :-
 	fail.
 tphrase_print_words.
 
-:- mode dcg(?,?).
 dcg((LHS --> RHS), (OutHead :- OutBody)) :-
 	( functor(LHS, ',', 2) -> 
 		arg(1, LHS, Non_Terminal),
@@ -199,7 +192,6 @@ dcg_list_of_terminals([H|L], In, Out, ','( Module:G, Goal)) :-
 dcg_terminal_functor(dcg,'C').
 
 % callers of this should clean up after usage, by calling set_dcg_terminal_functor(dcg,'C') 
-:- mode set_dcg_terminal_functor(+,+).
 set_dcg_terminal_functor(Module,F) :- atom(Module), atom(F), 
 	retractall(dcg_terminal_functor(_,_)), assert(dcg_terminal_functor(Module,F)).
 
@@ -218,13 +210,11 @@ set_dcg_terminal_functor(Module,F) :- atom(Module), atom(F),
 /*			  P has been found.				*/
 /*----------------------------------------------------------------------*/
 
-:- mode phrase(?,?).
 phrase(Phrase_Type, List) :-
 	( nonvar(Phrase_Type) -> phrase(Phrase_Type, List, []) 
 	; abort('Uninstantiated argument 1 of phrase/2')
 	).
 
-:- mode phrase(?,?,?).
 phrase(Phrase_Type, List, Rest) :-
 	( nonvar(Phrase_Type) ->
 		dcg_body_nonvar(Phrase_Type, List, Rest, Goal),
@@ -234,11 +224,9 @@ phrase(Phrase_Type, List, Rest) :-
 	).
 
 
-:- mode tphrase(?).
 tphrase(Phrase_Type) :-
 	tphrase(Phrase_Type,End,End).
 
-:- mode tphrase(?,?,?).
 tphrase(Phrase_Type, To, End) :-
 	(nonvar(Phrase_Type)
 	 ->     (num_words(End)
@@ -250,7 +238,6 @@ tphrase(Phrase_Type, To, End) :-
 	; abort('Uninstantiated argument 1 of tphrase/1')
 	).
 
-:- mode tphrase(?,+).
 tphrase(Phrase_Type, List) :-
 	(nonvar(Phrase_Type)
          ->     tphrase_set_string(List),

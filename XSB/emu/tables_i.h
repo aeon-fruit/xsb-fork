@@ -22,7 +22,7 @@ void perform_early_completion(CTXTdeclc VariantSF ProdSF,CPtr ProdCPF) {
     fprintf(fview_ptr,"cmp(%s,ec,%d).\n",forest_log_buffer_1->fl_buffer,
 	    ctrace_ctr++);
   }
-  if ( flags[EC_REMOVE_SCC] && is_leader((CPtr)ProdSF)) { 
+  if ( flags[EC_REMOVE_SCC] && is_leader(ProdSF)) { 
     remove_incomplete_tries(CTXTc subg_compl_stack_ptr(ProdSF));
     subg_pos_cons(ProdSF) = 0;
     subg_compl_susp_ptr(ProdSF) = 0;  /* ec'd -- neg must fail */

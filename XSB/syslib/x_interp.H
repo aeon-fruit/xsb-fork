@@ -26,9 +26,6 @@
 
 :- export break/0.
 :- export handle_timed_calls/0, reinvoke_timed_calls/0.
-:- export '_$attv_int'/2, '_$goal_int'/2, '_$keyboard_int'/2,
-   '_$thread_int'/2, '_$lazy_reeval_int'/2, '_$timer_int'/2.
-:- export break_for_tripwires/1.
 
 :- import [] / 0 from usermod.	% just to make usermod typed "module"
 :- import assert/1, retract/1 from assert.
@@ -44,7 +41,7 @@
    :- import abort/0,call/1, call_c/1, call_expose/1, catch/3, call_goal_cut_trans/3,
    atom_codes/2, seeing/1, telling/1, see/1, tell/1, seen/0, told/0,
    gc_tables/1,gc_dynamic/1,
-   handle_interrupts/1, (dynamic)/1
+   handle_interrupts/1
      from standard.
 :- import '_$timed_call_rep_handler'/3 from standard.
 :- import '_$timed_call_max_handler'/5 from standard.
@@ -75,16 +72,3 @@
 
 :- import xsb_thread_self/1 from thread.
 
-:- import get_stdin/2 from push_io.
-
-:- import file_clearerr/1 from file_io.
-:- import constraint_portray_hook/4 from machine.
-:- import cancel_sleeper_thread/0,start_sleeper_thread/1, stat_walltime/1 from machine.
-:- import token_type/2 from xsb_read.
-:- import misc_error/2 from error_handler.
-:- import thread_get_signal/1 from mutex_xsb.
-:- import thread_peek_signal/1 from mutex_xsb.
-:- import repeat/0 from standard.
-
-:- import lazy_reeval_trap/1 from increval.
-:- import timer_interrupt_trap/2 from standard.

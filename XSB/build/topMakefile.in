@@ -152,9 +152,12 @@ arch_config_objlibdir=$(src_config_prefix)/saved.o
 emumake_goal=@emumake_goal@
 
 # Normal user
-all: prepare emulator xsbmod xsbdll gpp_exe remake_dot_O_files packages emu_clean
+all: prepare emulator xsbmod xsbdll gpp_exe remake_dot_O_files emu_clean
 
-devel: prepare emulator xsbmod xsbdll gpp_exe remake_dot_O_files_force packages emu_clean
+# Developer who just checked out or updated CVS copy
+devel: prepare emulator xsbmod xsbdll gpp_exe remake_dot_O_files emu_clean
+
+superdevel: prepare emulator xsbmod xsbdll gpp_exe remake_dot_O_files_force packages emu_clean
 
 # Developer who needs a quick re-make of the executable, don't make .O files
 fast: prepare emulator gpp_exe do_cleaning
@@ -206,7 +209,7 @@ gpp_exe:
 xasp:
 	@cd $(src_pkgdir)/xasp; \
 	  echo "Compiling xasp interface"; \
-	  rm -f *.o Makefile *$(xsb_obj_extension) *.so 2>/dev/null || echo ""; \
+	  rm -f *.o Makefile *.h *$(xsb_obj_extension) *.so 2>/dev/null || echo ""; \
 	  ${link_cmd} ${src_config_prefix}/smoMakefile ./Makefile; \
 	  $(MAKE) CROSS_SIMULATOR=@CROSS_SIMULATOR@ XSB=$(src_scriptdir)/xsb$(config_tag) @smodels_goal@ 2>&1\
 		 | tee -a ../../build/Installation_summary

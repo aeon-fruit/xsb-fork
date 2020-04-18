@@ -67,9 +67,3 @@
 	throw/1,
 	atom/1
    from standard.
-
-:- import fast_trie_interned/3, trie_intern/5, trie_unintern_nr/2, incr_trie_intern/4,
-        incr_trie_unintern_nr/2, incr_unmark_uninterned_nr/2, trie_interned/4
-     from intern.
-
-:- import incr_table_update/0 from increval.

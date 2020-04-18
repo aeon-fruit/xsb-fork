@@ -160,8 +160,7 @@ CPtr print_inst(FILE *fd, CPtr inst_ptr)
     for (i=1; i<=4; i++) {
 	switch (inst_table[cell_opcode(&instr)][i]) {
 	 case A:
-	   if ((cell_opcode(&instr) == (byte) builtin) ||
-	       (cell_opcode(&instr) == (byte) bi_instr)) {
+	   if (cell_opcode(&instr) == (byte) builtin) {
 	     a++;
 	     fprintf(fd, ", '%d'", cell_operand3(&instr));
 	     fprintf(fd, ", '%s'", 
@@ -224,12 +223,6 @@ CPtr print_inst(FILE *fd, CPtr inst_ptr)
 	   fprintf(fd, ", r%d", cell_operand1(&instr));
 	   fprintf(fd, ", r%d", cell_operand2(&instr));
 	   fprintf(fd, ", r%d", cell_operand3(&instr));
-	   break;
-	 case RRRR:
-	   fprintf(fd, ", r%d", cell_operandn(&instr,a++));
-	   fprintf(fd, ", r%d", cell_operandn(&instr,a++));
-	   fprintf(fd, ", r%d", cell_operandn(&instr,a++));
-	   fprintf(fd, ", r%d", cell_operandn(&instr,a++));
 	   break;
 	 case X:
 	   break;

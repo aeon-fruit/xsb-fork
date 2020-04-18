@@ -126,7 +126,7 @@
 
 :- import install_verify_attribute_handler/4 from machine.
 
-%%:- import term_variables_swi/2 from swi.
+:- import term_variables/2 from constraintLib.
 
 :- install_verify_attribute_handler(locked,Attr,Value,locked_verify_attributes(Attr,Value)).
 

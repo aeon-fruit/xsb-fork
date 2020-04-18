@@ -4,7 +4,7 @@
    complete recompilation less likely, if the debugging option is requested */
 
 /* General debug -- should not change code */
-/* #undef DEBUG */
+#define DEBUG 1
 
 /* Verbose execution */
 /* #undef DEBUG_VERBOSE */

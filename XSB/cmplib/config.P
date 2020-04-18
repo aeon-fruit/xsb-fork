@@ -22,7 +22,7 @@
 ** 
 */
 
-:- mode default_assert_size(?).
+
 default_assert_size(17).	% Default size to make hash table for
 				% dynamic code.
 

@@ -177,6 +177,7 @@ struct th_context
   byte *_cpreg;		/* return point register        */
   byte *_pcreg;		/* program counter              */
   CPtr _ebreg;		/* breg into environment stack	*/
+
   CPtr _efreg;
   CPtr _bfreg;
   CPtr _hfreg;
@@ -186,13 +187,7 @@ struct th_context
   xsbBool _neg_delay;
   int _xwammode;
   int _level_num;
-  CPtr *_sched_heap;
-  Integer _sched_heap_size;
-  Integer _num_in_sched_heap;
   CPtr _root_address;
-
-  byte *_biarg;  /* builtin argument indexes */
-  byte _bioldarg[20];
 
   CPtr _ptcpreg;
   CPtr _delayreg;
@@ -355,10 +350,6 @@ struct th_context
   struct funstktype *_funstk;
   struct opstktype *_opstk;
   struct vartype *_rc_vars;
-
-  Integer _eval_stk_size;
-  Integer _eval_stk_toprec;
-  FltInt *_eval_stk;
 
   forestLogBuffer _forest_log_buffer_1;
   forestLogBuffer _forest_log_buffer_2;
@@ -588,11 +579,6 @@ typedef struct th_context th_context ;
 #define neg_delay		(th->_neg_delay)
 #define xwammode		(th->_xwammode)
 #define level_num		(th->_level_num)
-#define sched_heap		(th->_sched_heap)
-#define sched_heap_size		(th->_sched_heap_size)
-#define num_in_sched_heap	(th->_num_in_sched_heap)
-#define biarg			((th)->_biarg)
-#define bioldarg		((th)->_bioldarg)
 #define root_address		(th->_root_address)
 
 #define ptcpreg			(th->_ptcpreg)
@@ -699,10 +685,6 @@ typedef struct th_context th_context ;
 #define funstk			(th->_funstk)
 #define opstk			(th->_opstk)
 #define rc_vars			(th->_rc_vars)
-
-#define eval_stk_size		(th->_eval_stk_size)
-#define eval_stk		(th->_eval_stk)  
-#define eval_stk_toprec		(th->_eval_stk_toprec)
 
 #define token			(th->_token)
 #define lastc			(th->_lastc)

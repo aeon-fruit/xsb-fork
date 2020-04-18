@@ -37,4 +37,4 @@
      from tp_var.
 :- import tgetpar/6 from tp_goal.
 :- import eval/2 from eval.
-:- import check_integer/3 from error_handler.
+

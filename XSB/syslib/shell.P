@@ -39,7 +39,6 @@
    +CmdAndArglist, -StreamToProc,-StreamFromProc,-StreamFromStderr,-ProcessId
    Fails, if can't create subprocess
 */
-:- mode spawn_process(+,?,?,+,?).
 spawn_process(Cmd, StreamToProc, StreamFromProc, StreamFromStderr, Pid) :-
 	sys_system(SPAWN_PROCESS,
 		   Cmd,StreamToProc,StreamFromProc,StreamFromStderr,Pid,_).
@@ -48,69 +47,48 @@ spawn_process(Cmd, StreamToProc, StreamFromProc, StreamFromStderr, Pid) :-
    XSB doesn't know where the corresponding processes are.
    However, unlike spawn_process, you can pass any shell command, 
    including pipes and redirection. */
-
-:- mode shell(+,+,?,?,?).
 shell(Cmd,StreamToProc, StreamFromProc, StreamFromStderr, ErrCode) :-
 	sys_system(SHELL,
 		   Cmd,StreamToProc,StreamFromProc,StreamFromStderr,ErrCode,_).
-
-:- mode shell(+,?).
 shell(Cmd, ErrCode) :- shell(Cmd, none, none, none, ErrCode).
-
-:- mode shell(+).
 shell(Cmd) :- shell(Cmd, none, none, none, _).
 
-:- mode shell_to_list(+,+,-).
 shell_to_list(Cmd, List,ErrCode) :- 
 	shell(Cmd, none, Output, none, ErrCode),
  	file_to_list(Output,List),
-	close(Output).
+	standard:close(Output).
 
-:- mode shell_to_list(+,+,+,-).
+:- export shell_to_list/4.
 shell_to_list(Cmd, OList,EList,ErrCode) :- 
 	shell(Cmd, none, Ostr, Estr, ErrCode),
  	file_to_list(Ostr,OList),
  	file_to_list(Estr,EList),
-	close(Ostr),
-	close(Estr).
+	standard:close(Ostr),
+	standard:close(Estr).
 
-:- mode exec(+).
 exec(Cmd) :- sys_system(EXEC,Cmd,_,_,_,_,_).
 
 /* Process table is a list [process(Pid,To,From,Stderr,Cmdline), ...]
    that represents all active subprocesses */
-:- mode get_process_table(?).
 get_process_table(ProcessList) :-
 	sys_system(GET_PROCESS_TABLE, ProcessList, _,_,_,_,_).
 
 %% obtain process status
-:- mode process_status(+,?).
 process_status(Pid, Status) :- sys_system(PROCESS_STATUS,Pid,Status,_,_,_,_).
 
 %% Send signal to process. Currently wait, kill
-:- mode process_control(+,?).
 process_control(Pid, Signal) :- sys_system(PROCESS_CONTROL,
 					   Pid, Signal, _,_,_,_).
 
 /* darwin, linux-gnu */
-:- mode platform(?).
 platform(Platform):- 
 	xsb_configuration(os_type,Platform).
 
 %% Sleep for the specified number of seconds
-:- mode sleep(+).
 sleep(Seconds) :- sys_system(SLEEP_FOR_SECS, Seconds,_,_,_,_,_).
-
-:- mode sleep_ms(+).
-sleep_ms(MilliSeconds) :- sys_system(SLEEP_FOR_MILLISECS, MilliSeconds,_,_,_,_,_).
-
-:- mode is_plain_file(+).
 is_plain_file(File) :- sys_system(IS_PLAIN_FILE, File,_,_,_,_,_).
-
-:- mode is_directory(+).
 is_directory(File) :- sys_system(IS_DIRECTORY, File,_,_,_,_,_).
 
-:- mode list_directory(+,?).
 list_directory(Dir,File) :-
 	(   (   atom(Dir)
 	    ;   is_list(Dir),
@@ -138,7 +116,6 @@ list_directory_1(Dir,File,Handle) :-
 	;   fail
 	).
 
-:- mode cd(+).
 cd(Path) :-
 	(   var(Path)
 	->  abort('Uninstantiated argument 1 of cd/1')
@@ -150,15 +127,11 @@ cd(Path) :-
 	    )
 	).
 
-:- mode copy(+,+).
 copy(Old, New) :- 
 	sys_filecopy(Old, New, Res), Res =:= 0.
-
-:- mode append(+,+).
 append(Old, New) :- 
 	sys_fileappend(Old, New, Res), Res =:= 0.
 
-:- mode rename(+,+).  %
 rename(Old, New) :- 
 	sys_rename(Old, New, Res), Res =:= 0.
 
@@ -169,13 +142,10 @@ ls :-
 	),
 	Res =:= 0.
 
-:- mode rm(+).
 rm(Name) :- sys_unlink(Name, Res), Res =:= 0.
 
-:- mode rmdir(+).
 rmdir(Name) :- sys_rmdir(Name, Res), Res =:= 0.
 
-:- mode rmdir_rec(+).
 rmdir_rec(Dir) :-
 	expand_filename(Dir, Dir1),
 	rmdir_rec1(Dir1).
@@ -197,19 +167,15 @@ rmdir_rec1(Dir) :-
 
 
 %% current working directory
-:- mode cwd(?).
 cwd(Name) :- sys_cwd(Name, Res), Res =:= 0.
 
-:- mode create_lockfile(+).
 create_lockfile(Name) :- sys_create(Name,Res), Res >= 0.
 
-:- mode edit(+).
 edit(File) :- 
 	expand_filename(File, FileName), 
 	shell(['$EDITOR ', '$EDITOR_OPTIONS ', FileName, XSB_SRC_EXTENSION_ATOM]).
 
 % TLS: wanted tilde_ to have a better name.
-:- mode expand_filename_no_prepend(+,?).
 expand_filename_no_prepend(In,Out):- 
 	tilde_expand_filename(In,Out).
 
@@ -221,7 +187,6 @@ sys_exit(ExitCode) :- sys_syscall(SYS_exit,_,ExitCode,_).
 %% probably have a typecheck for 'file'.
 %% Get process id -- Unix and Windows
 sys_pid(Pid)     	    :-	sys_syscall(SYS_getpid, Pid, _, _).
-sys_hostname(HostName,Res)  :-  sys_syscall(SYS_gethostname, Res, HostName, _).
 %% Link file -- Unix only
 sys_link(Source, Dest, Res) :-	sys_syscall(SYS_link, Res, Source, Dest).
 sys_unlink(Path, Res) 	    :-	sys_syscall(SYS_unlink, Res, Path, _).
@@ -233,29 +198,13 @@ sys_rename(Old, New, Res)   :-
 	check_nonvar(New,'sys_rename/3',2),
 	sys_syscall(SYS_rename, Res, Old, New).
 /* current working dir. Res is 0 on success, 1 on failure */
-:- mode sys_cwd(?,?).
 sys_cwd(Name, Res)   	    :-	sys_syscall(SYS_cwd, Res, Name, _).
-
-:- mode sys_mkdir(+,?).
 sys_mkdir(Name, Res)   	    :-	sys_syscall(SYS_mkdir, Res, Name, _).
-
-:- mode sys_rmdir(+,?).
 sys_rmdir(Name, Res)   	    :-	sys_syscall(SYS_rmdir, Res, Name, _).
-
-:- mode sys_filecopy(+,?,?).  % relaxed
 sys_filecopy(Source,Dest,Res)  :-  sys_syscall(SYS_filecopy, Res, Source, Dest).
-
-:- mode sys_fileappend(+,?,?).  %  relaxed
 sys_fileappend(Source,Dest,Res)  :-  sys_syscall(SYS_fileappend, Res, Source, Dest).
-
-:- mode sys_create(+,?).
 sys_create(Name,Res)      :-  sys_syscall(SYS_create, Res, Name, _).
 
-:- mode sys_main_memory(?).
 sys_main_memory(Memory_size):- sys_syscall(SYS_main_memory_size,_,Memory_size,_).
-
-:- mode sys_file_readlink(+,?,?). % relaxed
 sys_file_readlink(InPath,OutPath,Res) :- sys_syscall(SYS_readlink,Res,InPath,OutPath).
-
-:- mode sys_file_realpath(+,?,?).  % relaxed
 sys_file_realpath(InPath,OutPath,Res) :- sys_syscall(SYS_realpath,Res,InPath,OutPath).
