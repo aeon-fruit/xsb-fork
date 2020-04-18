@@ -1,1 +1,2 @@
-*.PL linguist-language=Prolog
+# Linguist override
+*.P linguist-language=Prolog
