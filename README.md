@@ -17,7 +17,7 @@ Even configure makes a good job giving away the important dependencies, this ite
 ## Compilation
 1. Run this command inside XSB/build:
    ```shell script
-    ./configure --enable-mt
+   ./configure --enable-mt
    ```
    When that command is run, all the dependencies will be displayed along with their respective presence status (e.g. `checking for socket... yes`). 
 
@@ -38,7 +38,7 @@ Even configure makes a good job giving away the important dependencies, this ite
 
 3. Compile the .so library using this command:
    ```shell script
-    ./makexsb --config-tag=mt dynmodule
+   ./makexsb --config-tag=mt dynmodule
    ```
    
    The kindness is still abundant and the second of the two aforementioned paths is printed on the screen.
