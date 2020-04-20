@@ -12,7 +12,7 @@ Indications are mentioned in the last step of the compilation section.
 ## Dependencies
 There is no extensive, easily reachable list of all the needed dependencies to build XSB. 
 Since I had all the needed dependencies already installed on my system, I won't make a list of them right away. 
-Even configure makes a good job giving away the important dependencies, this item is still on my TODO list.
+Even though configure makes a good job giving away the important dependencies, this item is still on my TODO list.
 
 ## Compilation
 1. Run this command inside XSB/build:
