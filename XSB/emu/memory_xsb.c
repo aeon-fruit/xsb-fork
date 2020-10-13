@@ -79,7 +79,7 @@
 extern Integer next_free_code;
 extern unsigned long enc[], dec[];
 
-void extend_enc_dec_as_nec(void *lptr, void *hptr) {
+void inline extend_enc_dec_as_nec(void *lptr, void *hptr) {
     UInteger nibble;
     UInteger lnibble = (UInteger) lptr >> _SHIFT_VALUE;
     UInteger hnibble = (UInteger) hptr >> _SHIFT_VALUE;
@@ -407,7 +407,7 @@ DllExport void* call_conv mem_realloc(void *addr, size_t oldsize, size_t newsize
 
 /* === dealloc permanent memory ============================================ */
 
-DllExport void call_conv mem_dealloc(void *addr, size_t size, int category)
+void mem_dealloc(void *addr, size_t size, int category)
 {
   //  int i;
     size = (size+7) & ~0x7 ;	      /* round to 8 */
@@ -424,7 +424,7 @@ DllExport void call_conv mem_dealloc(void *addr, size_t size, int category)
       free(addr);
       addr = NULL;
     } else {
-#if defined(DEBUG) && !defined(MULTI_THREAD)
+#ifdef DEBUG
       if (size > 0) xsb_warn("attempt to double-free memory in mem_dealloc (category: %s; size %d) ",pspace_cat[category],size);
 #endif
     }

@@ -3,7 +3,7 @@
 ** Author: Aneesh Ali
 ** Contact:   xsb-contact@cs.sunysb.edu
 ** 
-** Copyright (C) The Research Foundation of SUNY, 2010-2017
+** Copyright (C) The Research Foundation of SUNY, 2010
 ** 
 ** XSB is free software; you can redistribute it and/or modify it under the
 ** terms of the GNU Library General Public License as published by the Free
@@ -101,11 +101,11 @@
     (   %% avoid recompilation
 	search_module(Basename,Dir,_Mod,_Ext,BaseDir,ModuleO),
 	str_cat(Module, '.c', ModuleSourceFile),
-	str_cat(ConfigBinDir, '\\libcurl.dll', LibcurlDLL),
-	str_cat(ConfigBinDir, '\\curl2pl.dll', Curl2plDLL),
+	str_cat(ConfigBinDir, 'libcurl.dll', LibcurlDLL),
+	str_cat(ConfigBinDir, 'curl2pl.dll', Curl2plDLL),
 	path_sysop(newerthan,ModuleO,ModuleSourceFile),
 	path_sysop(newerthan,ConfigSharedMod,ModuleSourceFile),
-	((xsb_running_under(windows) ; xsb_running_under(cygwin)) ->
+	((xsb_running_under(windows) ; xsb_running_under(windows)) ->
 	    path_sysop(exists,LibcurlDLL)
 	; true
 	)

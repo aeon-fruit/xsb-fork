@@ -1077,7 +1077,8 @@ DllExport int call_conv pl_open_dtd()
 
   tail = options;
 
-  while(is_list(tail)) {
+  while(is_list(tail))
+    {
       head = p2p_car(tail);
       tmp1 = p2p_cdr(tail);
       tail = tmp1;
@@ -1155,7 +1156,7 @@ DllExport int call_conv pl_open_dtd()
 	  }
 	}
       }
-  }
+    }
 
 
 
@@ -1169,20 +1170,23 @@ DllExport int call_conv pl_open_dtd()
     return FALSE;
   }
 
-
   /*Parse the dtd contents*/
   if (its_a_url == 1) {
     int i = 0;
     source_len = strlen(fname);
 
-    for( i=0; (size_t)i<source_len ; i++) {
+    for( i=0; (size_t)i<source_len ; i++){
       putchar_dtd_parser(pd->parser, fname[i]);
     }
-  } else if( its_a_url == 0) {
+  }
+
+  else if( its_a_url == 0)
+    {
       char c;
       int i = 0;
 
-      for( i=0;(size_t)i<source_len;i++) {
+      for( i=0;(size_t)i<source_len;i++)
+	{
 	  c = fgetc(in);
 	  putchar_dtd_parser(pd->parser, c);
 	}

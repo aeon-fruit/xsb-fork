@@ -131,11 +131,10 @@ DllExport int call_conv openConnection(void)
 
   CHandles[numCHandles++] = cHandle;
   if ((val = connectDriver(cHandle)) != SUCCESS) {
-    if (getDriverFunction(cHandle->driver, ERROR_MESG) != NULL) {
+    if (getDriverFunction(cHandle->driver, ERROR_MESG) != NULL)
       errorMesgDriver = getDriverFunction(cHandle->driver, ERROR_MESG)->errorMesgDriver;
-    } else {
+    else
       return FALSE;
-    }
 
     errorMesg = errorMesgDriver();
     errorNumber = "XSB_DBI_000";
@@ -208,18 +207,18 @@ DllExport int call_conv queryConnection(void)
   struct xsb_connectionHandle* cHandle;
   struct xsb_queryHandle* qHandle;
   struct xsb_data** result;
-  char *chandle, *qhandle_symbol, *sqlQuery;
+  char *chandle, *qhandle, *sqlQuery;
   int val;
 
   chandle = ptoc_string(CTXTc 1);
-  qhandle_symbol = ptoc_string(CTXTc 2);
+  qhandle = ptoc_string(CTXTc 2);
   sqlQueryList = reg_term(CTXTc 3);
   returnList = reg_term(CTXTc 4);
   result = NULL; 
   cHandle = NULL;
   qHandle = NULL;
 
-  if ((qHandle = isQueryHandle(qhandle_symbol)) != NULL) {
+  if ((qHandle = isQueryHandle(qhandle)) != NULL) {
     if (strcmp(qHandle->connHandle->handle, chandle)) {
       errorMesg = "Query handle already exists";
       errorNumber = "XSB_DBI_007";;
@@ -253,7 +252,7 @@ DllExport int call_conv queryConnection(void)
 
     result = queryDriver(qHandle);
     if (result == NULL && qHandle->state == QUERY_RETRIEVE) {
-      closeQueryHandle(qhandle_symbol);
+      closeQueryHandle(qhandle);
     }
   }
   else if ((cHandle = isConnectionHandle(chandle)) != NULL) {
@@ -265,8 +264,8 @@ DllExport int call_conv queryConnection(void)
 
     sqlQuery = buildSQLQuery(sqlQueryList);
     qHandle = (struct xsb_queryHandle *)malloc(sizeof(struct xsb_queryHandle));
-    qHandle->handle = (char *)malloc(sizeof(char)*(strlen(qhandle_symbol)+1));
-    strcpy(qHandle->handle,qhandle_symbol);
+    qHandle->handle = (char *)malloc(sizeof(char)*(strlen(qhandle)+1));
+    strcpy(qHandle->handle,qhandle);
     qHandle->connHandle = cHandle;
     qHandle->query = sqlQuery;
     qHandle->state = QUERY_BEGIN;
@@ -287,7 +286,7 @@ DllExport int call_conv queryConnection(void)
   val = bindReturnList(returnList, result, qHandle);
 
   if (result == NULL) {
-    closeQueryHandle(qhandle_symbol);
+    closeQueryHandle(qhandle);
   }
   else {
     if (getDriverFunction(qHandle->connHandle->driver, FREE_RESULT) != NULL)
@@ -320,13 +319,13 @@ DllExport int call_conv prepareStatement(void)
   int (*prepareStmtDriver)(struct xsb_queryHandle*);
   char* (*errorMesgDriver)();
   prolog_term sqlQueryList;
-  char *chandle, *qhandle_symbol, *sqlQuery;
+  char *chandle, *qhandle, *sqlQuery;
   struct xsb_queryHandle* qHandle;
   struct xsb_connectionHandle* cHandle;
   int val;
   
   chandle = ptoc_string(CTXTc 1);
-  qhandle_symbol = ptoc_string(CTXTc 2);
+  qhandle = ptoc_string(CTXTc 2);
   sqlQueryList = reg_term(CTXTc 3);
   qHandle = NULL; 
   cHandle = NULL;
@@ -337,7 +336,7 @@ DllExport int call_conv prepareStatement(void)
     return FALSE;
   }
   
-  if ((qHandle = isQueryHandle(qhandle_symbol)) != NULL) {
+  if ((qHandle = isQueryHandle(qhandle)) != NULL) {
     errorMesg = "Query handle already exists";
     errorNumber = "XSB_DBI_007";
     return FALSE;
@@ -355,8 +354,8 @@ DllExport int call_conv prepareStatement(void)
   qHandle = (struct xsb_queryHandle *)malloc(sizeof(struct xsb_queryHandle));
   qHandle->connHandle = cHandle;
   qHandle->query = sqlQuery;
-  qHandle->handle = (char *)malloc(sizeof(char)*(strlen(qhandle_symbol)+1));
-  strcpy(qHandle->handle,qhandle_symbol);
+  qHandle->handle = (char *)malloc(sizeof(char)*(strlen(qhandle)+1));
+  strcpy(qHandle->handle,qhandle);
 
   qHandle->state = QUERY_BEGIN;
   
@@ -785,10 +784,9 @@ static void freeQueryHandle(struct xsb_queryHandle* qHandle, int pos)
 static struct xsb_connectionHandle* isConnectionHandle(char* handle)
 {
   int i;
-  for (i = 0 ; i < numCHandles ; i++) {
+  for (i = 0 ; i < numCHandles ; i++)
     if (!strcmp(CHandles[i]->handle, handle))
       return CHandles[i];
-  }
   return NULL;
 }
 
@@ -796,10 +794,9 @@ static struct xsb_connectionHandle* isConnectionHandle(char* handle)
 static struct xsb_queryHandle* isQueryHandle(char* handle)
 {
   int i;
-  for (i = 0 ; i < numQHandles ; i++) {
+  for (i = 0 ; i < numQHandles ; i++)
     if (!strcmp(QHandles[i]->handle, handle))
       return QHandles[i];
-  }
   return NULL;
 }
 

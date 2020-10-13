@@ -1,3 +1,3 @@
-XSB Version 3.8.0 (Three-Buck Chuck) of October 28, 2017
-[x86-pc-windows; mode: debug; engine: slg-wam; scheduling: local]
-[Build date: 2017-10-29]
+XSB Version 3.7. (Clan MacGregor) of July 6, 2016
+[x86-pc-windows; mode: optimal; engine: slg-wam; scheduling: local]
+[Build date: 2016-07-06]

@@ -1,5 +1,5 @@
 /* File:      slgdelay.c
-** Author(s): Kostis Sagonas, Baoqiu Cui, Swift, Warren
+** Author(s): Kostis Sagonas, Baoqiu Cui
 ** Contact:   xsb-contact@cs.sunysb.edu
 **
 ** Copyright (C) The Research Foundation of SUNY, 1986, 1993-1998
@@ -67,13 +67,6 @@ void print_pdes(PNDE);
 
 Structure_Manager smASI      = SM_InitDecl(ASI_Node, ASIs_PER_BLOCK,
 					    "Answer Substitution Info Node");
-
-// This is something of a guess, particularly for the MT engine.
-#ifdef MULTI_THREAD
-#define MAX_SIMPLIFICATION_DEPTH 25
-#else
-#define MAX_SIMPLIFICATION_DEPTH 100
-#endif
 
 /*
  * Global variables for shared/sequential tables.
@@ -153,6 +146,24 @@ static PNDE current_pnde_block_top_gl = NULL; /* the top of current PNDE block*/
 
 /* * * * */
 
+/*
+ * TLS: AS info had been using malloc directly, so I changed it to use
+ * the structure managers that are more common to the rest of the
+ * system, rather than the new_entry/release_entry methods.
+ *
+ * Allocate shared structure is not needed, as shared structures will be
+ * protected by the lock in do_delay_stuff to MUTEX_DELAY
+ */
+
+#define create_asi_info(ST_MAN,ANS, SUBG)			\
+  {								\
+    SM_AllocateStruct(ST_MAN,( asi));				\
+    Child(ANS) = (NODEptr) asi;					\
+    asi_pdes(asi) = NULL;					\
+    asi_subgoal(asi) = SUBG;					\
+    asi_dl_list(asi) = NULL;					\
+    asi_scratchpad(asi) = 0;					\
+  }
 
 /*
  * The following functions are used for statistics.  If changing their
@@ -409,7 +420,7 @@ xsbBool was_simplifiable(CTXTdeclc VariantSF subgoal, NODEptr ANS) {
       AnsLeaf = get_answer_for_subgoal(CTXTc (SubConsSF) subgoal);
       return (is_completed(conssf_producer(subgoal))
 	      && (IsNULL(AnsLeaf) || IsDeletedNode(AnsLeaf)));
-    } else /* TES: not 100% SURE subgoal_fails handles deleted nodes */
+    } else /* TLS: not 100% SURE subgoal_fails handles deleted nodes */
       return (is_completed(subgoal) && subgoal_fails(subgoal));
   }
   else return is_unconditional_answer(ANS);
@@ -754,7 +765,7 @@ static void record_de_usage_private(CTXTdeclc DL dl)
  * element (saved in the answer trie) has been set, we can say the
  * conditional answer is tabled.
  *
- * TES: moved mutexes into conditionals.  This avoids locking the
+ * TLS: moved mutexes into conditionals.  This avoids locking the
  * delay mutex when adding an answer for a LRD stratified program.
  * For non-LRD programs the placement of mutexes may mean that we lock
  * the mutex more than once per answer, but such cases will be
@@ -762,18 +773,18 @@ static void record_de_usage_private(CTXTdeclc DL dl)
  * simplification).
  */
 
-int simplification_depth_gl;
-
 void do_delay_stuff_shared(CTXTdeclc NODEptr as_leaf, VariantSF subgoal, xsbBool sf_exists)
 {
+    ASI	asi;
     DL dl = NULL;
-    simplification_depth_gl = 0;
+
     if (delayreg) {
-      //    print_delay_list(CTXTc stddbg,delayreg);fprintf(stddbg,"\n");
+      //      print_delay_list(CTXTc stddbg,delayreg);fprintf(stddbg,"\n");
       SYS_MUTEX_LOCK( MUTEX_DELAY ) ;
       if (!sf_exists || is_conditional_answer(as_leaf)) {
         if ((dl = intern_delay_list(CTXTc delayreg, subgoal)) != NULL) {
 	  mark_conditional_answer(as_leaf, subgoal, dl, smASI);
+	  //	  printf("marked conditional ans as_leaf %p asi %p\n",as_leaf,asi);
 	  record_de_usage(dl);
         }
       }
@@ -784,7 +795,8 @@ void do_delay_stuff_shared(CTXTdeclc NODEptr as_leaf, VariantSF subgoal, xsbBool
      */
     //    printf("sf %d is_cond %d delayreg %d\n",sf_exists,is_conditional_answer(as_leaf),delayreg);
 
-    if (sf_exists && is_conditional_answer(as_leaf) &&	(!delayreg || !dl)) {
+    if (sf_exists && is_conditional_answer(as_leaf) &&
+	(!delayreg || !dl)) {
       /*
        * Initiate positive simplification in places where this answer
        * substitution has already been returned.
@@ -803,8 +815,9 @@ void do_delay_stuff_shared(CTXTdeclc NODEptr as_leaf, VariantSF subgoal, xsbBool
 #ifdef MULTI_THREAD
 void do_delay_stuff_private(CTXTdeclc NODEptr as_leaf, VariantSF subgoal, xsbBool sf_exists)
 {
+    ASI	asi;
     DL dl = NULL;
-    
+
     if (delayreg && (!sf_exists || is_conditional_answer(as_leaf))) {
       if ((dl = intern_delay_list_private(CTXTc delayreg, subgoal)) != NULL) {
 	mark_conditional_answer(as_leaf, subgoal, dl, *private_smASI);
@@ -985,7 +998,7 @@ void *simpl_variant_trie_lookup(CTXTdeclc void *trieRoot, int nTerms, CPtr termV
 /* assume term copied is not a var */
 void answerStack_copyTerm(CTXTdecl) {
   Cell symbol = (Cell) NULL;
-  unsigned int i;
+  int i;
 
   SimplStack_Pop(simplAnsStack,symbol);
   //  printf("working on AS: ");printTrieSymbol(stddbg, symbol);fprintf(stddbg,"\n");
@@ -1005,7 +1018,7 @@ void answerStack_copyTerm(CTXTdecl) {
 /* For aliased variables; assume term copied is not a var */
 void answerStack_copyTermPtr(CTXTdeclc CPtr symbolPtr) {
   Cell symbol;
-  unsigned int i;
+  int i;
 
   //  printf("answerStack_copyTermPtr: %p ",symbolPtr);
   symbol = *symbolPtr;
@@ -1043,7 +1056,7 @@ void construct_ground_term(CTXTdeclc BTNptr as_leaf,VariantSF subgoal) {
 
   SymbolStack_ResetTOS;
   while (!DynStk_IsEmpty(simplGoalStack)) {
-    // TES: should probably check for null sumbol after pop?
+    // TLS: should probably check for null sumbol after pop?
     SimplStack_Pop(simplGoalStack,symbol);
     //    printf("working on GS: ");printTrieSymbol(stddbg, symbol);fprintf(stddbg,"\n");
     if (IsTrieVar(symbol)) {
@@ -1270,7 +1283,23 @@ void release_all_dls(CTXTdeclc ASI asi)
  * delay lists that contain them.
  *******************************************************************/
 
-void forest_log_pos_unconditional(CTXTdeclc VariantSF subgoal,NODEptr as_leaf,PNDE pde) {
+void simplify_pos_unconditional(CTXTdeclc NODEptr as_leaf)
+{
+  ASI asi = Delay(as_leaf);
+  PNDE pde;
+  DE de;
+  DL dl;
+  VariantSF subgoal;
+#ifdef MULTI_THREAD
+  xsbBool isPrivate = IsPrivateSF(asi_subgoal(asi));
+#endif
+  subgoal = asi_subgoal(asi);
+  release_all_dls(CTXTc asi);
+  unmark_conditional_answer(as_leaf);
+
+  //  print_pdes(asi_pdes(asi));
+  while ((pde = asi_pdes(asi))) {
+
     if (flags[CTRACE_CALLS] && !subg_forest_log_off(subgoal))  {				
       char buffera[MAXTERMBUFSIZE];			
       char bufferc[MAXTERMBUFSIZE];			
@@ -1288,35 +1317,7 @@ void forest_log_pos_unconditional(CTXTdeclc VariantSF subgoal,NODEptr as_leaf,PN
 	      forest_log_buffer_1->fl_buffer,bufferc,
 	      forest_log_buffer_2->fl_buffer,ctrace_ctr++); 
     }
-}
 
-void simplify_pos_unconditional(CTXTdeclc NODEptr as_leaf)
-{
-  ASI asi = Delay(as_leaf);
-  PNDE pde;
-  DE de;
-  DL dl;
-  VariantSF subgoal;
-#ifdef MULTI_THREAD
-  xsbBool isPrivate = IsPrivateSF(asi_subgoal(asi));
-#endif
-  if (simplification_depth_gl++ > MAX_SIMPLIFICATION_DEPTH) {
-    xsb_exit("++Unrecoverable Error[XSB/Runtime]: [Resource] Too many nested simplifications.  Please report this error.");
-    //    printf("simplification_depth %d\n",simplification_depth_gl);
-    //    xsb_resource_error_nopred("recursion stack", "depth of simplifications is over the allowed limit of ",
-    //			      MAX_SIMPLIFICATION_DEPTH);
-  }
-
-  subgoal = asi_subgoal(asi);
-  release_all_dls(CTXTc asi);
-  unmark_conditional_answer(as_leaf);
-
-  //  print_pdes(asi_pdes(asi));
-  while ((pde = asi_pdes(asi))) {
-
-    if (flags[CTRACE_CALLS] && !subg_forest_log_off(subgoal))  {				
-      forest_log_pos_unconditional(CTXTc subgoal,as_leaf,pde);
-    }
     de = pnde_de(pde);
     dl = pnde_dl(pde);
 #ifdef MULTI_THREAD
@@ -1342,7 +1343,6 @@ void simplify_pos_unconditional(CTXTdeclc NODEptr as_leaf)
   else
 #endif
   SM_DeallocateSharedStruct(smASI,asi);
-  simplification_depth_gl--;
 }
 
 /*******************************************************************
@@ -1383,11 +1383,6 @@ void simplify_neg_fails(CTXTdeclc VariantSF subgoal)
   DE de;
   DL dl;
 
-  if (simplification_depth_gl++ > MAX_SIMPLIFICATION_DEPTH) {
-    xsb_exit("++Unrecoverable Error[XSB/Runtime]: [Resource] Too many nested simplifications.  Please report this error.");
-    //    xsb_resource_error_nopred("recursion stack", "depth of simplifications is over the allowed limit of ",
-    //			      MAX_SIMPLIFICATION_DEPTH);
-  }
   push_neg_simpl(subgoal);
 
   if (in_simplify_neg_fails) {
@@ -1429,7 +1424,6 @@ void simplify_neg_fails(CTXTdeclc VariantSF subgoal)
     }
   }
   in_simplify_neg_fails = 0;
-  simplification_depth_gl--;
 }
 
 /********************************************************************
@@ -1450,11 +1444,7 @@ static void simplify_neg_succeeds(CTXTdeclc VariantSF subgoal)
   NODEptr used_as_leaf;
   DL dl, tmp_dl;
   UNUSED(tmp_dl);
-  if (simplification_depth_gl++ > MAX_SIMPLIFICATION_DEPTH) {
-    xsb_exit("++Unrecoverable Error[XSB/Runtime]: [Resource] Too many nested simplifications.  Please report this error.");
-    //    xsb_resource_error_nopred("recursion stack", "depth of simplifications is over the allowed limit of ",
-    //			      MAX_SIMPLIFICATION_DEPTH);
-  }
+
   //  printf("in simplify neg succeeds: ");print_subgoal(stddbg,subgoal);printf("\n");
   answer_complete_subg(subgoal);
 
@@ -1513,7 +1503,6 @@ static void simplify_neg_succeeds(CTXTdeclc VariantSF subgoal)
       }
     } /* if */
   } /* while */
-  simplification_depth_gl--;
 }
 
 /*********************************************************************
@@ -1524,7 +1513,21 @@ static void simplify_neg_succeeds(CTXTdeclc VariantSF subgoal)
  * pointing to that AnswerSubstitution.
  **********************************************************************/
 
-void log_pos_unsupported(CTXTdeclc NODEptr as_leaf, PNDE pde) {
+void simplify_pos_unsupported(CTXTdeclc NODEptr as_leaf)
+{
+  ASI asi = Delay(as_leaf);
+  PNDE pde;
+  DL dl;
+  DE de, tmp_de;
+  ASI used_asi, de_asi;
+  NODEptr used_as_leaf;
+
+  //  printf("in simplify pos unsupported: ");print_subgoal(stddbg,asi_subgoal(Delay(as_leaf)));printf("\n");
+
+  while ((pde = asi_pdes(asi))) {
+
+    // TLS: seems to be a problem with printing out as_leaf in this case.
+    if (flags[CTRACE_CALLS] && !subg_forest_log_off(asi_subgoal(asi)))  {
       char bufferb[MAXTERMBUFSIZE];			
       memset(bufferb,0,MAXTERMBUFSIZE);
       sprint_subgoal(CTXTc forest_log_buffer_1,0,asi_subgoal(Delay(as_leaf)));
@@ -1534,28 +1537,6 @@ void log_pos_unsupported(CTXTdeclc NODEptr as_leaf, PNDE pde) {
       fprintf(fview_ptr,"pus_smpl(%s,%s,%s,%d).\n",
 	      forest_log_buffer_1->fl_buffer,bufferb,
 	      forest_log_buffer_3->fl_buffer,ctrace_ctr++); 
-}
-
-void simplify_pos_unsupported(CTXTdeclc NODEptr as_leaf)
-{
-  ASI asi = Delay(as_leaf);
-  PNDE pde;
-  DL dl;
-  DE de, tmp_de;
-  ASI used_asi, de_asi;
-  NODEptr used_as_leaf;
-  if (simplification_depth_gl++ > MAX_SIMPLIFICATION_DEPTH) {
-    xsb_exit("++Unrecoverable Error[XSB/Runtime]: [Resource] Too many nested simplifications.  Please report this error.");
-    //    xsb_resource_error_nopred("recursion stack", "depth of simplifications is over the allowed limit of ",
-    //			      MAX_SIMPLIFICATION_DEPTH);
-  }
-  //  printf("in simplify pos unsupported: ");print_subgoal(stddbg,asi_subgoal(Delay(as_leaf)));printf("\n");
-
-  while ((pde = asi_pdes(asi))) {
-
-    // TES: seems to be a problem with printing out as_leaf in this case.
-    if (flags[CTRACE_CALLS] && !subg_forest_log_off(asi_subgoal(asi)))  {
-      log_pos_unsupported(CTXTc as_leaf, pde);
     }
 
     dl = pnde_dl(pde); /* dl: to be removed */
@@ -1578,7 +1559,7 @@ void simplify_pos_unsupported(CTXTdeclc NODEptr as_leaf)
     	  else {			  /* is PDE */
     		  de_asi = Delay(de_ans_subst(de));
 #ifdef MULTI_THREAD
-	  /* TES: changed this */
+	  /* TLS: changed this */
 	  //	  de_asi = Delay(de_ans_subst(de));
 	  if (IsPrivateSF(asi_subgoal(de_asi)))
 	    remove_pnde(asi_pdes(de_asi), de_pnde(de),private_released_pndes)
@@ -1600,7 +1581,6 @@ void simplify_pos_unsupported(CTXTdeclc NODEptr as_leaf)
       }
     } /* if */
   } /* while */
-  simplification_depth_gl--;
 }
 
 /* Can currently be called with only one active thread: otherwise put

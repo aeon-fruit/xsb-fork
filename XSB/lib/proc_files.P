@@ -57,7 +57,7 @@ load_dsv(FileName,PSpec,Options) :-
 	),
 	load_dsv(FileName,PSpec,Sep,Delim,Options).
 
-read_dsv(FileNameOrStr,Options,Term) :-
+read_dsv(FileName,Options,Term) :-
 	(member(separator=Sep0,Options)
 	 ->	std_separator(Sep0,Sep)
 	 ;	Sep = ","
@@ -71,13 +71,10 @@ read_dsv(FileNameOrStr,Options,Term) :-
 		)
 	 ;	Delim = 0'"' %"
 	),
-	(member(types=Types,Options)
-	 ->	true
-	 ;	functor(Term,Pred,Arity), % no constraints
-		length(Types,Arity)
-	),
+	functor(Term,Pred,Arity),
+	length(Types,Arity),	% no constraints
 	Term =.. [Pred|Args],
-	read_dsv(FileNameOrStr,Term,Sep,Delim,Options,Types,Args).
+	read_dsv(FileName,Term,Sep,Delim,Options,Types,Args).
 
 :- comment(load_dsv/5,
 "@pred{load_dsv(+FileName,+PSpec,+Sep,+Delim,+Options)} loads a
@@ -115,7 +112,6 @@ load_dsv(FileName,PSpec,Sep,Delim,Options) :-
 	dynamic(Spec),
 	retractall(Spec),
         pad_args(Args,Options,ArgsPatched),
-	cputime(T0),
 	(read_dsv(FileName,PSpec,Sep,Delim,Options,Types,ArgsPatched),
 	 (Reverse =:= 0
 	  ->	 assertz(Spec),
@@ -124,18 +120,15 @@ load_dsv(FileName,PSpec,Sep,Delim,Options) :-
 		 fail
 	 )
 	 ;
-	 conget('__recsread',RecsRead),
-	 time_message(T0,(FileName,' loaded (delimited) ',RecsRead,' records'))
+	 true
 	).
 
-read_dsv(FileNameOrStr,PSpec,Sep,Delim,Options,Types,Args) :-
+read_dsv(FileName,PSpec,Sep,Delim,Options,Types,Args) :-
+	cputime(T0),
 	conset('__errcnt',0),
 	conset('__recsread',0),
 	conset('__linesread',0),
-	(integer(FileNameOrStr)
-	 ->	Stream = FileNameOrStr
-	 ;	open(FileNameOrStr,read,Stream)
-	),
+	open(FileName,read,Stream),
 	(member(returns=Returns,Options)
 	 ->	length(Args,NumFields)
 	 ;	NumFields = 0,
@@ -145,14 +138,15 @@ read_dsv(FileNameOrStr,PSpec,Sep,Delim,Options,Types,Args) :-
 	(CodeFields == end_of_file
 	 ->	!,
 		close(Stream),
+		conget('__recsread',RecsRead),
+		time_message(T0,(FileName,' loaded (delimited) ',RecsRead,' records')),
 		fail
 	 ;	coninc('__recsread',RecsRead),
 		(RecsRead =:= 1,member(titles,Options)
 		 ->	fail
 		 ;	atom_codes_list(Fields,CodeFields),
-			(atom(PSpec)
-			 ->	Args = Fields
-			 ;	cvt_types(Fields,Types,Args,Fields)
+			(atom(PSpec) ->	Args = Fields
+                        ;	cvt_types(Fields,Types,Args,Fields)
 			)
 		)
 	).
@@ -245,10 +239,18 @@ cvt_types([F|Fs],[T|Ts],[A|As],Fields) :-
 	
 	
 delim_file_process(Stream,Sep,Delim,CodeFields):-
-	repeat,
-	(file_read_line_list(Stream,CList)
+	(file_read_line_list(Stream,List)
 	 ->	coninc('__linesread'),
-		break_into_code_fields(Stream,CodeFields,CList,Sep,Delim)
+		(break_into_code_fields(Stream,CodeFields,List,Sep,Delim)
+		 ;
+		 repeat,
+		 (file_read_line_list(Stream,CList)
+		  ->	 coninc('__linesread'),
+			 break_into_code_fields(Stream,CodeFields,CList,Sep,Delim)
+		  ;	 !,
+			 CodeFields = end_of_file
+		 )
+		)
 	 ;	!,
 		CodeFields = end_of_file
 	).
@@ -411,18 +413,15 @@ save_dsv(FileName,PSpec,Options) :-
 	save_dsv(FileName,PSpec,Sep,Delim,Options).
 
 
-:- comment(save_dsv/5,
-"@pred{save_dsv(FileName,PSpec,Sep,Delim,Options)} writes out a
-separated/delimited file from an internal predicate.  @var(FileName)
-is the name of the file to create.  @var{PSpec} specifies the
-predicate to use: it may be of the form Pread/Arity or a most-general
-term, or it may be an atom in which case the unary predicate of that
-name is called to get a list of fields to output.  @var{Sep} is a
-separator ascii-code or list of ascii-codes.  Delim is currently
-ignored, but should get used when necessary.  The final argument is
-for future expansion if/when we get options. (It should support types,
-to write the arguments correctly.  In particular it should support the
-term type.  But this is not (yet) done.)  ").
+:- comment(save_dsv/5, "@pred{save_dsv(FileName,PSpec,Sep,Delim,Options)}
+writes out a separated/delimited file from an internal predicate.
+@var(FileName) is the name of the file to create.  @var{PSpec}
+specifies the predicate to use: it may be of the form Pread/Arity or a
+most-general term, or it may be an atom in which case the unary
+predicate of that name is called to get a list of fields to output.
+@var{Sep} is a separator ascii-code or list of ascii-codes.  Delim is
+currently ignored, but should get used when necessary.  The final
+argument is for future expansion if/when we get options.").
 
 save_dsv(FileName,PSpec,Sep0,Delim0,Options) :-
 	(atom(PSpec)
@@ -656,26 +655,3 @@ pad_args(ArgsIn,Options,ArgsOut) :-
             )
         ; ArgsOut = ArgsIn
         ).
-
-read_can(FileName,Term) :-
-	open(FileName,read,IStr),
-	repeat,
-	read_canonical(IStr,Term0),
-	(Term0 == end_of_file
-	 ->	!,
-		close(IStr),
-		fail
-	 ;	Term = Term0
-	).
-
-read_pro(FileName,Term) :-
-	open(FileName,read,IStr),
-	repeat,
-	read(IStr,Term0),
-	(Term0 == end_of_file
-	 ->	!,
-		close(IStr),
-		fail
-	 ;	Term = Term0
-	).
-

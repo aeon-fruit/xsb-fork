@@ -770,7 +770,7 @@ static int read_can_error(CTXTdeclc int stream, int prevchar, Cell prologvar, in
 {
   char *ptr;
 
-  xsb_warn(CTXTc "[read_canonical] illegal format near these tokens:");
+  xsb_error("READ_CAN_ERROR: illegal format. Next tokens:");
   while ((token->type != TK_EOC) && (token->type != TK_EOF)) {
     ptr = token->value;
     switch (token->type) {
@@ -870,11 +870,6 @@ Cell read_canonical_return_var(CTXTdeclc int code) {
     op1 = get_str_arg(op,1);
     XSB_Deref(op1);
     return op1;
-  } else if (code == 3) { /* from loader, use r5 */
-    Cell op;
-    op = ptoc_tag(CTXTc 5);
-    XSB_Deref(op);
-    return op;
   } else return (Cell)NULL;
 }
 
@@ -969,8 +964,8 @@ Integer read_canonical_term(CTXTdeclc int stream, int return_location_code)
 		      size += 2;
 		    } else {
 		      size += arity+1;
-		      sym = (Pair)insert_psc(funstk[funtop].fun,arity,
-					     (Psc)flags[CURRENT_MODULE],&i);
+		      sym = (Pair)insert(funstk[funtop].fun,(char)arity,
+					 (Psc)flags[CURRENT_MODULE],&i);
 		      new_heap_functor(h, sym->psc_ptr);
 		      for (j=op1; j<optop; h++,j++) {
 			if (opstk[j].typ == TK_VAR) { setvar(h,j) }
@@ -1631,8 +1626,7 @@ int xsb_intern_file(CTXTdeclc char *context,char *addr, int *ioport,char *strmod
     return 0;
   } 
   else { /* try to intern new file */
-    struct stat_buff_type stat_buff;
-    int retcode;
+    struct stat stat_buff;
     fptr = fopen(addr, strmode);
     //    fprintf(logfile,"opening: %s (%s)\n",addr,strmode);
     if (!fptr) {*ioport = 0; return -1;}
@@ -1643,7 +1637,7 @@ int xsb_intern_file(CTXTdeclc char *context,char *addr, int *ioport,char *strmod
       SQUASH_LINUX_COMPILER_WARN(dummy) ; 
       xsb_log("%s: %s\n",current_dir,addr);
     }
-    if (!(retcode= stat_function(addr, &stat_buff)) && !S_ISDIR(stat_buff.st_mode)) {
+    if (!stat(addr, &stat_buff) && !S_ISDIR(stat_buff.st_mode)) {
 	/* file exists and isn't a dir */
       open_files[first_null].file_ptr = fptr;
       open_files[first_null].file_name = string_find(addr,1);
@@ -1652,12 +1646,9 @@ int xsb_intern_file(CTXTdeclc char *context,char *addr, int *ioport,char *strmod
       *ioport = first_null;
       return 0;
     }  else {
-      if (retcode) {
-	xsb_warn(CTXTc "FILE_OPEN: stat() for file %s failed with error: %s!",
-		 addr,strerror(errno));
-      } else xsb_warn(CTXTc "FILE_OPEN: File %s is a directory, cannot open!", addr);
-      fclose(fptr);
-      return -1;
+	xsb_warn(CTXTc "FILE_OPEN: File %s is a directory, cannot open!", addr);
+	fclose(fptr);
+	return -1;
     }
   }
 }
@@ -1925,7 +1916,7 @@ int call_conv write_canonical_term_rec(CTXTdeclc Cell prologterm, int letter_fla
 	  XSB_StrAppend(wcan_string,wcan_buff->string);
 	}
       } else { /* regular ole structured term */
-	unsigned int i; 
+	int i; 
 	char *fnname = get_name(get_str_psc(prologterm));
 	if (quotes_are_needed(fnname)) {
 	  size_t len_needed = 2*strlen(fnname)+1;

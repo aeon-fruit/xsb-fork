@@ -63,7 +63,6 @@ reset_dcg_mode :-
 	        assert(word([Token|Tokens],Token,Tokens))
 	).
 
-:- import invalidate_table_for/2 from usermod.
 :- dynamic invalidate_table_for/2.
 set_dcg_supported_table(TSkel) :-
 	table_state(TSkel,PType,_CType,_AStat),

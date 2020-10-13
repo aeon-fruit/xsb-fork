@@ -1,7 +1,7 @@
 #! /bin/sh
 
 # Do not touch xsb_patch_date! It should be updated by SVN (does not currently)
-xsb_patch_date='$Date: 2017-10-23 17:43:39 -0400 (Mon, 23 Oct 2017) $'
+xsb_patch_date='$Date: 2016-07-06 13:21:21 -0400 (Wed, 06 Jul 2016) $'
 
 xsb_build_date=`date +"%Y-%m-%d" || status=failed`
 if test -n "$status"; then
@@ -15,8 +15,8 @@ xsb_patch_date=`echo Build date: $xsb_build_date`
 
 
 xsb_major_version=3
-xsb_minor_version=8
-xsb_patch_version=0         # must be present; otherwise, an ugly "." at the end
+xsb_minor_version=7
+#xsb_patch_version=1
 #xsb_beta_version=pre"
 #xsb_codename="Skol"        # for Version 2.1
 #xsb_codename="Tsingtao"    # for Version 2.2
@@ -31,9 +31,8 @@ xsb_patch_version=0         # must be present; otherwise, an ugly "." at the end
 #xsb_codename="Pignoletto"  # Version 3.3 Italian Beer (Fabrizio)
 #xsb_codename="Soy mILK"    # Version 3.4 (Benjamin)
 #xsb_codename="Maotai"      # Version 3.5 Chinese Beer (Neng-Fa)
-#xsb_codename="Gazpatcho"   # Version 3.6 (Paulo Moura)
-#xsb_codename="Clan MacGregor"    # Version 3.7 (David's Scotch)
-xsb_codename="Three-Buck Chuck" 
+#xsb_codename="Gazpatcho"    # Version 3.6 (Paulo Moura)
+xsb_codename="Clan MacGregor"    # Version 3.7 (David's Scotch)
 
 # Format: YYYY-MM-DD or YYYY.MM.DD or YYYY/MM/DD
 # With this, XSB should become Y2K compliant :-)
@@ -45,6 +44,5 @@ xsb_codename="Three-Buck Chuck"
 #xsb_release_date=2013-05-01
 #xsb_release_date=2014-07-06
 #xsb_release_date=2015-04-22 
-#xsb_release_date=2016-07-06 
-xsb_release_date=2017-10-28  # target (may be changed)
+xsb_release_date=2016-07-06 # target (may be changed)
 

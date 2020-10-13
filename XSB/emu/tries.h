@@ -348,7 +348,6 @@ typedef struct Call_Check_Insert_Results {
 /*-- exported trie functions ------------------------------------------*/
 
 #ifndef MULTI_THREAD
-extern void add_positive_delay(char * );
 extern int unify_abstractions_from_AT(CPtr , int);
 extern void unify_abstractions_from_absStk(void);
 extern void copy_abstractions_to_AT(CPtr ,int);
@@ -370,17 +369,16 @@ extern BTNptr   trie_assert_chk_ins(CPtr, BTNptr, int *);
 extern BTNptr   trie_intern_chk_ins(Cell, BTNptr *, int *, int, int);
 extern BTNptr	get_next_trie_solution(ALNptr *);
 extern BTNptr	variant_answer_search(int, int, CPtr, struct subgoal_frame *,
-				      xsbBool *,xsbBool *,xsbBool *);
+				      xsbBool *,xsbBool *);
 extern BTNptr   delay_chk_insert(int, CPtr, CPtr *);
 //extern void     undo_answer_bindings(void);
 extern void	load_delay_trie(int, CPtr, BTNptr);
 extern xsbBool  bottom_up_unify(void);
 extern BTHTptr  New_BTHT(Structure_Manager *, int);
 extern int trie_path_heap_size(BTNptr pLeaf);
-#else  // MULTI_THREAD
+#else
 struct th_context ;
 
-extern void add_positive_delay(struct th_context *,  char * );
 extern int unify_abstractions_from_AT(struct th_context *, CPtr , int);
 extern void unify_abstractions_from_absStk(struct th_context *);
 extern void copy_abstractions_to_AT(struct th_context *, CPtr, int);
@@ -400,7 +398,7 @@ extern BTNptr   trie_assert_chk_ins(struct th_context *, CPtr, BTNptr, int *);
 extern BTNptr   trie_intern_chk_ins(struct th_context *, Cell, BTNptr *, int *, int, int);
 extern BTNptr	get_next_trie_solution(ALNptr *);
 extern BTNptr	variant_answer_search(struct th_context *, int, int, CPtr, 
-				      struct subgoal_frame *, xsbBool *, xsbBool *,xsbBool *);
+				      struct subgoal_frame *, xsbBool *, xsbBool *);
 extern BTNptr   delay_chk_insert(struct th_context *, int, CPtr, CPtr *);
 //extern void     undo_answer_bindings(struct th_context *);
 extern void	load_delay_trie(struct th_context *, int, CPtr, BTNptr);
@@ -468,8 +466,7 @@ extern CPtr *trieinstr_vars;
 #endif
 
 /* used for statistics */
-extern counter var_subg_chk_ins_gl, var_subg_inserts_gl, ans_chk_ins, ans_inserts;
-extern counter dyn_incr_chk_ins_gl,dyn_incr_inserts_gl;
+extern counter subg_chk_ins, subg_inserts, ans_chk_ins, ans_inserts;
 
 #define undo_answer_bindings					\
   while (VarEnumerator_trail_top >= VarEnumerator_trail) {		\

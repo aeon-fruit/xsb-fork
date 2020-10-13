@@ -33,8 +33,6 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.filechooser.FileNameExtensionFilter;
-
 import java.util.Properties;
 import java.io.File;
 import java.io.InputStream;
@@ -47,7 +45,7 @@ public class WindowsFrame extends JFrame {
     private String vsPath;
     private String jdkPath;
     private int requireJDK;
-    private String errorMessage="\n\n\nError messages:\n";
+    private String errorMessage="\n\n\nList of error messages:\n";
     private int countError=0;
     private int installSuccess;
     private String currentDir="";
@@ -188,7 +186,7 @@ public class WindowsFrame extends JFrame {
 		+"<h1>XSB Installation</h1><br/><br/>"
 		+"<h3>Operating system: "+osType
 		+".</h3><br/>"
-		+"<h3>Please make sure that Visual Studio with the C++ compiler is installed on your system.<br/>"
+		+"<h3>Please make sure that Visual Studio C++ is installed in your system.<br/>"
 		+"<h3>If not, you can download it for free from:</h3>"
 		+"</body></html>";
 	    infoLabel.setText(message);
@@ -244,14 +242,14 @@ public class WindowsFrame extends JFrame {
 	    try {
 		InputStream in = Object.class.getResourceAsStream("/link.properties");
 		props.load(in);
-		sdkLinkUrl=props.getProperty("net");
+		sdkLinkUrl=props.getProperty("sdk");
 	    } catch(Exception e) {
 		e.printStackTrace();
 	    }
 
-	    String message = "<html><body><h3>Since you are using a 64-bit Windows system, you may also need</h3><br/><h3>&nbsp;&nbsp;<a href=\"\">.Net Framework</a>.</h3></html>";
+	    String message = "<html><body><h3>Since you are using a 64-bit Windows system, you must also install</h3><br/><h3>&nbsp;&nbsp;<a href=\"\">Windows SDK and .Net Framework</a>.</h3></html>";
 	    infoSDKLinkLabel.setText(message);
-	    infoSDKLinkLabel.setBounds(30,350,450,120);
+	    infoSDKLinkLabel.setBounds(30,350,400,120);
 			
 	    infoSDKLinkLabel.addMouseListener(new MouseAdapter() {
 		    public void mouseClicked(MouseEvent e) {
@@ -316,10 +314,10 @@ public class WindowsFrame extends JFrame {
 	    String message =
 		"<html><body>"
 		+"<h1>XSB Installation</h1><br/><br/>"
-		+"<h3>Please enter the full path name of a Visual Studio's settings file in your installation of the studio.<br/>A settings file has one of these names:<br/><br/>&nbsp;&nbsp;&nbsp;  vcvarsx86_amd64.bat, vcvars62.bat, or similar (to compile XSB as a 64 bit app - <i>recommended</i>)<br/>&nbsp;&nbsp;&nbsp;  vcvars32.bat (to compile as a 32 bit app)</h3><br/>Use Windows search for the appropriate file, if the exact full path is not known.<br/>"
+		+"<h3>Please enter the folder where your installation of Visual C++ resides:</h3><br/>"
 		+"</body></html>";
 	    vsPathLabel.setText(message);
-	    vsPathLabel.setBounds(30,20,800,250);
+	    vsPathLabel.setBounds(30,20,600,200);
 	}
 	return vsPathLabel;
     }
@@ -328,7 +326,7 @@ public class WindowsFrame extends JFrame {
 	if(vsPathChooseButton == null) {
 	    vsPathChooseButton = new JButton();
 	    vsPathChooseButton.setText("Browse");
-	    vsPathChooseButton.setBounds(340, 280, 100, 30);
+	    vsPathChooseButton.setBounds(340, 190, 100, 30);
 			
 	    vsPathChooseButton.addActionListener(new VsPathChooseListener());
 	}
@@ -338,7 +336,7 @@ public class WindowsFrame extends JFrame {
     private JTextField getVsPathTextField() {
 	if(vsPathTextField == null) {
 	    vsPathTextField = new JTextField();
-	    vsPathTextField.setBounds(30, 280, 300, 30);
+	    vsPathTextField.setBounds(30, 190, 300, 30);
 	}
 	return vsPathTextField;
     }
@@ -347,7 +345,7 @@ public class WindowsFrame extends JFrame {
 	if(vsPathUseJavaCheckBox == null) {
 	    vsPathUseJavaCheckBox = new JCheckBox();
 	    vsPathUseJavaCheckBox.setText("Check if you require faster XSB-Java interface");
-	    vsPathUseJavaCheckBox.setBounds(30, 320, 300, 30);
+	    vsPathUseJavaCheckBox.setBounds(30, 240, 300, 30);
 	}
 	return vsPathUseJavaCheckBox;
     }
@@ -615,6 +613,12 @@ public class WindowsFrame extends JFrame {
 	public void actionPerformed(ActionEvent arg0) {
 	    vsPath=getVsPathTextField().getText();
 			
+	    if(Tools.fileExist(vsPath+"\\VC\\bin\\nmake.exe")==0 || Tools.fileExist(vsPath+"\\VC\\bin\\cl.exe")==0)
+		{
+		    JOptionPane.showMessageDialog(WindowsFrame.this, "Visual C++ compiler not found at the given location.");
+		    return;
+		}
+			
 	    requireJDK=0;
 	    if(getVsPathUseJavaCheckBox().isSelected()) {
 		requireJDK=1;
@@ -645,17 +649,15 @@ public class WindowsFrame extends JFrame {
 	
     class VsPathChooseListener implements ActionListener {
 	public void actionPerformed(ActionEvent arg0) {
-	    JFileChooser fc=new JFileChooser("C:");
-	    //fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            FileNameExtensionFilter filter =
-                new FileNameExtensionFilter("Batch files","bat");
-            fc.setFileFilter(filter);
+	    JFileChooser fc=new JFileChooser("C:\\Program Files");
+	    fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 	    File f=null;
 	    int flag=fc.showOpenDialog(null);      
-	    if(flag==JFileChooser.APPROVE_OPTION) {
-                f=fc.getSelectedFile();    
-                vsPath=f.getPath();
-            }
+	    if(flag==JFileChooser.APPROVE_OPTION)
+		{
+		    f=fc.getSelectedFile();    
+		    vsPath=f.getPath();
+		}
 	    WindowsFrame.this.getVsPathTextField().setText(vsPath);
 	}
     }
@@ -733,41 +735,30 @@ public class WindowsFrame extends JFrame {
 		
 	    String makexsb;
 	    String setvcvar;
-            String xsbarch = "";
-            // on a 64 bit machine we may still choose vcvars32.bat
-            // to compile for 32 bits
-	    if(osType.contains("32") || vsPath.contains("vcvars32.bat")) {
+	    if(osType.contains("32")) {
 		makexsb="makexsb.bat";
-                xsbarch = "x86-pc-windows";
-                if (vsPath.contains("vcvars32.bat"))
-                    setvcvar=vsPath;
-                else {
-                    JOptionPane.showMessageDialog(WindowsFrame.this, "Visual Studio's settings file for 32 bit Windows must be vcvars32.bat");
-                    return;
-                }
+		setvcvar="vcvars32.bat";
 	    }
 	    else {
 		String cpuType=System.getProperty("sun.cpu.isalist");
-                xsbarch = "x64-pc-windows";
 		    
 		if(cpuType.contains("amd64")) {
-                    // TODO: this is redundant. See if needed in the future.
 		    makexsb="makexsb64.bat";
-		    setvcvar=vsPath;
+		    setvcvar="vcvarsx86_amd64.bat";
 		}
 		else {
 		    makexsb="makexsb64.bat";
-		    setvcvar=vsPath;
+		    setvcvar="vcvarsx86_ia64.bat";
 		}
 	    }
 		
 	    Process process =
 		Runtime.getRuntime().exec("cmd /c "
 					  + installerShell
-					  + "\""+setvcvar+"\" "
+					  + "\""+vsPath+"\" "
 					  +vsDisk + " " + xsbDisk
 					  +" \""+currentDir+"\" "
-					  +makexsb + " " + xsbarch);
+					  +makexsb+" "+setvcvar);
         	
 	    final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
 	    final BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
@@ -778,7 +769,7 @@ public class WindowsFrame extends JFrame {
 			try {
 			    while ((line = bufferedReader.readLine()) != null) {
 				if(line.contains("=== done ===")) {
-				    JOptionPane.showMessageDialog(WindowsFrame.this, "Compilation is complete. Scroll down to see if there were any errors.");
+				    JOptionPane.showMessageDialog(WindowsFrame.this, "Compilation is complete. Click OK then Next.");
 				    compileNextButton.setEnabled(true);
 				    if(countError==0) {
 					errorMessage=errorMessage+"No\n";
